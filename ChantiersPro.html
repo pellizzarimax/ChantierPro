@@ -51,7 +51,9 @@
     margin: 0 auto;
     position: relative;
     overflow-x: hidden;
-    padding-bottom: var(--nav-height);
+    padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
+    /* Fix iOS Safari bounce */
+    -webkit-overflow-scrolling: touch;
   }
 
   /* ── HEADER ── */
@@ -102,19 +104,22 @@
     z-index: 200;
     box-shadow: 0 -4px 20px rgba(13,35,71,0.1);
     padding-bottom: env(safe-area-inset-bottom, 0);
+    /* Fix iOS Safari */
+    -webkit-transform: translateX(-50%);
+    will-change: transform;
   }
   .nav-item {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    padding: 10px 4px 10px;
+    padding: 8px 2px 8px;
     cursor: pointer; border: none; background: none;
     color: var(--gray-500); font-family: 'Outfit', sans-serif;
     transition: color 0.2s;
-    gap: 3px;
+    gap: 2px;
   }
   .nav-item.active { color: var(--blue-mid); }
-  .nav-item .nav-icon { font-size: 20px; }
-  .nav-item .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
+  .nav-item .nav-icon { font-size: 18px; }
+  .nav-item .nav-label { font-size: 9px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
   .nav-item.active .nav-icon { animation: navBounce 0.3s ease; }
   @keyframes navBounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
 
