@@ -71,7 +71,7 @@ function demo(){if(DB.clients.length&&!confirm('Ajouter des données de démonst
 // === CLAUDE AI REAL API ===
 async function claudeAPI(system,userMsg,imageB64){
   const content=imageB64?[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:imageB64}},{type:'text',text:userMsg}]:userMsg;
-  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1400,system,messages:[{role:'user',content}]})});
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system,messages:[{role:'user',content}]})});
   const d=await r.json();const t=d.content?.find(b=>b.type==='text')?.text||'';
   return JSON.parse(t.replace(/```json|```/g,'').trim());
 }
@@ -84,24 +84,20 @@ function scannerModal(){
     '<button id="sm-text" onclick="setScanMode('text')" style="flex:1;padding:8px;border-radius:9px;border:1.5px solid #4a9eff;background:rgba(74,158,255,.25);color:#fff;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">✏️ Décrire</button>',
     '<button id="sm-photo" onclick="setScanMode('photo')" style="flex:1;padding:8px;border-radius:9px;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:#fff;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">📷 Scanner notes</button>',
     '</div>',
-    '<div id="scan-text-mode">',
-    '<textarea id="ai-desc" placeholder="Ex: Isolation combles 50m² ouate de cellulose, Toulouse…" style="width:100%;padding:11px;border-radius:9px;border:1.5px solid rgba(74,158,255,.4);background:rgba(255,255,255,.1);color:#fff;font-family:inherit;font-size:13px;resize:none;min-height:90px;outline:none;box-sizing:border-box;margin-bottom:8px"></textarea>',
-    '</div>',
-    '<div id="scan-photo-mode" style="display:none">',
-    '<div id="scan-img-prev" style="margin-bottom:8px"></div>',
+    '<div id="scan-text-mode"><textarea id="ai-desc" placeholder="Ex: Isolation combles 50m² ouate de cellulose, Toulouse…" style="width:100%;padding:11px;border-radius:9px;border:1.5px solid rgba(74,158,255,.4);background:rgba(255,255,255,.1);color:#fff;font-family:inherit;font-size:13px;resize:none;min-height:90px;outline:none;box-sizing:border-box;margin-bottom:8px"></textarea></div>',
+    '<div id="scan-photo-mode" style="display:none"><div id="scan-img-prev" style="margin-bottom:8px"></div>',
     '<div style="display:flex;gap:8px">',
     '<button onclick="document.getElementById('sc-cam').click()" style="flex:1;padding:10px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:10px;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">📷 Photo</button>',
     '<button onclick="document.getElementById('sc-gal').click()" style="flex:1;padding:10px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:10px;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">🖼️ Galerie</button>',
     '</div>',
     '<input type="file" id="sc-cam" accept="image/*" capture="environment" style="display:none" onchange="scanPreview(this)">',
-    '<input type="file" id="sc-gal" accept="image/*" style="display:none" onchange="scanPreview(this)">',
-    '</div>',
+    '<input type="file" id="sc-gal" accept="image/*" style="display:none" onchange="scanPreview(this)"></div>',
     '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(22,163,74,.15);border:1.5px solid rgba(134,239,172,.4);border-radius:10px;cursor:pointer;margin:10px 0">',
     '<input type="checkbox" id="ai-bio-scan">',
     '<div><div style="color:#86efac;font-weight:700;font-size:13px">🌿 Version biosourcée</div>',
     '<div style="color:rgba(134,239,172,.7);font-size:11px">Matériaux écologiques sous ATec / règles pro</div></div></label>',
     '<button onclick="runClaudeAI()" id="ai-run-btn" style="width:100%;padding:12px;background:linear-gradient(135deg,#4a9eff,#2d6dd4);border:none;border-radius:9px;color:#fff;font-family:inherit;font-size:14px;font-weight:900;cursor:pointer">✨ Générer avec Claude IA</button>',
-    '<div id="ai-loading" style="display:none;text-align:center;padding:16px;color:#93c5fd;font-size:13px">⟳ Génération…</div>',
+    '<div id="ai-loading" style="display:none;text-align:center;padding:16px;color:#93c5fd;font-size:13px">⟳ Génération en cours…</div>',
     '<div id="ai-err" style="display:none;background:rgba(220,38,38,.25);border-radius:8px;padding:9px 12px;color:#fca5a5;font-size:13px;margin-top:8px"></div>',
     '<div id="ai-out" style="display:none;margin-top:12px;background:rgba(255,255,255,.08);border-radius:10px;padding:12px">',
     '<div id="ai-out-lines"></div>',
@@ -143,19 +139,81 @@ async function runClaudeAI(){
   var btn=document.getElementById('ai-run-btn'),loading=document.getElementById('ai-loading'),errEl=document.getElementById('ai-err'),outEl=document.getElementById('ai-out');
   if(btn)btn.style.display='none';if(loading)loading.style.display='block';
   if(errEl)errEl.style.display='none';if(outEl)outEl.style.display='none';
-  var bioInstr=bio?'\nBIOSOURCE: Matériaux sous ATec ou règles pro: laine de bois, chanvre, ouate cellulose, liège, enduits chaux, bois PEFC/FSC, peintures naturelles. Indique (ATec) ou (règles pro) dans la désignation. Prix marché biosourcé France.':'';
-  var sys='Expert devis BTP France. JSON sans markdown.\n{"objet":"","lignes":[{"designation":"","unite":"m2","qte":0,"pu":0}],"mo":0,"dep":0,"delai":"","conseils":""}'+bioInstr+'\nPrix marché BTP France. Max 12 lignes.';
+  var bioInstr=bio?'\nBIOSOURCE: Materiaux sous ATec ou regles pro: laine de bois, chanvre, ouate cellulose, liege, enduits chaux, bois PEFC/FSC, peintures naturelles. Indique ATec ou regles pro dans la designation. Prix marche biosource France.':'';
+  var sys=[
+'Tu es un expert devis BTP francais avec 20 ans experience. Tu rediges des devis professionnels precis.',
+'\n\nRegle absolue : reponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou apres.',
+'\n\nFormat JSON attendu :',
+'\n{"objet":"intitule precis","lignes":[{"designation":"description","unite":"unite","qte":nombre,"pu":prix_HT}],"mo":montant_MO_HT,"dep":frais_deplacement,"delai":"delai","conseils":"conseils techniques","avertissements":"points vigilance"}',
+'\n\nRegles de chiffrage :',
+'\n- Decomposer fournitures ET pose separement pour les postes importants',
+'\n- Si renovation : prevoir depose en ligne separee',
+'\n- Quantites realistes avec pertes (carrelage +10%, peinture +15%, parquet +8%)',
+'\n- Prix HT marche BTP France 2024-2025 :',
+'\n  Maconnerie/gros oeuvre : 45-65 EUR/m2',
+'\n  Carrelage sol : pose 25-40 EUR/m2, fourniture 20-80 EUR/m2 selon gamme',
+'\n  Carrelage mural : pose 30-45 EUR/m2',
+'\n  Peinture : 15-25 EUR/m2 (2 couches, preparation comprise)',
+'\n  Parquet stratifie : 15-25 EUR/m2 pose + 10-35 EUR/m2 fourniture',
+'\n  Parquet massif : 30-50 EUR/m2 pose + 40-120 EUR/m2 fourniture',
+'\n  Plomberie : WC suspendu 400-600 EUR, lavabo 150-300 EUR, douche 300-700 EUR',
+'\n  Robinetterie : mitigeur 80-250 EUR',
+'\n  Electricite : point lumineux 60-120 EUR, prise 50-80 EUR, tableau 800-2500 EUR',
+'\n  Isolation combles : 30-55 EUR/m2 (ouate soufflee), 45-70 EUR/m2 (laine bois)',
+'\n  Isolation murs interieur : 45-80 EUR/m2',
+'\n  Menuiserie fenetre PVC : 300-600 EUR/u pose comprise',
+'\n  Porte interieure : 150-400 EUR/u pose comprise',
+'\n  Enduit/crepi : 15-30 EUR/m2',
+'\n  Chape fluide : 20-35 EUR/m2',
+'\n  Placo/cloison : 40-65 EUR/m2',
+'\n  Faux plafond : 35-55 EUR/m2',
+'\n  Nettoyage chantier : 150-400 EUR forfait selon surface',
+'\n  Deplacement : 50-120 EUR selon distance',
+'\n- Taux horaires par corps de metier :',
+'\n  Macon/carreleur : 38-48 EUR/h',
+'\n  Plombier : 55-75 EUR/h',
+'\n  Electricien : 55-70 EUR/h',
+'\n  Menuisier : 45-60 EUR/h',
+'\n  Peintre : 35-45 EUR/h',
+'\n  Isolation : 38-50 EUR/h',
+'\n  Polyvalent : 40-55 EUR/h',
+'\n- Delais realistes selon surface et corps de metier',
+'\n- Maximum 14 lignes, minimum 4 lignes',
+'\n- Si ville/region mentionnee : adapter les prix (Paris/IDF +15-20%, grandes villes +5-10%)',
+'\n- Inclure protection/installation chantier si travaux > 2 jours',
+'\n- Ajouter depose/deblaiement si renovation'
+].join('')+bioInstr;
   try{
     var result;
     if(scanModeVal==='photo'&&scanImgB64){
-      result=await claudeAPI(sys,'Génère devis BTP'+(bio?' biosourcé':'')+' depuis ces notes.',scanImgB64);
+      result=await claudeAPI(sys,
+      'Analyse ces notes/documents et genere un devis BTP complet'+(bio?' avec matériaux biosourcés':'')+'.\n\n'
+      +'INSTRUCTIONS :\n'
+      +'- Lis attentivement toutes les notes visibles\n'
+      +'- Identifie les surfaces, quantités, matériaux mentionnés\n'
+      +'- Décompose chaque poste avec fournitures ET pose\n'
+      +'- Si rénovation : prévoir la dépose\n'
+      +'- Complète les informations manquantes avec des estimations réalistes\n'
+      +'- Conseils techniques pertinents',
+      scanImgB64);
     }else{
       var desc=document.getElementById('ai-desc')&&document.getElementById('ai-desc').value.trim();
       if(!desc){
-        if(errEl){errEl.textContent='Décris les travaux.';errEl.style.display='block';}
+        if(errEl){errEl.textContent='Decris les travaux.';errEl.style.display='block';}
         if(btn)btn.style.display='block';if(loading)loading.style.display='none';return;
       }
-      result=await claudeAPI(sys,'Devis BTP'+(bio?' biosourcé':'')+': '+desc);
+      result=await claudeAPI(sys,
+      'Genere un devis BTP complet et precis'+(bio?' avec matériaux biosourcés':'')+' pour la demande suivante.\n\n'
+      +'DESCRIPTION DU CHANTIER :\n'+desc+'\n\n'
+      +'INSTRUCTIONS :\n'
+      +'- Analyse la description et identifie tous les corps de métier nécessaires\n'
+      +'- Décompose chaque poste avec fournitures ET pose séparément\n'
+      +'- Si rénovation : inclure dépose/déblaiement\n'
+      +'- Adapte les prix à la région si mentionnée\n'
+      +'- Inclure protection chantier si > 2 jours de travaux\n'
+      +'- Propose un délai réaliste\n'
+      +'- Donne des conseils techniques pertinents'
+    );
     }
     aiResultData=result;
     var totHT=(result.lignes||[]).reduce(function(s,l){return s+l.qte*l.pu;},0)+(result.mo||0)+(result.dep||0);
@@ -165,11 +223,13 @@ async function runClaudeAI(){
     (result.lignes||[]).forEach(function(l){parts.push('<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:12px;color:rgba(255,255,255,.88)"><span style="flex:1;padding-right:8px">'+l.designation+' ('+l.qte+' '+l.unite+')</span><span style="font-weight:700;color:#4a9eff">'+(l.qte*l.pu).toFixed(0)+'€</span></div>');});
     if(result.mo>0)parts.push('<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:rgba(255,255,255,.88)"><span>Main d'oeuvre</span><span style="color:#4a9eff">'+result.mo+'€</span></div>');
     parts.push('<div style="background:rgba(74,158,255,.2);border-radius:7px;padding:7px 10px;margin-top:8px;display:flex;justify-content:space-between;font-weight:700"><span style="color:#fff">Total HT estimé</span><span style="color:#4affe0">'+totHT.toFixed(0)+'€</span></div>');
+    if(result.delai)parts.push('<div style="background:rgba(74,158,255,.15);border-radius:7px;padding:7px 10px;margin-top:5px;font-size:12px;color:#93c5fd">⏱️ Délai estimé : '+result.delai+'</div>');
     if(result.conseils)parts.push('<div style="background:rgba(74,255,180,.1);border-radius:7px;padding:7px 10px;margin-top:5px;font-size:12px;color:#86efac">💡 '+result.conseils+'</div>');
+    if(result.avertissements)parts.push('<div style="background:rgba(251,191,36,.1);border-radius:7px;padding:7px 10px;margin-top:5px;font-size:12px;color:#fbbf24">⚠️ '+result.avertissements+'</div>');
     var linesEl=document.getElementById('ai-out-lines');if(linesEl)linesEl.innerHTML=parts.join('');
     if(outEl)outEl.style.display='block';
   }catch(e){
-    if(errEl){errEl.textContent='⚠️ Erreur API Claude. Vérifiez la connexion.';errEl.style.display='block';}
+    if(errEl){errEl.textContent='Erreur API Claude. Verifiez la connexion.';errEl.style.display='block';}
   }
   if(btn)btn.style.display='block';if(loading)loading.style.display='none';
 }
@@ -186,7 +246,7 @@ function applyClaudeAI(){
     var rem=document.getElementById('d-rem');if(rem&&aiResultData.conseils)rem.value=aiResultData.conseils;
     var bioEl=document.getElementById('d-bio');
     if(bioEl&&aiResultData.lignes&&aiResultData.lignes.some(function(l){return /biosour|ATec/i.test(l.designation);}))bioEl.checked=true;
-    calcDraft();toast('✓ Devis IA Claude appliqué !','ok');
+    calcDraft();toast('Devis IA Claude applique !','ok');
   },120);
 }
 
@@ -210,19 +270,16 @@ function addVtPhotos(files){
 }
 function renderVtPhotos(){
   var grid=document.getElementById('vt-photo-grid');if(!grid)return;
-  var parts=vtPhotos.map(function(p){
+  grid.innerHTML=vtPhotos.map(function(p){
     return '<div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#e8eef8"><img src="'+p.data+'" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="openPhViewer(this.src)"><button onclick="removeVtPhoto(''+p.id+'')" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);color:#fff;border:none;cursor:pointer;font-size:11px">✕</button></div>';
-  });
-  grid.innerHTML=parts.join('');
+  }).join('');
 }
 function removeVtPhoto(id){vtPhotos=vtPhotos.filter(function(p){return p.id!==id;});renderVtPhotos();}
 function openPhViewer(src){
   var el=document.createElement('div');
   el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;display:flex;align-items:center;justify-content:center;cursor:pointer';
   el.onclick=function(){el.remove();};
-  var inner='<img src="'+src+'" style="max-width:95vw;max-height:85vh;border-radius:10px;object-fit:contain">';
-  inner+='<button onclick="event.stopPropagation();this.parentElement.remove()" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer">✕</button>';
-  el.innerHTML=inner;
+  el.innerHTML='<img src="'+src+'" style="max-width:95vw;max-height:85vh;border-radius:10px;object-fit:contain"><button onclick="event.stopPropagation();this.parentElement.remove()" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer">✕</button>';
   document.body.appendChild(el);
 }
 
