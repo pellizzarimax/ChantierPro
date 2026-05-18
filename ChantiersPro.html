@@ -37,7 +37,14 @@
 const KEY='chantierspro_max_v1';let DB=load(),currentFilter='tous',selectedDate=today();
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 function today(){return new Date().toISOString().slice(0,10)}function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
-function load(){try{return JSON.parse(localStorage.getItem(KEY))||seed()}catch{return seed()}}function seed(){return{clients:[],devis:[],visites:[],planning:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+new Date().getFullYear()+'-',nextNum:1}}}
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||seed()}catch{return seed()}}function seed(){return{clients:[],devis:[],visites:[],planning:[],settings:{
+  entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+new Date().getFullYear()+'-',nextNum:1,logo:'',
+  tarifs:{
+    carreleur_mo:42, peintre_mo:38, plombier_mo:62, electricien_mo:60, menuisier_mo:50, macon_mo:45, polyvalent_mo:45,
+    marge:0, tva_defaut:10,
+    notes:''
+  }
+}}}
 function save(){localStorage.setItem(KEY,JSON.stringify(DB));renderAll()}function esc(v){return String(v??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}
 function money(n){return (Number(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'}function fmt(d){if(!d)return '—';return new Date(d+'T12:00:00').toLocaleDateString('fr-FR')}function cname(c){return [c?.prenom,c?.nom].filter(Boolean).join(' ')||c?.societe||'Client sans nom'}function client(id){return DB.clients.find(c=>c.id===id)}
 function toast(m,t=''){const el=$('#toast');if(!el)return;el.textContent=m;el.className='toast show '+t;setTimeout(()=>el.className='toast',2300)}
@@ -66,33 +73,58 @@ function openVisite(id){_vtPhotos=[];const v=id?DB.visites.find(x=>x.id===id):{d
 function saveVisite(id){const obj={id:id||gid(),clientId:$('#v-client').value,adresse:$('#v-adresse').value.trim(),date:$('#v-date').value,heure:$('#v-heure').value,nature:$('#v-nature').value,proba:$('#v-proba').value,etat:$('#v-etat').value.trim(),travaux:$('#v-travaux').value.trim(),contraintes:$('#v-contraintes').value.trim(),budget:Number($('#v-budget').value)||0,delai:$('#v-delai').value.trim()};obj.photos=JSON.parse(JSON.stringify(_vtPhotos));if(!obj.adresse&&!obj.travaux){toast('Renseigne une adresse ou des travaux','err');return}if(id)DB.visites=DB.visites.map(v=>v.id===id?obj:v);else DB.visites.unshift(obj);save();closeModal();toast('Visite enregistrée','ok')}
 function openPlan(id){const p=id?DB.planning.find(x=>x.id===id):{dateDebut:selectedDate,dateFin:selectedDate,heureDebut:'08:00',heureFin:'17:00'};modal(id?'Modifier planning':'Planifier',`<div class="fg"><label class="lbl">Client</label><select class="sel" id="p-client">${clientOptions(p.clientId)}</select></div><div class="fg"><label class="lbl">Titre</label><input class="inp" id="p-titre" value="${esc(p.titre||'')}"></div><div class="fg"><label class="lbl">Adresse</label><input class="inp" id="p-adresse" value="${esc(p.adresse||'')}"></div><div class="grid2"><div class="fg"><label class="lbl">Date début</label><input class="inp" id="p-dd" type="date" value="${esc(p.dateDebut)}"></div><div class="fg"><label class="lbl">Date fin</label><input class="inp" id="p-df" type="date" value="${esc(p.dateFin)}"></div></div><div class="grid2"><div class="fg"><label class="lbl">Heure début</label><input class="inp" id="p-hd" type="time" value="${esc(p.heureDebut)}"></div><div class="fg"><label class="lbl">Heure fin</label><input class="inp" id="p-hf" type="time" value="${esc(p.heureFin)}"></div></div><div class="fg"><label class="lbl">Type</label><select class="sel" id="p-type">${['Travaux en cours','Visite prospect','Livraison matériaux','Réunion de chantier','Expertise / Diagnostic','Réception travaux'].map(x=>`<option ${p.type===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="fg"><label class="lbl">Intervenants</label><input class="inp" id="p-int" value="${esc(p.intervenants||'')}"></div><div class="fg"><label class="lbl">Notes</label><textarea class="ta" id="p-notes">${esc(p.notes||'')}</textarea></div><div class="btns">${id?'<button class="btn danger" data-delete-plan="'+id+'">Supprimer</button>':''}<button class="btn secondary" data-close>Annuler</button><button class="btn primary" data-save-plan="${id||''}">Enregistrer</button></div>`)}
 function savePlan(id){const obj={id:id||gid(),clientId:$('#p-client').value,titre:$('#p-titre').value.trim(),adresse:$('#p-adresse').value.trim(),dateDebut:$('#p-dd').value,dateFin:$('#p-df').value,heureDebut:$('#p-hd').value,heureFin:$('#p-hf').value,type:$('#p-type').value,intervenants:$('#p-int').value.trim(),notes:$('#p-notes').value.trim()};if(!obj.titre){toast('Titre obligatoire','err');return}if(obj.dateFin<obj.dateDebut)obj.dateFin=obj.dateDebut;if(id)DB.planning=DB.planning.map(p=>p.id===id?obj:p);else DB.planning.unshift(obj);save();closeModal();toast('Planning enregistré','ok')}
-function openSettings(){const s=DB.settings;modal('Paramètres',`
-<span class="sh">Logo entreprise</span>
-<div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">
-  <div id="logo-preview" style="width:64px;height:64px;border-radius:12px;background:#f0f4fb;border:2px dashed #c8d5e8;display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden;flex-shrink:0">
-    ${s.logo ? '<img src="'+s.logo+'" style="width:100%;height:100%;object-fit:cover">' : '🏗️'}
-  </div>
-  <div style="flex:1">
-    <button onclick="document.getElementById('logo-input').click()" style="width:100%;padding:10px;background:#f0f6ff;border:1.5px dashed #4a9eff;border-radius:10px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:#1e4d9e">📷 Choisir un logo</button>
-    ${s.logo ? '<button onclick="removeLogo()" style="width:100%;margin-top:6px;padding:8px;background:#fee2e2;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;color:#dc2626">Supprimer le logo</button>' : ''}
-    <input type="file" id="logo-input" accept="image/*" style="display:none" onchange="previewLogo(this)">
-    <div style="font-size:11px;color:#94a3b8;margin-top:4px">PNG, JPG — apparaît sur vos devis PDF</div>
-  </div>
-</div>
-<span class="sh">Entreprise</span>
-<div class="fg"><label class="lbl">Nom</label><input class="inp" id="s-entreprise" value="${esc(s.entreprise)}"></div>
-<div class="fg"><label class="lbl">SIRET</label><input class="inp" id="s-siret" value="${esc(s.siret)}"></div>
-<div class="grid2">
-  <div class="fg"><label class="lbl">Téléphone</label><input class="inp" id="s-tel" value="${esc(s.tel)}"></div>
-  <div class="fg"><label class="lbl">Email</label><input class="inp" id="s-email" value="${esc(s.email)}"></div>
-</div>
-<div class="fg"><label class="lbl">Adresse</label><input class="inp" id="s-adresse" value="${esc(s.adresse)}"></div>
-<div class="fg"><label class="lbl">Préfixe devis</label><input class="inp" id="s-prefix" value="${esc(s.prefix)}"></div>
-<div class="btns">
-  <button class="btn danger" data-wipe>Réinitialiser</button>
-  <button class="btn secondary" data-close>Fermer</button>
-  <button class="btn primary" data-save-settings>Sauvegarder</button>
-</div>`)}
+function openSettings(){
+  const s = DB.settings;
+  const t = s.tarifs || {};
+  const logo = s.logo || '';
+  const logoHtml = logo
+    ? '<img src="'+logo+'" style="width:100%;height:100%;object-fit:cover">'
+    : '🏗️';
+  const removeBtn = logo
+    ? '<button onclick="removeLogo()" style="width:100%;margin-top:6px;padding:8px;background:#fee2e2;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;color:#dc2626">Supprimer le logo</button>'
+    : '';
+  const body = '<span class="sh">Logo entreprise</span>'
+    + '<div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">'
+    + '<div id="logo-preview" style="width:64px;height:64px;border-radius:12px;background:#f0f4fb;border:2px dashed #c8d5e8;display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden;flex-shrink:0">'+logoHtml+'</div>'
+    + '<div style="flex:1">'
+    + '<button onclick="document.getElementById(&quot;logo-input&quot;).click()" style="width:100%;padding:10px;background:#f0f6ff;border:1.5px dashed #4a9eff;border-radius:10px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:#1e4d9e">📷 Choisir un logo</button>'
+    + removeBtn
+    + '<input type="file" id="logo-input" accept="image/*" style="display:none" onchange="previewLogo(this)">'
+    + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">PNG, JPG — apparaît sur vos devis PDF</div>'
+    + '</div></div>'
+    + '<span class="sh">Entreprise</span>'
+    + '<div class="fg"><label class="lbl">Nom</label><input class="inp" id="s-entreprise" value="'+esc(s.entreprise||'')+'"></div>'
+    + '<div class="fg"><label class="lbl">SIRET</label><input class="inp" id="s-siret" value="'+esc(s.siret||'')+'"></div>'
+    + '<div class="grid2">'
+    + '<div class="fg"><label class="lbl">Téléphone</label><input class="inp" id="s-tel" value="'+esc(s.tel||'')+'"></div>'
+    + '<div class="fg"><label class="lbl">Email</label><input class="inp" id="s-email" value="'+esc(s.email||'')+'"></div>'
+    + '</div>'
+    + '<div class="fg"><label class="lbl">Adresse</label><input class="inp" id="s-adresse" value="'+esc(s.adresse||'')+'"></div>'
+    + '<div class="fg"><label class="lbl">Préfixe devis</label><input class="inp" id="s-prefix" value="'+esc(s.prefix||'')+'"></div>'
+    + '<span class="sh">Mes tarifs (utilisés par IA)</span>'
+    + '<div style="background:#f0f6ff;border-radius:12px;padding:14px;margin-bottom:4px">'
+    + '<div style="font-size:12px;color:#5a7090;margin-bottom:12px">Ces taux horaires seront utilisés en priorité par IA pour vos devis.</div>'
+    + '<div class="grid2">'
+    + '<div class="fg"><label class="lbl">Carreleur €/h</label><input class="inp" id="t-carreleur" type="number" value="'+(t.carreleur_mo||42)+'"></div>'
+    + '<div class="fg"><label class="lbl">Peintre €/h</label><input class="inp" id="t-peintre" type="number" value="'+(t.peintre_mo||38)+'"></div>'
+    + '<div class="fg"><label class="lbl">Plombier €/h</label><input class="inp" id="t-plombier" type="number" value="'+(t.plombier_mo||62)+'"></div>'
+    + '<div class="fg"><label class="lbl">Electricien €/h</label><input class="inp" id="t-electro" type="number" value="'+(t.electricien_mo||60)+'"></div>'
+    + '<div class="fg"><label class="lbl">Menuisier €/h</label><input class="inp" id="t-menuisier" type="number" value="'+(t.menuisier_mo||50)+'"></div>'
+    + '<div class="fg"><label class="lbl">Macon €/h</label><input class="inp" id="t-macon" type="number" value="'+(t.macon_mo||45)+'"></div>'
+    + '</div>'
+    + '<div class="grid2">'
+    + '<div class="fg"><label class="lbl">Marge %</label><input class="inp" id="t-marge" type="number" min="0" max="100" value="'+(t.marge||0)+'"></div>'
+    + '<div class="fg"><label class="lbl">TVA défaut %</label><input class="inp" id="t-tva" type="number" value="'+(t.tva_defaut||10)+'"></div>'
+    + '</div>'
+    + '<div class="fg"><label class="lbl">Notes (région, spécialité…)</label><textarea class="inp" id="t-notes" style="min-height:60px;resize:none">'+esc(t.notes||'')+'</textarea></div>'
+    + '</div>'
+    + '<div class="btns">'
+    + '<button class="btn danger" data-wipe>Réinitialiser</button>'
+    + '<button class="btn secondary" data-close>Fermer</button>'
+    + '<button class="btn primary" data-save-settings>Sauvegarder</button>'
+    + '</div>';
+  modal('Paramètres', body);
+}
 function scanner(){
   _scanB64=null;_aiData=null;
   modal('✨ IA Claude — Devis', [
@@ -133,17 +165,30 @@ function download(name,content,type='text/plain'){const a=document.createElement
 function importDB(file){const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);if(!data.clients||!data.devis)throw Error();DB={...seed(),...data,settings:{...seed().settings,...(data.settings||{})}};save();toast('Sauvegarde importée','ok')}catch{toast('Fichier invalide','err')}};r.readAsText(file)}
 function demo(){if(DB.clients.length&&!confirm('Ajouter des données de démonstration ?'))return;const c={id:gid(),prenom:'Camille',nom:'Martin',type:'particulier',tel:'06 12 34 56 78',email:'camille@example.fr',adresse:'12 rue des Pins',cp:'31000',ville:'Toulouse'};DB.clients.unshift(c);DB.devis.unshift({id:gid(),numero:DB.settings.prefix+String(DB.settings.nextNum++).padStart(4,'0'),clientId:c.id,objet:'Isolation combles en ouate de cellulose',date:today(),valid:30,statut:'envoyé',tva:5.5,lignes:[{designation:'Isolation biosourcée ouate de cellulose',unite:'m²',qte:50,pu:64},{designation:'Protection et nettoyage chantier',unite:'forfait',qte:1,pu:180}],mo:0,dep:80,totalHT:3460,totalTTC:3649.03,isBio:true,rem:'Sous réserve de visite technique.'});DB.visites.unshift({id:gid(),clientId:c.id,adresse:'12 rue des Pins, Toulouse',date:today(),heure:'10:00',nature:'Isolation / Thermique',proba:'forte',etat:'Combles accessibles, ancien isolant tassé.',travaux:'Dépose partielle, soufflage ouate, repérage trappe.',contraintes:'Accès par escalier étroit.',budget:4000,delai:'Avant hiver'});DB.planning.unshift({id:gid(),clientId:c.id,titre:'Visite technique combles',adresse:'12 rue des Pins',dateDebut:today(),dateFin:today(),heureDebut:'10:00',heureFin:'11:30',type:'Visite prospect',intervenants:'Maxime',notes:'Prévoir mètre laser'});save();toast('Données de démonstration ajoutées','ok')}
 document.addEventListener('click',e=>{const t=e.target.closest('[data-page],[data-action],[data-close],[data-open-client],[data-open-devis],[data-open-visite],[data-open-plan],[data-save-client],[data-delete-client],[data-save-devis],[data-delete-devis],[data-save-visite],[data-delete-visite],[data-save-plan],[data-delete-plan],[data-print-devis],[data-print-visite],[data-add-line],[data-remove-line],[data-date],[data-save-settings],[data-wipe],[data-ai-generate],[data-ai-create]');if(!t)return;if(t.dataset.page)go(t.dataset.page);if(t.dataset.close!==undefined)closeModal();if(t.dataset.action==='new-client')openClient();if(t.dataset.action==='new-devis')openDevis();if(t.dataset.action==='new-visite')openVisite();if(t.dataset.action==='new-plan')openPlan();if(t.dataset.action==='settings')openSettings();if(t.dataset.action==='scanner'||t.dataset.action==='ai-fill')scanner();if(t.dataset.action==='demo')demo();if(t.dataset.action==='export-json')download('chantierspro-sauvegarde.json',JSON.stringify(DB,null,2),'application/json');if(t.dataset.action==='export-clients')download('clients.csv',csv([['Nom','Société','Téléphone','Email','Ville'],...DB.clients.map(c=>[cname(c),c.societe,c.tel,c.email,c.ville])]),'text/csv');if(t.dataset.action==='export-devis')download('devis.csv',csv([['Numéro','Client','Objet','Date','Statut','HT','TTC'],...DB.devis.map(d=>[d.numero,cname(client(d.clientId)),d.objet,d.date,d.statut,d.totalHT,d.totalTTC])]),'text/csv');if(t.dataset.openClient)openClient(t.dataset.openClient);if(t.dataset.openDevis)openDevis(t.dataset.openDevis);if(t.dataset.openVisite)openVisite(t.dataset.openVisite);if(t.dataset.openPlan)openPlan(t.dataset.openPlan);if(t.dataset.saveClient!==undefined){const id=t.dataset.saveClient,obj={id:id||gid(),prenom:$('#f-prenom').value.trim(),nom:$('#f-nom').value.trim(),societe:$('#f-societe').value.trim(),type:$('#f-type').value,tel:$('#f-tel').value.trim(),email:$('#f-email').value.trim(),adresse:$('#f-adresse').value.trim(),cp:$('#f-cp').value.trim(),ville:$('#f-ville').value.trim(),notes:$('#f-notes').value.trim()};if(!obj.prenom&&!obj.nom&&!obj.societe){toast('Nom ou société obligatoire','err');return}id?DB.clients=DB.clients.map(c=>c.id===id?obj:c):DB.clients.unshift(obj);save();closeModal();toast('Client enregistré','ok')}if(t.dataset.deleteClient&&confirm('Supprimer ce client ?')){DB.clients=DB.clients.filter(c=>c.id!==t.dataset.deleteClient);save();closeModal()}if(t.dataset.saveDevis!==undefined)saveDevis(t.dataset.saveDevis);if(t.dataset.deleteDevis&&confirm('Supprimer ce devis ?')){DB.devis=DB.devis.filter(d=>d.id!==t.dataset.deleteDevis);save();closeModal()}if(t.dataset.saveVisite!==undefined)saveVisite(t.dataset.saveVisite);if(t.dataset.deleteVisite&&confirm('Supprimer cette visite ?')){DB.visites=DB.visites.filter(v=>v.id!==t.dataset.deleteVisite);save();closeModal()}if(t.dataset.savePlan!==undefined)savePlan(t.dataset.savePlan);if(t.dataset.deletePlan&&confirm('Supprimer cet élément ?')){DB.planning=DB.planning.filter(p=>p.id!==t.dataset.deletePlan);save();closeModal()}if(t.dataset.printDevis)printDevis(t.dataset.printDevis);if(t.dataset.printVisite)printVisite(t.dataset.printVisite);if(t.dataset.addLine!==undefined){$('#d-lines').insertAdjacentHTML('beforeend',lineRow());calcDraft()}if(t.dataset.removeLine!==undefined){t.closest('tr').remove();calcDraft()}if(t.dataset.date){selectedDate=t.dataset.date;renderWeek();renderPlan()}if(t.dataset.saveSettings!==undefined){
+  const gv = id => (document.getElementById(id)||{}).value?.trim()||'';
+  const gn = (id, def) => parseFloat((document.getElementById(id)||{}).value)||def;
   DB.settings={...DB.settings,
-    entreprise:($('#s-entreprise')||{}).value?.trim()||DB.settings.entreprise,
-    siret:($('#s-siret')||{}).value?.trim()||'',
-    tel:($('#s-tel')||{}).value?.trim()||'',
-    email:($('#s-email')||{}).value?.trim()||'',
-    adresse:($('#s-adresse')||{}).value?.trim()||'',
-    prefix:($('#s-prefix')||{}).value?.trim()||DB.settings.prefix,
-    logo: window._pendingLogo !== undefined ? (window._pendingLogo||'') : (DB.settings.logo||'')
+    entreprise: gv('s-entreprise')||DB.settings.entreprise,
+    siret: gv('s-siret'),
+    tel: gv('s-tel'),
+    email: gv('s-email'),
+    adresse: gv('s-adresse'),
+    prefix: gv('s-prefix')||DB.settings.prefix,
+    logo: window._pendingLogo !== undefined ? (window._pendingLogo||'') : (DB.settings.logo||''),
+    tarifs: {
+      carreleur_mo: gn('t-carreleur', 42),
+      peintre_mo:   gn('t-peintre',   38),
+      plombier_mo:  gn('t-plombier',  62),
+      electricien_mo: gn('t-electro', 60),
+      menuisier_mo: gn('t-menuisier', 50),
+      macon_mo:     gn('t-macon',     45),
+      marge:        gn('t-marge',      0),
+      tva_defaut:   gn('t-tva',       10),
+      notes:        gv('t-notes')
+    }
   };
   window._pendingLogo = undefined;
-  save();updateHeaderLogo();closeModal();toast('Paramètres sauvegardés','ok')
+  save();updateHeaderLogo();closeModal();toast('Paramètres sauvegardés','ok');
 }if(t.dataset.wipe&&confirm('Effacer toutes les données locales ?')){DB=seed();save();closeModal();toast('Données réinitialisées','ok')}if(t.dataset.aiGenerate!==undefined)aiGenerate();if(t.dataset.aiCreate){const lines=JSON.parse(t.dataset.aiCreate);closeModal();openDevis();$('#d-lines').innerHTML=lines.map(lineRow).join('');$('#d-objet').value='Devis généré depuis assistant';$('#d-bio').checked=lines.some(l=>/biosour|AT|règles/.test(l.designation));calcDraft();toast('Lignes appliquées au devis','ok')}});
 document.addEventListener('input',e=>{if(e.target.closest('#q-clients'))renderClients();if(e.target.closest('#q-visites'))renderVisites();if(e.target.closest('#d-lines')||['d-mo','d-dep','h-taux','h-heures','h-fournitures','h-marge'].includes(e.target.id))calcDraft()});document.addEventListener('change',e=>{if(['d-tva','d-hourly','h-contrainte'].includes(e.target.id))calcDraft();if(e.target.id==='import-file'&&e.target.files[0])importDB(e.target.files[0])});($('#devis-tabs')||document.createElement('div')).addEventListener('click',e=>{if(!e.target.closest('#devis-tabs'))return;const b=e.target.closest('[data-filter]');if(!b)return;currentFilter=b.dataset.filter;$$('#devis-tabs .tab').forEach(x=>x.classList.toggle('active',x===b));renderDevis()});
 // ═══════════════════════════════════════════
@@ -218,6 +263,20 @@ async function runClaudeAI() {
     '\n- Indique (ATec) ou (regles pro) dans chaque designation biosourcee',
     '\n- Prix marche biosource France (+15-30% vs conventionnel)'
   ].join('') : '';
+
+  // Récupère les tarifs personnalisés
+  const t = DB.settings.tarifs || {};
+  const tarifBlock = [
+    '\nTARIFS PERSONNALISES DE CET ARTISAN (utilise ces prix en priorité):',
+    t.carreleur_mo ? `\n- Carreleur/Macon main oeuvre: ${t.carreleur_mo}EUR/h` : '',
+    t.peintre_mo   ? `\n- Peintre main oeuvre: ${t.peintre_mo}EUR/h` : '',
+    t.plombier_mo  ? `\n- Plombier main oeuvre: ${t.plombier_mo}EUR/h` : '',
+    t.electricien_mo ? `\n- Electricien main oeuvre: ${t.electricien_mo}EUR/h` : '',
+    t.menuisier_mo ? `\n- Menuisier main oeuvre: ${t.menuisier_mo}EUR/h` : '',
+    t.macon_mo     ? `\n- Macon main oeuvre: ${t.macon_mo}EUR/h` : '',
+    t.marge > 0    ? `\n- Appliquer une marge de ${t.marge}% sur les fournitures` : '',
+    t.notes        ? `\n- Contexte artisan: ${t.notes}` : ''
+  ].join('');
 
   const sysLines = [
     'Tu es expert devis BTP France. Reponds UNIQUEMENT en JSON valide sans markdown ni texte autour.',
