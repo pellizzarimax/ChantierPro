@@ -1452,7 +1452,7 @@ function exportPlanPDF() {
   const html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">'
     + '<title>Plans cotés — ' + (client ? cname(client) : 'Métrés') + '</title>'
     + '<style>'
-    + 'body{font-family:Arial,sans-serif;margin:20px;color:#16243c}'
+    + 'html,body{overflow-x:hidden!important;max-width:100vw;touch-action:pan-y;}body{font-family:Arial,sans-serif;margin:20px;color:#16243c}'
     + 'h1{font-size:18px;color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:8px;margin-bottom:6px}'
     + '.meta{font-size:12px;color:#607590;margin-bottom:20px}'
     + '.legend{display:flex;gap:20px;font-size:11px;color:#607590;margin:12px 0;flex-wrap:wrap}'
@@ -1494,36 +1494,11 @@ function exportPlanImage() {
 renderAll();updateHeaderLogo();initNetworkIndicator();window.ChantiersPro={getDB:()=>DB,reset:()=>{DB=seed();save()},demo};
 })();
 
-// Expose ALL IIFE functions globally for inline onclick handlers
+// ═══ EXPOSE — rend les fonctions accessibles aux onclick HTML ═══
 (function() {
-  const fns = window.ChantiersPro;
-  if (!fns) return;
-  const expose = ['_openSettings','_removeLogo','_previewLogo','_setScanMode','_setAIProvider','_updateAIProviderUI',
-    '_scanPreviewImg','_runClaudeAI','_applyClaudeAI','_addVtPhotos','_rmVtPhoto','_openPhViewer'];
-  expose.forEach(k => { if(fns[k]) window[k.slice(1)] = fns[k]; });
-})();
-
-// ═══ EXPOSE GLOBAL ═══
-(function(){
-  var CP=window.ChantiersPro;if(!CP)return;
-  ['openSettings','removeLogo','previewLogo','scanner','setScanMode','scanPreviewImg',
-   'runClaudeAI','applyClaudeAI','setAIProvider','updateAIProviderUI',
-   'toggleVoice','stopVoice','addVtPhotos','rmVtPhoto','openPhViewer',
-   'openMetreur','openMetreurHome','setMMode','addPiece','rmPiece','addMur','rmMur',
-   'updMur','updSol','addOuv','rmOuv','updOuv','updVol','addLinItem','rmLinItem','updLin',
-   'updToit','injectM','injectVal','renamePiece','exportPlanPDF','exportPlanImage',
-   'saveVisiteAndReturn','generateDevisFromVisite'
-  ].forEach(function(n){if(CP['_'+n])window[n]=CP['_'+n];});
-})();
-
-</script>
-</body>
-</html>
-
-(function(){
   var CP = window.ChantiersPro;
-  if(!CP) return;
-  var names = [
+  if (!CP) return;
+  [
     'openSettings','removeLogo','previewLogo',
     'scanner','setScanMode','scanPreviewImg',
     'runClaudeAI','applyClaudeAI',
@@ -1537,9 +1512,11 @@ renderAll();updateHeaderLogo();initNetworkIndicator();window.ChantiersPro={getDB
     'updToit','injectM','injectVal','renamePiece',
     'exportPlanPDF','exportPlanImage',
     'saveVisiteAndReturn','generateDevisFromVisite'
-  ];
-  names.forEach(function(n){
-    var fn = CP['_'+n];
-    if(typeof fn === 'function') window[n] = fn;
+  ].forEach(function(n) {
+    var fn = CP['_' + n];
+    if (typeof fn === 'function') window[n] = fn;
   });
 })();
+</script>
+</body>
+</html>
