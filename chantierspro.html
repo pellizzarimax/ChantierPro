@@ -644,7 +644,34 @@ renderAll();updateHeaderLogo();window.ChantiersPro={
   _applyClaudeAI: typeof applyClaudeAI !== 'undefined' ? applyClaudeAI : ()=>{},
   _addVtPhotos: typeof addVtPhotos !== 'undefined' ? addVtPhotos : ()=>{},
   _rmVtPhoto: typeof rmVtPhoto !== 'undefined' ? rmVtPhoto : ()=>{},
-  _openPhViewer: typeof openPhViewer !== 'undefined' ? openPhViewer : ()=>{}
+  _openPhViewer: typeof openPhViewer !== 'undefined' ? openPhViewer : ()=>{},
+  _scanner: typeof scanner !== 'undefined' ? scanner : ()=>{},
+  _toggleVoice: typeof toggleVoice !== 'undefined' ? toggleVoice : ()=>{},
+  _stopVoice: typeof stopVoice !== 'undefined' ? stopVoice : ()=>{},
+  _openMetreur: typeof openMetreur !== 'undefined' ? openMetreur : ()=>{},
+  _openMetreurHome: typeof openMetreurHome !== 'undefined' ? openMetreurHome : ()=>{},
+  _setMMode: typeof setMMode !== 'undefined' ? setMMode : ()=>{},
+  _addPiece: typeof addPiece !== 'undefined' ? addPiece : ()=>{},
+  _rmPiece: typeof rmPiece !== 'undefined' ? rmPiece : ()=>{},
+  _addMur: typeof addMur !== 'undefined' ? addMur : ()=>{},
+  _rmMur: typeof rmMur !== 'undefined' ? rmMur : ()=>{},
+  _updMur: typeof updMur !== 'undefined' ? updMur : ()=>{},
+  _updSol: typeof updSol !== 'undefined' ? updSol : ()=>{},
+  _addOuv: typeof addOuv !== 'undefined' ? addOuv : ()=>{},
+  _rmOuv: typeof rmOuv !== 'undefined' ? rmOuv : ()=>{},
+  _updOuv: typeof updOuv !== 'undefined' ? updOuv : ()=>{},
+  _updVol: typeof updVol !== 'undefined' ? updVol : ()=>{},
+  _addLinItem: typeof addLinItem !== 'undefined' ? addLinItem : ()=>{},
+  _rmLinItem: typeof rmLinItem !== 'undefined' ? rmLinItem : ()=>{},
+  _updLin: typeof updLin !== 'undefined' ? updLin : ()=>{},
+  _updToit: typeof updToit !== 'undefined' ? updToit : ()=>{},
+  _injectM: typeof injectM !== 'undefined' ? injectM : ()=>{},
+  _injectVal: typeof injectVal !== 'undefined' ? injectVal : ()=>{},
+  _renamePiece: typeof renamePiece !== 'undefined' ? renamePiece : ()=>{},
+  _exportPlanPDF: typeof exportPlanPDF !== 'undefined' ? exportPlanPDF : ()=>{},
+  _exportPlanImage: typeof exportPlanImage !== 'undefined' ? exportPlanImage : ()=>{},
+  _saveVisiteAndReturn: typeof saveVisiteAndReturn !== 'undefined' ? saveVisiteAndReturn : ()=>{},
+  _generateDevisFromVisite: typeof generateDevisFromVisite !== 'undefined' ? generateDevisFromVisite : ()=>{}
 };
 
 // ═══════════════════════════════════════════════
@@ -1474,6 +1501,19 @@ renderAll();updateHeaderLogo();initNetworkIndicator();window.ChantiersPro={getDB
   const expose = ['_openSettings','_removeLogo','_previewLogo','_setScanMode','_setAIProvider','_updateAIProviderUI',
     '_scanPreviewImg','_runClaudeAI','_applyClaudeAI','_addVtPhotos','_rmVtPhoto','_openPhViewer'];
   expose.forEach(k => { if(fns[k]) window[k.slice(1)] = fns[k]; });
+})();
+
+// ═══ EXPOSE GLOBAL ═══
+(function(){
+  var CP=window.ChantiersPro;if(!CP)return;
+  ['openSettings','removeLogo','previewLogo','scanner','setScanMode','scanPreviewImg',
+   'runClaudeAI','applyClaudeAI','setAIProvider','updateAIProviderUI',
+   'toggleVoice','stopVoice','addVtPhotos','rmVtPhoto','openPhViewer',
+   'openMetreur','openMetreurHome','setMMode','addPiece','rmPiece','addMur','rmMur',
+   'updMur','updSol','addOuv','rmOuv','updOuv','updVol','addLinItem','rmLinItem','updLin',
+   'updToit','injectM','injectVal','renamePiece','exportPlanPDF','exportPlanImage',
+   'saveVisiteAndReturn','generateDevisFromVisite'
+  ].forEach(function(n){if(CP['_'+n])window[n]=CP['_'+n];});
 })();
 
 </script>
