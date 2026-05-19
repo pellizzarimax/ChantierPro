@@ -1521,12 +1521,25 @@ renderAll();updateHeaderLogo();initNetworkIndicator();window.ChantiersPro={getDB
 </html>
 
 (function(){
-  const F=window.ChantiersPro;if(!F)return;
-  const names=['openSettings','removeLogo','previewLogo','setScanMode','setAIProvider','updateAIProviderUI',
-    'scanPreviewImg','runClaudeAI','applyClaudeAI','addVtPhotos','rmVtPhoto','openPhViewer',
-    'toggleVoice','stopVoice','openMetreur','setMMode','addPiece','rmPiece','addMur','rmMur',
-    'updMur','updSol','addOuv','rmOuv','updOuv','updVol','addLinItem','rmLinItem','updLin',
-    'updToit','injectM','injectVal','renamePiece','saveVisiteAndReturn','generateDevisFromVisite'];
-  names.forEach(function(n){if(F['_'+n]||typeof eval===undefined)window[n]=function(){return F['_'+n]&&F['_'+n].apply(this,arguments);};});
-  // Also expose directly since they're in the IIFE scope via ChantiersPro
+  var CP = window.ChantiersPro;
+  if(!CP) return;
+  var names = [
+    'openSettings','removeLogo','previewLogo',
+    'scanner','setScanMode','scanPreviewImg',
+    'runClaudeAI','applyClaudeAI',
+    'setAIProvider','updateAIProviderUI',
+    'toggleVoice','stopVoice',
+    'addVtPhotos','rmVtPhoto','openPhViewer',
+    'openMetreur','openMetreurHome','setMMode',
+    'addPiece','rmPiece','addMur','rmMur',
+    'updMur','updSol','addOuv','rmOuv','updOuv',
+    'updVol','addLinItem','rmLinItem','updLin',
+    'updToit','injectM','injectVal','renamePiece',
+    'exportPlanPDF','exportPlanImage',
+    'saveVisiteAndReturn','generateDevisFromVisite'
+  ];
+  names.forEach(function(n){
+    var fn = CP['_'+n];
+    if(typeof fn === 'function') window[n] = fn;
+  });
 })();
