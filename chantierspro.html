@@ -16,58 +16,53 @@
 @media print{body{max-width:none;background:#fff;box-shadow:none}.page,.toast,.fab,.modal-bg,.top,.toolbar,.tabs,.hero,.section,.nav{display:none!important}#print-area{display:block!important}.print-doc{padding:20mm}}
 </style>
 <script>if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});</script>
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
-const firebaseConfig = {
+<!-- Firebase Compat (global, pas de module) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+// Init Firebase — disponible globalement
+const _fbApp = firebase.initializeApp({
   apiKey: "AIzaSyB2rdib1rJRusZVoY25VmzO5WP4IAzjfkU",
   authDomain: "chantierpro-eabab.firebaseapp.com",
   projectId: "chantierpro-eabab",
   storageBucket: "chantierpro-eabab.firebasestorage.app",
   messagingSenderId: "453340640805",
   appId: "1:453340640805:web:aebf71cb00e7bb02de31cc"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+});
+const _fbAuth = firebase.auth();
+const _fbDB = firebase.firestore();
 
 // Persistance hors ligne
-enableIndexedDbPersistence(db).catch(()=>{});
+_fbDB.enablePersistence().catch(function(){});
 
-window._FB = { auth, db, doc, setDoc, onSnapshot,
-  createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  signOut, onAuthStateChanged, sendPasswordResetEmail };
-
-let _unsub = null, _uid = null;
-
-window._fbSave = async function(data) {
-  if(!_uid) return;
-  try {
-    await setDoc(doc(db,'users',_uid,'data','main'), {
-      payload: JSON.stringify(data), updatedAt: Date.now()
+// Expose pour l'app
+window._FB = {
+  auth: _fbAuth,
+  db: _fbDB,
+  signIn: function(email, pass) { return _fbAuth.signInWithEmailAndPassword(email, pass); },
+  signUp: function(email, pass) { return _fbAuth.createUserWithEmailAndPassword(email, pass); },
+  signOut: function() { return _fbAuth.signOut(); },
+  resetPass: function(email) { return _fbAuth.sendPasswordResetEmail(email); },
+  save: function(uid, data) {
+    return _fbDB.collection('users').doc(uid).collection('data').doc('main').set({
+      payload: JSON.stringify(data),
+      updatedAt: Date.now()
     });
-  } catch(e) { console.warn('Sync:', e.message); }
+  },
+  startSync: function(uid, onData) {
+    return _fbDB.collection('users').doc(uid).collection('data').doc('main')
+      .onSnapshot(function(snap) {
+        if(snap.exists) {
+          try { onData(JSON.parse(snap.data().payload)); } catch(e) {}
+        }
+      }, function(err) { console.warn('Sync:', err.message); });
+  }
 };
 
-window._fbStartSync = function(uid, onData) {
-  _uid = uid;
-  if(_unsub) _unsub();
-  _unsub = onSnapshot(doc(db,'users',uid,'data','main'), function(snap) {
-    if(snap.exists()) {
-      try { onData(JSON.parse(snap.data().payload)); } catch(e) {}
-    }
-  }, function(err){ console.warn('Sync err:', err.message); });
-};
-
-window._fbStopSync = function() {
-  if(_unsub){ _unsub(); _unsub=null; } _uid=null;
-};
-
-onAuthStateChanged(auth, function(user) {
-  window._currentUser = user;
+// Auth state change — déclenche onLoginSuccess / onLogout
+_fbAuth.onAuthStateChanged(function(user) {
+  window._currentUser = user || null;
   if(user && window._onLoginSuccess) window._onLoginSuccess(user);
   if(!user && window._onLogout) window._onLogout();
 });
@@ -1619,8 +1614,8 @@ function doAuth() {
   var FB=window._FB;
   if(!FB){if(errEl){errEl.textContent='Firebase non disponible, rechargez.';errEl.style.display='block';}if(btn){btn.disabled=false;btn.textContent=_authMode==='signup'?'Creer mon compte':'Se connecter';}return;}
   var promise = _authMode==='signup'
-    ? FB.createUserWithEmailAndPassword(FB.auth,email,pass)
-    : FB.signInWithEmailAndPassword(FB.auth,email,pass);
+    ? FB.signUp(email,pass)
+    : FB.signIn(email,pass);
   promise.then(function(cred){
     if(_authMode==='signup'&&name){DB.settings.entreprise=name;save();}
   }).catch(function(e){
@@ -1641,14 +1636,14 @@ function doReset() {
   var errEl=document.getElementById('auth-err'),okEl=document.getElementById('auth-reset-ok');
   if(!email){if(errEl){errEl.textContent='Entre ton email dabord.';errEl.style.display='block';}return;}
   var FB=window._FB; if(!FB) return;
-  FB.sendPasswordResetEmail(FB.auth,email).then(function(){if(okEl)okEl.style.display='block';if(errEl)errEl.style.display='none';}).catch(function(e){if(errEl){errEl.textContent=e.message;errEl.style.display='block';}});
+  FB.resetPass(email).then(function(){if(okEl)okEl.style.display='block';if(errEl)errEl.style.display='none';}).catch(function(e){if(errEl){errEl.textContent=e.message;errEl.style.display='block';}});
 }
 
 function doLogout() {
   var FB=window._FB; if(!FB) return;
   if(!confirm('Se deconnecter ?')) return;
-  if(window._fbStopSync) window._fbStopSync();
-  FB.signOut(FB.auth);
+  // sync auto stoppé par Firebase
+  FB.signOut();
 }
 
 window._onLoginSuccess = function(user) {
@@ -1656,7 +1651,7 @@ window._onLoginSuccess = function(user) {
   var ub=document.getElementById('user-bar'); if(ub) ub.style.display='flex';
   var ut=document.getElementById('user-email-txt'); if(ut) ut.textContent=user.email;
   if(window._fbStartSync) {
-    window._fbStartSync(user.uid, function(cloudData) {
+    var _unsubSync = window._FB.startSync(user.uid, function(cloudData) {
       try {
         var lt=DB._updatedAt||0, ct=cloudData._updatedAt||0;
         if(ct>lt){DB=cloudData;save();renderAll();if(typeof updateHeaderLogo==='function')updateHeaderLogo();}
@@ -1676,7 +1671,7 @@ window._onLogout = function() {
 var _origSave2 = typeof save==='function' ? save : function(){};
 function save(){
   try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){}
-  if(window._currentUser&&window._fbSave){DB._updatedAt=Date.now();window._fbSave(DB);}
+  if(window._currentUser&&window._FB){DB._updatedAt=Date.now();window._FB.save(window._currentUser.uid,DB).catch(function(){});}
 }
 
 })();
