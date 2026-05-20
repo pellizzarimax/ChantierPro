@@ -16,9 +16,104 @@
 @media print{body{max-width:none;background:#fff;box-shadow:none}.page,.toast,.fab,.modal-bg,.top,.toolbar,.tabs,.hero,.section,.nav{display:none!important}#print-area{display:block!important}.print-doc{padding:20mm}}
 </style>
 <script>if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});</script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB2rdib1rJRusZVoY25VmzO5WP4IAzjfkU",
+  authDomain: "chantierpro-eabab.firebaseapp.com",
+  projectId: "chantierpro-eabab",
+  storageBucket: "chantierpro-eabab.firebasestorage.app",
+  messagingSenderId: "453340640805",
+  appId: "1:453340640805:web:aebf71cb00e7bb02de31cc"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Persistance hors ligne
+enableIndexedDbPersistence(db).catch(()=>{});
+
+window._FB = { auth, db, doc, setDoc, onSnapshot,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signOut, onAuthStateChanged, sendPasswordResetEmail };
+
+let _unsub = null, _uid = null;
+
+window._fbSave = async function(data) {
+  if(!_uid) return;
+  try {
+    await setDoc(doc(db,'users',_uid,'data','main'), {
+      payload: JSON.stringify(data), updatedAt: Date.now()
+    });
+  } catch(e) { console.warn('Sync:', e.message); }
+};
+
+window._fbStartSync = function(uid, onData) {
+  _uid = uid;
+  if(_unsub) _unsub();
+  _unsub = onSnapshot(doc(db,'users',uid,'data','main'), function(snap) {
+    if(snap.exists()) {
+      try { onData(JSON.parse(snap.data().payload)); } catch(e) {}
+    }
+  }, function(err){ console.warn('Sync err:', err.message); });
+};
+
+window._fbStopSync = function() {
+  if(_unsub){ _unsub(); _unsub=null; } _uid=null;
+};
+
+onAuthStateChanged(auth, function(user) {
+  window._currentUser = user;
+  if(user && window._onLoginSuccess) window._onLoginSuccess(user);
+  if(!user && window._onLogout) window._onLogout();
+});
+</script>
+
 </head>
 <body>
 <div id="toast" class="toast"></div><div id="print-area" style="display:none"></div>
+
+<div id="auth-screen" style="position:fixed;inset:0;background:linear-gradient(160deg,#07182f,#0f2a5e);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:360px">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="width:68px;height:68px;background:linear-gradient(135deg,#1d4f9a,#4a9eff);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 12px">&#x1F3D7;</div>
+      <div style="color:#fff;font-size:24px;font-weight:900">ChantiersPro</div>
+      <div style="color:rgba(255,255,255,.55);font-size:12px;margin-top:4px">L'app terrain des artisans</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;background:rgba(255,255,255,.1);border-radius:12px;padding:4px;margin-bottom:18px">
+      <button id="tab-login" onclick="showAuthTab('login')" style="padding:10px;border-radius:9px;border:none;background:#fff;color:#1e3a5f;font-family:inherit;font-size:13px;font-weight:900;cursor:pointer">Se connecter</button>
+      <button id="tab-signup" onclick="showAuthTab('signup')" style="padding:10px;border-radius:9px;border:none;background:transparent;color:rgba(255,255,255,.65);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Creer un compte</button>
+    </div>
+    <div style="background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);border-radius:16px;padding:18px">
+      <div id="auth-name-row" style="display:none;margin-bottom:12px">
+        <label style="display:block;color:rgba(255,255,255,.65);font-size:11px;font-weight:700;margin-bottom:5px">Nom de votre entreprise</label>
+        <input id="auth-name" type="text" placeholder="Ex: Maconnerie Dupont" style="width:100%;padding:11px 13px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.18);border-radius:10px;color:#fff;font-family:inherit;font-size:14px;outline:none;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;color:rgba(255,255,255,.65);font-size:11px;font-weight:700;margin-bottom:5px">Email</label>
+        <input id="auth-email" type="email" placeholder="votre@email.com" autocomplete="email" style="width:100%;padding:11px 13px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.18);border-radius:10px;color:#fff;font-family:inherit;font-size:14px;outline:none;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="display:block;color:rgba(255,255,255,.65);font-size:11px;font-weight:700;margin-bottom:5px">Mot de passe</label>
+        <input id="auth-password" type="password" placeholder="min. 6 caracteres" autocomplete="current-password" style="width:100%;padding:11px 13px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.18);border-radius:10px;color:#fff;font-family:inherit;font-size:14px;outline:none;box-sizing:border-box">
+      </div>
+      <div id="auth-err" style="display:none;background:rgba(220,38,38,.2);border:1px solid rgba(220,38,38,.4);border-radius:8px;padding:9px 12px;color:#fca5a5;font-size:12px;margin-bottom:12px"></div>
+      <button id="auth-btn" onclick="doAuth()" style="width:100%;padding:13px;background:linear-gradient(135deg,#1d4f9a,#4a9eff);border:none;border-radius:12px;color:#fff;font-family:inherit;font-size:15px;font-weight:900;cursor:pointer">Se connecter</button>
+      <button id="auth-reset-btn" onclick="doReset()" style="width:100%;padding:9px;background:transparent;border:none;color:rgba(255,255,255,.45);font-family:inherit;font-size:11px;cursor:pointer;margin-top:8px">Mot de passe oublie ?</button>
+    </div>
+    <div id="auth-reset-ok" style="display:none;text-align:center;margin-top:12px;color:#86efac;font-size:13px">Email de reinitialisation envoye !</div>
+  </div>
+</div>
+
+<div id="user-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#07182f;border-top:1px solid rgba(255,255,255,.1);padding:6px 16px;flex-align:center;justify-content:space-between;z-index:50">
+  <span id="user-email-txt" style="color:rgba(255,255,255,.5);font-size:10px"></span>
+  <button onclick="doLogout()" style="float:right;background:rgba(220,38,38,.2);border:1px solid rgba(220,38,38,.3);color:#fca5a5;border-radius:6px;padding:4px 10px;font-family:inherit;font-size:10px;cursor:pointer">Deconnexion</button>
+</div>
+
 <section id="home" class="page active">
 <div style="position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#07182f,#173c76);padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
   <div style="display:flex;align-items:center;gap:10px">
@@ -1286,6 +1381,303 @@ function addOuv(pi,mi){ _pieces[pi].murs[mi].ouv.push({type:'Fenetre',l:0,h:0});
 function rmOuv(pi,mi,oi){ _pieces[pi].murs[mi].ouv.splice(oi,1); renderMetreur(); }
 function addLinItem(){ _linData.push({id:gid(),label:'',l:0}); renderMetreur(); }
 function rmLinItem(i){ _linData.splice(i,1); renderMetreur(); }
+
+
+// ══════════════════════════════════════════════
+// PLAN PREMIUM — style cabinet d'architecture
+// ══════════════════════════════════════════════
+
+function generateSVGPlan(piece, pi) {
+  if(!piece.sol.l || !piece.sol.w) return '';
+
+  var W = 500, MARGIN = 55, CART_H = 52;
+  var roomL = piece.sol.l, roomW = piece.sol.w;
+  var avail = W - 2*MARGIN;
+  var scale = Math.min(avail/roomL, avail/roomW, 90);
+  var drawL = roomL*scale, drawW = roomW*scale;
+  var H = drawW + 2*MARGIN + CART_H + 30;
+  var ox = MARGIN, oy = MARGIN;
+  var WALL = 14;
+
+  var client = _metrClientId ? DB.clients.find(function(c){return c.id===_metrClientId;}) : null;
+  var ent = DB.settings.entreprise || 'ChantiersPro';
+  var dateStr = new Date().toLocaleDateString('fr-FR');
+  var clientStr = client ? ([client.prenom,client.nom].filter(Boolean).join(' ')||client.societe||'Client') : 'Estimation libre';
+
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" style="width:100%;display:block;border-radius:8px">';
+
+  // Motif hachures murs
+  svg += '<defs>';
+  svg += '<pattern id="hatch_'+pi+'" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">';
+  svg += '<line x1="0" y1="0" x2="0" y2="6" stroke="#8c8070" stroke-width="1.2"/>';
+  svg += '</pattern>';
+  svg += '</defs>';
+
+  // Fond papier crème
+  svg += '<rect width="'+W+'" height="'+H+'" fill="#f5f0e8"/>';
+  svg += '<rect x="6" y="6" width="'+(W-12)+'" height="'+(H-12)+'" fill="none" stroke="#c8bfaa" stroke-width="0.5"/>';
+
+  // Titre
+  svg += '<text x="'+(W/2)+'" y="20" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" font-weight="bold" fill="#2d2820" letter-spacing="1.5">'+escSVG(piece.nom.toUpperCase())+' — VUE EN PLAN</text>';
+
+  // Sol intérieur crème
+  svg += '<rect x="'+ox+'" y="'+oy+'" width="'+drawL+'" height="'+drawW+'" fill="#ede8dc"/>';
+
+  // Carrelage sol
+  svg += '<g stroke="#d4cdb8" stroke-width="0.4" opacity="0.7">';
+  var step = Math.max(20, scale*0.3);
+  for(var x=ox+step; x<ox+drawL; x+=step) svg += '<line x1="'+x+'" y1="'+oy+'" x2="'+x+'" y2="'+(oy+drawW)+'"/>';
+  for(var y=oy+step; y<oy+drawW; y+=step) svg += '<line x1="'+ox+'" y1="'+y+'" x2="'+(ox+drawL)+'" y2="'+y+'"/>';
+  svg += '</g>';
+
+  // MURS avec hachures
+  var walls = [
+    {x:ox-WALL, y:oy-WALL, w:drawL+2*WALL, h:WALL}, // haut
+    {x:ox-WALL, y:oy+drawW, w:drawL+2*WALL, h:WALL}, // bas (avec ouverture porte)
+    {x:ox-WALL, y:oy-WALL, w:WALL, h:drawW+2*WALL},  // gauche
+    {x:ox+drawL, y:oy-WALL, w:WALL, h:drawW+2*WALL}  // droit
+  ];
+
+  // Mur haut
+  svg += '<rect x="'+(ox-WALL)+'" y="'+(oy-WALL)+'" width="'+(drawL+2*WALL)+'" height="'+WALL+'" fill="url(#hatch_'+pi+')" stroke="#3d3528" stroke-width="1"/>';
+  // Mur gauche
+  svg += '<rect x="'+(ox-WALL)+'" y="'+(oy-WALL)+'" width="'+WALL+'" height="'+(drawW+2*WALL)+'" fill="url(#hatch_'+pi+')" stroke="#3d3528" stroke-width="1"/>';
+  // Mur droit
+  svg += '<rect x="'+(ox+drawL)+'" y="'+(oy-WALL)+'" width="'+WALL+'" height="'+(drawW+2*WALL)+'" fill="url(#hatch_'+pi+')" stroke="#3d3528" stroke-width="1"/>';
+
+  // Mur bas avec ouverture porte (80cm côté gauche)
+  var doorW = Math.min(0.8*scale, drawL*0.3);
+  var doorX = ox; // pivot à l'angle gauche-bas
+  // Partie gauche mur bas (avant porte)
+  svg += '<rect x="'+(ox-WALL)+'" y="'+(oy+drawW)+'" width="'+WALL+'" height="'+WALL+'" fill="url(#hatch_'+pi+')" stroke="#3d3528" stroke-width="1"/>'; // coin bas-gauche
+  // Partie droite mur bas (après porte)
+  svg += '<rect x="'+(ox+doorW)+'" y="'+(oy+drawW)+'" width="'+(drawL-doorW+WALL)+'" height="'+WALL+'" fill="url(#hatch_'+pi+')" stroke="#3d3528" stroke-width="1"/>';
+
+  // Porte : arc + battant, pivot en (ox, oy+drawW)
+  svg += '<line x1="'+ox+'" y1="'+(oy+drawW)+'" x2="'+ox+'" y2="'+(oy+drawW-doorW)+'" stroke="#3d3528" stroke-width="1.2"/>';
+  svg += '<path d="M '+ox+' '+(oy+drawW)+' A '+doorW+' '+doorW+' 0 0 1 '+(ox+doorW)+' '+(oy+drawW)+'" fill="rgba(180,160,120,.12)" stroke="#3d3528" stroke-width="0.9" stroke-dasharray="5,3"/>';
+
+  // Fenêtre mur haut (si pièce assez grande)
+  if(drawL > 80) {
+    var winX = ox + drawL*0.35, winW = Math.min(80, drawL*0.3);
+    svg += '<rect x="'+winX+'" y="'+(oy-WALL)+'" width="'+winW+'" height="'+WALL+'" fill="#d4eaf7"/>';
+    svg += '<line x1="'+winX+'" y1="'+(oy-WALL+4)+'" x2="'+(winX+winW)+'" y2="'+(oy-WALL+4)+'" stroke="#3b82f6" stroke-width="2"/>';
+    svg += '<line x1="'+winX+'" y1="'+(oy-WALL+9)+'" x2="'+(winX+winW)+'" y2="'+(oy-WALL+9)+'" stroke="#3b82f6" stroke-width="1"/>';
+  }
+
+  // Surface
+  svg += '<text x="'+(ox+drawL/2)+'" y="'+(oy+drawW/2-4)+'" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="bold" fill="#2d2820" opacity="0.2">'+(roomL*roomW).toFixed(2)+' m\xB2</text>';
+
+  // ═══ COTATIONS style archi ═══
+  var cotOff = 28;
+
+  // Largeur (bas)
+  var cy = oy + drawW + WALL + cotOff;
+  svg += '<line x1="'+(ox-WALL)+'" y1="'+cy+'" x2="'+(ox+drawL+WALL)+'" y2="'+cy+'" stroke="#2d2820" stroke-width="0.8"/>';
+  svg += '<line x1="'+(ox-WALL)+'" y1="'+(cy-6)+'" x2="'+(ox-WALL)+'" y2="'+(cy+6)+'" stroke="#2d2820" stroke-width="0.6"/>';
+  svg += '<line x1="'+(ox+drawL+WALL)+'" y1="'+(cy-6)+'" x2="'+(ox+drawL+WALL)+'" y2="'+(cy+6)+'" stroke="#2d2820" stroke-width="0.6"/>';
+  svg += '<line x1="'+(ox-WALL)+'" y1="'+cy+'" x2="'+(ox-WALL+14)+'" y2="'+(cy-2)+'" stroke="#2d2820" stroke-width="0.8"/>';
+  svg += '<line x1="'+(ox-WALL)+'" y1="'+cy+'" x2="'+(ox-WALL+14)+'" y2="'+(cy+2)+'" stroke="#2d2820" stroke-width="0.8"/>';
+  svg += '<line x1="'+(ox+drawL+WALL)+'" y1="'+cy+'" x2="'+(ox+drawL+WALL-14)+'" y2="'+(cy-2)+'" stroke="#2d2820" stroke-width="0.8"/>';
+  svg += '<line x1="'+(ox+drawL+WALL)+'" y1="'+cy+'" x2="'+(ox+drawL+WALL-14)+'" y2="'+(cy+2)+'" stroke="#2d2820" stroke-width="0.8"/>';
+  svg += '<rect x="'+(ox+drawL/2-22)+'" y="'+(cy-8)+'" width="44" height="14" fill="#f5f0e8"/>';
+  svg += '<text x="'+(ox+drawL/2)+'" y="'+(cy+3)+'" text-anchor="middle" font-family="Courier New,monospace" font-size="10" font-weight="bold" fill="#2d2820">'+roomL.toFixed(2)+' m</text>';
+
+  // Hauteur (gauche)
+  var cx2 = ox - WALL - cotOff;
+  svg += '<line x1="'+cx2+'" y1="'+(oy-WALL)+'" x2="'+cx2+'" y2="'+(oy+drawW+WALL)+'" stroke="#2d2820" stroke-width="0.8"/>';
+  svg += '<line x1="'+(cx2-6)+'" y1="'+(oy-WALL)+'" x2="'+(cx2+6)+'" y2="'+(oy-WALL)+'" stroke="#2d2820" stroke-width="0.6"/>';
+  svg += '<line x1="'+(cx2-6)+'" y1="'+(oy+drawW+WALL)+'" x2="'+(cx2+6)+'" y2="'+(oy+drawW+WALL)+'" stroke="#2d2820" stroke-width="0.6"/>';
+  svg += '<text x="'+cx2+'" y="'+(oy+drawW/2+4)+'" text-anchor="middle" font-family="Courier New,monospace" font-size="10" font-weight="bold" fill="#2d2820" transform="rotate(-90,'+cx2+','+(oy+drawW/2)+')">'+roomW.toFixed(2)+' m</text>';
+
+  // Échelle graphique
+  var scaleX = ox, scaleY = oy + drawW + WALL + cotOff + 20;
+  var bar = scale; // 1m = scale px
+  svg += '<rect x="'+scaleX+'" y="'+scaleY+'" width="'+bar+'" height="5" fill="#2d2820"/>';
+  svg += '<rect x="'+(scaleX+bar)+'" y="'+scaleY+'" width="'+bar+'" height="5" fill="#f5f0e8" stroke="#2d2820" stroke-width="0.6"/>';
+  svg += '<text x="'+scaleX+'" y="'+(scaleY+14)+'" font-family="Arial,sans-serif" font-size="7" fill="#5a5040">0</text>';
+  svg += '<text x="'+(scaleX+bar)+'" y="'+(scaleY+14)+'" font-family="Arial,sans-serif" font-size="7" fill="#5a5040">1m</text>';
+  svg += '<text x="'+(scaleX+2*bar)+'" y="'+(scaleY+14)+'" font-family="Arial,sans-serif" font-size="7" fill="#5a5040">2m</text>';
+
+  // ═══ CARTOUCHE ═══
+  var cartY = H - CART_H;
+  svg += '<rect x="6" y="'+cartY+'" width="'+(W-12)+'" height="'+CART_H+'" fill="#2d2820"/>';
+  var col = (W-12)/4;
+  for(var ci=1;ci<4;ci++) svg += '<line x1="'+(6+col*ci)+'" y1="'+cartY+'" x2="'+(6+col*ci)+'" y2="'+H+'" stroke="#5a5040" stroke-width="0.7"/>';
+
+  svg += '<text x="16" y="'+(cartY+11)+'" font-family="Arial,sans-serif" font-size="7" fill="rgba(255,255,255,.5)" letter-spacing="0.8">ENTREPRISE</text>';
+  svg += '<text x="16" y="'+(cartY+24)+'" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="#ffffff">'+escSVG(ent)+'</text>';
+  svg += '<text x="16" y="'+(cartY+37)+'" font-family="Arial,sans-serif" font-size="8" fill="rgba(255,255,255,.6)">'+dateStr+'</text>';
+
+  svg += '<text x="'+(6+col+10)+'" y="'+(cartY+11)+'" font-family="Arial,sans-serif" font-size="7" fill="rgba(255,255,255,.5)" letter-spacing="0.8">CLIENT</text>';
+  svg += '<text x="'+(6+col+10)+'" y="'+(cartY+24)+'" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#ffffff">'+escSVG(clientStr)+'</text>';
+  svg += '<text x="'+(6+col+10)+'" y="'+(cartY+37)+'" font-family="Arial,sans-serif" font-size="8" fill="rgba(255,255,255,.6)">'+escSVG(piece.nom)+'</text>';
+
+  svg += '<text x="'+(6+col*2+10)+'" y="'+(cartY+11)+'" font-family="Arial,sans-serif" font-size="7" fill="rgba(255,255,255,.5)" letter-spacing="0.8">PLAN</text>';
+  svg += '<text x="'+(6+col*2+10)+'" y="'+(cartY+24)+'" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#ffffff">Vue en plan</text>';
+  svg += '<text x="'+(6+col*2+10)+'" y="'+(cartY+37)+'" font-family="Arial,sans-serif" font-size="8" fill="rgba(255,255,255,.6)">Echelle 1:'+(Math.round(100/scale*10)/10)+'</text>';
+
+  svg += '<text x="'+(6+col*3+10)+'" y="'+(cartY+11)+'" font-family="Arial,sans-serif" font-size="7" fill="rgba(255,255,255,.5)" letter-spacing="0.8">SURFACE</text>';
+  svg += '<text x="'+(6+col*3+10)+'" y="'+(cartY+24)+'" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="#4a9eff">'+(roomL*roomW).toFixed(2)+' m\xB2</text>';
+
+  svg += '</svg>';
+  return svg;
+}
+
+function escSVG(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openPlanCoté() {
+  var hasSol = _pieces.some(function(p){ return p.sol.l && p.sol.w; });
+  if(!hasSol) { toast('Renseigne les dimensions dans Surfaces d\'abord','err'); setMMode('surface'); return; }
+
+  var client = _metrClientId ? DB.clients.find(function(c){return c.id===_metrClientId;}) : null;
+  var h = '';
+  _pieces.forEach(function(piece, pi) {
+    if(!piece.sol.l || !piece.sol.w) return;
+    h += '<div style="margin-bottom:16px">';
+    h += '<div style="font-size:12px;font-weight:700;color:#16243c;margin-bottom:8px">'+escSVG(piece.nom)+'</div>';
+    h += generateSVGPlan(piece, pi);
+    h += '</div>';
+  });
+
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">';
+  h += '<button onclick="exportPlanPDF()" style="padding:12px;background:linear-gradient(135deg,#dc2626,#ef4444);border:none;border-radius:12px;color:#fff;font-family:inherit;font-size:13px;font-weight:900;cursor:pointer">Imprimer / PDF</button>';
+  h += '<button onclick="exportPlanSVG()" style="padding:12px;background:linear-gradient(135deg,#0369a1,#0ea5e9);border:none;border-radius:12px;color:#fff;font-family:inherit;font-size:13px;font-weight:900;cursor:pointer">Exporter SVG</button>';
+  h += '</div>';
+  h += '<div class="btns" style="margin-top:10px"><button class="btn secondary" data-close>Fermer</button></div>';
+
+  modal('Plan coté', h);
+}
+
+function exportPlanPDF() {
+  var svgs = '';
+  _pieces.forEach(function(piece, pi) {
+    if(piece.sol.l && piece.sol.w) svgs += '<div style="page-break-inside:avoid;margin-bottom:30px">'+generateSVGPlan(piece,pi)+'</div>';
+  });
+  var client = _metrClientId ? DB.clients.find(function(c){return c.id===_metrClientId;}) : null;
+  var clientStr = client ? ([client.prenom,client.nom].filter(Boolean).join(' ')||'Client') : 'Estimation libre';
+  var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Plans — '+escSVG(clientStr)+'</title>'
+    +'<style>body{font-family:Arial,sans-serif;margin:15mm;color:#16243c}h1{font-size:16px;margin-bottom:4px}p{font-size:11px;color:#607590;margin-bottom:20px}@media print{@page{margin:10mm}}</style></head><body>'
+    +'<h1>Plans cotes — '+escSVG(clientStr)+'</h1>'
+    +'<p>'+DB.settings.entreprise+' · '+new Date().toLocaleDateString('fr-FR')+'</p>'
+    +svgs
+    +'<scr'+'ipt>setTimeout(function(){window.print();},300);<'+'/script>'
+    +'</body></html>';
+  var w = window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); }
+  else toast('Autorise les popups dans Safari','err');
+}
+
+function exportPlanSVG() {
+  var piece = _pieces.find(function(p){ return p.sol.l && p.sol.w; });
+  if(!piece) return;
+  var svgStr = generateSVGPlan(piece, 0);
+  var blob = new Blob([svgStr], {type:'image/svg+xml'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href=url; a.download='plan-'+piece.nom.replace(/\s+/g,'-')+'.svg';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  toast('Plan SVG exporté','ok');
+}
+
+
+// ══════════════════════════════════════════════
+// FIREBASE AUTH + SYNC
+// ══════════════════════════════════════════════
+
+var _authMode = 'login';
+
+function showAuthTab(mode) {
+  _authMode = mode;
+  var isSU = mode==='signup';
+  var nr = document.getElementById('auth-name-row');
+  var tl = document.getElementById('tab-login');
+  var ts = document.getElementById('tab-signup');
+  var btn = document.getElementById('auth-btn');
+  var rb = document.getElementById('auth-reset-btn');
+  if(nr) nr.style.display = isSU?'block':'none';
+  if(tl){tl.style.background=isSU?'transparent':'#fff';tl.style.color=isSU?'rgba(255,255,255,.65)':'#1e3a5f';}
+  if(ts){ts.style.background=isSU?'#fff':'transparent';ts.style.color=isSU?'#1e3a5f':'rgba(255,255,255,.65)';}
+  if(btn) btn.textContent = isSU?'Creer mon compte':'Se connecter';
+  if(rb) rb.style.display = isSU?'none':'block';
+  var err = document.getElementById('auth-err'); if(err) err.style.display='none';
+}
+
+function doAuth() {
+  var email = (document.getElementById('auth-email')||{}).value||'';
+  var pass = (document.getElementById('auth-password')||{}).value||'';
+  var name = (document.getElementById('auth-name')||{}).value||'';
+  var errEl = document.getElementById('auth-err');
+  var btn = document.getElementById('auth-btn');
+  if(!email||!pass){if(errEl){errEl.textContent='Email et mot de passe requis.';errEl.style.display='block';}return;}
+  if(pass.length<6){if(errEl){errEl.textContent='Mot de passe : minimum 6 caracteres.';errEl.style.display='block';}return;}
+  if(btn){btn.textContent='...';btn.disabled=true;}
+  if(errEl) errEl.style.display='none';
+  var FB=window._FB;
+  if(!FB){if(errEl){errEl.textContent='Firebase non disponible, rechargez.';errEl.style.display='block';}if(btn){btn.disabled=false;btn.textContent=_authMode==='signup'?'Creer mon compte':'Se connecter';}return;}
+  var promise = _authMode==='signup'
+    ? FB.createUserWithEmailAndPassword(FB.auth,email,pass)
+    : FB.signInWithEmailAndPassword(FB.auth,email,pass);
+  promise.then(function(cred){
+    if(_authMode==='signup'&&name){DB.settings.entreprise=name;save();}
+  }).catch(function(e){
+    var msg = e.code==='auth/user-not-found'?'Compte introuvable.'
+      :e.code==='auth/wrong-password'?'Mot de passe incorrect.'
+      :e.code==='auth/invalid-credential'?'Email ou mot de passe incorrect.'
+      :e.code==='auth/email-already-in-use'?'Email deja utilise.'
+      :e.code==='auth/invalid-email'?'Email invalide.'
+      :e.code==='auth/too-many-requests'?'Trop de tentatives, reessayez plus tard.'
+      :e.message;
+    if(errEl){errEl.textContent=msg;errEl.style.display='block';}
+    if(btn){btn.disabled=false;btn.textContent=_authMode==='signup'?'Creer mon compte':'Se connecter';}
+  });
+}
+
+function doReset() {
+  var email=(document.getElementById('auth-email')||{}).value||'';
+  var errEl=document.getElementById('auth-err'),okEl=document.getElementById('auth-reset-ok');
+  if(!email){if(errEl){errEl.textContent='Entre ton email dabord.';errEl.style.display='block';}return;}
+  var FB=window._FB; if(!FB) return;
+  FB.sendPasswordResetEmail(FB.auth,email).then(function(){if(okEl)okEl.style.display='block';if(errEl)errEl.style.display='none';}).catch(function(e){if(errEl){errEl.textContent=e.message;errEl.style.display='block';}});
+}
+
+function doLogout() {
+  var FB=window._FB; if(!FB) return;
+  if(!confirm('Se deconnecter ?')) return;
+  if(window._fbStopSync) window._fbStopSync();
+  FB.signOut(FB.auth);
+}
+
+window._onLoginSuccess = function(user) {
+  var as=document.getElementById('auth-screen'); if(as) as.style.display='none';
+  var ub=document.getElementById('user-bar'); if(ub) ub.style.display='flex';
+  var ut=document.getElementById('user-email-txt'); if(ut) ut.textContent=user.email;
+  if(window._fbStartSync) {
+    window._fbStartSync(user.uid, function(cloudData) {
+      try {
+        var lt=DB._updatedAt||0, ct=cloudData._updatedAt||0;
+        if(ct>lt){DB=cloudData;save();renderAll();if(typeof updateHeaderLogo==='function')updateHeaderLogo();}
+      } catch(e){}
+    });
+  }
+  setTimeout(function(){DB._updatedAt=Date.now();if(window._fbSave)window._fbSave(DB);},800);
+  toast('Connecte : '+user.email,'ok');
+};
+
+window._onLogout = function() {
+  var as=document.getElementById('auth-screen'); if(as) as.style.display='flex';
+  var ub=document.getElementById('user-bar'); if(ub) ub.style.display='none';
+};
+
+// Patch save pour synchro auto
+var _origSave2 = typeof save==='function' ? save : function(){};
+function save(){
+  try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){}
+  if(window._currentUser&&window._fbSave){DB._updatedAt=Date.now();window._fbSave(DB);}
+}
 
 })();
 
