@@ -388,6 +388,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     </div>
     <div class="metrer-tab" id="metrer-tabs">
       <button class="mtab active" data-mtab="surfaces">Surfaces</button>
+      <button class="mtab" data-mtab="murs">Murs pente</button>
       <button class="mtab" data-mtab="volumes">Volumes</button>
       <button class="mtab" data-mtab="lineaires">Lineaires</button>
       <button class="mtab" data-mtab="toiture">Toiture</button>
@@ -408,8 +409,21 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         <div class="totaux-row total-ttc"><label>Net a couvrir</label><span id="s-nette">0,00 m²</span></div>
       </div>
     </div>
+    <div id="mtab-murs" style="display:none;">
+      <div class="card-title">Murs — plafond en pente</div>
+      <div style="background:var(--c-surface2);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--c-muted);display:flex;align-items:center;gap:8px;">
+        <span style="font-size:20px;">📐</span>
+        <span>Surface trapèze = Largeur × (Hg + Hd) ÷ 2<br/>Déduisez portes/fenêtres par mur</span>
+      </div>
+      <div id="murs-list"></div>
+      <button class="btn btn-secondary btn-full" id="btn-add-mur">+ Ajouter un mur</button>
+      <div class="totaux-box" style="margin-top:10px;">
+        <div class="totaux-row"><label>Surface brute murs</label><span id="mur-brute">0,00 m²</span></div>
+        <div class="totaux-row"><label>Déductions ouvertures</label><span id="mur-deduct">0,00 m²</span></div>
+        <div class="totaux-row total-ttc"><label>Net à traiter</label><span id="mur-nette">0,00 m²</span></div>
+      </div>
+    </div>
     <div id="mtab-volumes" style="display:none;">
-      <div class="card-title">Volumes (m³)</div>
       <div id="volumes-list"></div>
       <button class="btn btn-secondary btn-full" id="btn-add-volume">+ Ajouter volume</button>
       <div class="totaux-box" style="margin-top:10px;"><div class="totaux-row total-ttc"><label>Volume total</label><span id="v-total">0,00 m³</span></div></div>
@@ -655,7 +669,7 @@ function collectLines(){document.querySelectorAll('#devis-lines-container .devis
 function renderDevisLines(){var cont=document.getElementById('devis-lines-container');cont.innerHTML=devisLines.map(function(l){var tot=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);return '<div class="devis-line" data-lid="'+l.id+'"><div class="dl-grid"><input type="text" placeholder="Designation" value="'+esc(l.designation||'')+'" data-f="designation"/><input type="text" placeholder="m²" value="'+esc(l.unite||'')+'" data-f="unite"/><input type="number" placeholder="Qte" value="'+esc(l.qte||'')+'" data-f="qte" step="0.01"/><input type="number" placeholder="PU" value="'+esc(l.pu||'')+'" data-f="pu" step="0.01"/><button class="devis-remove" data-rem="'+l.id+'">✕</button></div><div class="devis-line-total">= '+fmtMoney(tot)+'</div></div>';}).join('');updateTotaux();}
 function updateTotaux(){var tvr=parseFloat(document.getElementById('d-tva').value)||10;var ht=0;devisLines.forEach(function(l){ht+=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);});var tva=ht*tvr/100;document.getElementById('total-ht').textContent=fmtMoney(ht);document.getElementById('total-tva-amount').textContent=fmtMoney(tva)+' ('+tvr+'%)';document.getElementById('total-ttc').textContent=fmtMoney(ht+tva);}
 function saveDevis(){var client=document.getElementById('d-client').value.trim();if(!client){showToast('Nom client requis','error');return;}collectLines();var prev=editDevisId?db.devis.find(function(d){return d.id===editDevisId;}):null;var dv={id:editDevisId||genId(),numero:prev?prev.numero:genNum(),client:client,objet:document.getElementById('d-objet').value,adresse:document.getElementById('d-adresse').value,date:document.getElementById('d-date').value,statut:document.getElementById('d-statut').value,tva:parseFloat(document.getElementById('d-tva').value)||10,biosource:document.getElementById('d-biosource').checked,notes:document.getElementById('d-notes').value,lignes:devisLines.slice(),createdAt:prev?prev.createdAt:new Date().toISOString()};if(!editDevisId)db.settings.nextNum=(db.settings.nextNum||1)+1;if(editDevisId){var i=db.devis.findIndex(function(d){return d.id===editDevisId;});if(i>=0)db.devis[i]=dv;}else{db.devis.push(dv);}saveDB();renderDevisList();renderGreeting();renderRecentActivity();document.getElementById('modal-devis').classList.remove('open');showToast('Devis enregistre','success');}
-function renderDevisList(){var cont=document.getElementById('devis-list');var list=db.devis.slice().reverse();if(devisFilter!=='all')list=list.filter(function(d){return d.statut===devisFilter;});if(!list.length){cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📄</div><div style="font-size:14px;">Aucun devis</div></div>';return;}cont.innerHTML=list.map(function(d){var ttc=calcTTC(d);return '<div class="list-item"><div class="list-item-header"><div><div class="list-item-title">'+esc(d.client)+(d.biosource?' <span style="font-size:11px;background:rgba(34,197,94,.15);color:#22c55e;padding:2px 7px;border-radius:99px;margin-left:6px;">🌿 Bio</span>':'')+'</div><div class="list-item-sub">'+esc(d.numero)+' \u00b7 '+fmtDate(d.date)+'</div></div><div><div class="list-item-amount">'+fmtMoney(ttc)+'</div><div style="text-align:right;margin-top:4px;"><span class="badge badge-'+d.statut+'">'+d.statut+'</span></div></div></div><div style="display:flex;gap:6px;margin-top:8px;"><button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dedit="'+d.id+'">✏️ Modifier</button><button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dpdf="'+d.id+'">📥 PDF</button><button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-ddel="'+d.id+'">🗑</button></div></div>';}).join('');}
+function renderDevisList(){var cont=document.getElementById('devis-list');var list=db.devis.slice().reverse();if(devisFilter!=='all')list=list.filter(function(d){return d.statut===devisFilter;});if(!list.length){cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📄</div><div style="font-size:14px;">Aucun devis</div></div>';return;}cont.innerHTML=list.map(function(d){var ttc=calcTTC(d);var hasMetrer=d.metrer&&(((d.metrer.surfaces||[]).length+(d.metrer.murs||[]).length+(d.metrer.volumes||[]).length+(d.metrer.lineaires||[]).length)>0||d.metrer.planSVG);return '<div class="list-item"><div class="list-item-header"><div><div class="list-item-title">'+esc(d.client)+(d.biosource?' <span style="font-size:11px;background:rgba(34,197,94,.15);color:#22c55e;padding:2px 7px;border-radius:99px;margin-left:6px;">🌿 Bio</span>':'')+(hasMetrer?' <span style="font-size:11px;background:rgba(45,140,240,.15);color:var(--c-accent);padding:2px 7px;border-radius:99px;margin-left:4px;">📐</span>':'')+'</div><div class="list-item-sub">'+esc(d.numero)+' \u00b7 '+fmtDate(d.date)+'</div></div><div><div class="list-item-amount">'+fmtMoney(ttc)+'</div><div style="text-align:right;margin-top:4px;"><span class="badge badge-'+d.statut+'">'+d.statut+'</span></div></div></div><div style="display:flex;gap:6px;margin-top:8px;"><button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dedit="'+d.id+'">✏️ Modifier</button>'+(hasMetrer?'<button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-dmetrer="'+d.id+'" title="Voir métrés">📐</button>':'')+'<button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dpdf="'+d.id+'">📥 PDF</button><button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-ddel="'+d.id+'">🗑</button></div></div>';}).join('');}
 
 // CLIENTS
 var editClientId=null;
@@ -707,25 +721,130 @@ function compressPhoto(file,cb){var canvas=document.createElement('canvas');var 
 function addPhotoPreview(b64){visitPhotos.push(b64);var g=document.getElementById('photos-preview');var img=document.createElement('img');img.src=b64;img.className='photo-thumb';g.appendChild(img);}
 
 // METREUR
-var surfaces=[],deductions=[],volumes=[],lineaires=[];
-function openMetrer(){surfaces=[];deductions=[];volumes=[];lineaires=[];renderSurfaces();renderVolumes();renderLineaires();switchMtab('surfaces');document.getElementById('modal-metrer').classList.add('open');}
-function switchMtab(tab){document.querySelectorAll('.mtab').forEach(function(b){b.classList.toggle('active',b.dataset.mtab===tab);});['surfaces','volumes','lineaires','toiture','plan'].forEach(function(t){var el=document.getElementById('mtab-'+t);if(el)el.style.display=t===tab?'block':'none';});}
+var surfaces=[],deductions=[],volumes=[],lineaires=[],murs=[];
+var metrerDevisId=null;
+
+function openMetrer(fromDevisId){
+  metrerDevisId=fromDevisId||null;
+  // Charger les métrés sauvegardés si on ouvre depuis un devis existant
+  var saved=null;
+  if(metrerDevisId){var d=db.devis.find(function(x){return x.id===metrerDevisId;});if(d&&d.metrer)saved=d.metrer;}
+  surfaces=saved&&saved.surfaces?saved.surfaces.map(function(x){return Object.assign({},x);}):[];
+  deductions=saved&&saved.deductions?saved.deductions.map(function(x){return Object.assign({},x);}):[];
+  volumes=saved&&saved.volumes?saved.volumes.map(function(x){return Object.assign({},x);}):[];
+  lineaires=saved&&saved.lineaires?saved.lineaires.map(function(x){return Object.assign({},x);}):[];
+  murs=saved&&saved.murs?saved.murs.map(function(x){return Object.assign({},x,{ouvertures:(x.ouvertures||[]).map(function(o){return Object.assign({},o);})});}):[];
+  // Restaurer le plan SVG si sauvegardé
+  if(saved&&saved.planRooms){document.getElementById('plan-rooms').value=saved.planRooms;}
+  if(saved&&saved.planSVG){lastSVG=saved.planSVG;document.getElementById('plan-container').innerHTML=lastSVG;}
+  else{lastSVG='';document.getElementById('plan-container').innerHTML='';}
+  renderSurfaces();renderVolumes();renderLineaires();renderMurs();
+  switchMtab('surfaces');
+  // Afficher un indicateur si des métrés existent déjà
+  var title=document.querySelector('#modal-metrer .modal-title');
+  if(title){
+    if(saved&&(surfaces.length||murs.length||volumes.length||lineaires.length||saved.planSVG)){
+      title.textContent='📐 Métrés sauvegardés';
+      title.style.color='var(--c-accent)';
+    } else {
+      title.textContent='📐 Metreur & Plans';
+      title.style.color='';
+    }
+  }
+  document.getElementById('modal-metrer').classList.add('open');
+}
+
+function saveMetrerToDevis(){
+  if(!metrerDevisId)return;
+  var d=db.devis.find(function(x){return x.id===metrerDevisId;});
+  if(!d)return;
+  collectMetrer();
+  d.metrer={
+    surfaces:surfaces.map(function(x){return Object.assign({},x);}),
+    deductions:deductions.map(function(x){return Object.assign({},x);}),
+    volumes:volumes.map(function(x){return Object.assign({},x);}),
+    lineaires:lineaires.map(function(x){return Object.assign({},x);}),
+    murs:murs.map(function(x){return Object.assign({},x,{ouvertures:(x.ouvertures||[]).map(function(o){return Object.assign({},o);})});}),
+    planRooms:document.getElementById('plan-rooms').value,
+    planSVG:lastSVG||''
+  };
+  saveDB();
+}
+function switchMtab(tab){document.querySelectorAll('.mtab').forEach(function(b){b.classList.toggle('active',b.dataset.mtab===tab);});['surfaces','murs','volumes','lineaires','toiture','plan'].forEach(function(t){var el=document.getElementById('mtab-'+t);if(el)el.style.display=t===tab?'block':'none';});}
 function addSurface(){collectMetrer();surfaces.push({id:genId(),nom:'Surface',l:'0',h:'0'});renderSurfaces();}
 function addDeduction(){collectMetrer();deductions.push({id:genId(),nom:'Porte',l:'0.9',h:'2.1'});renderDeductions();}
 function addVolume(){collectMetrer();volumes.push({id:genId(),nom:'Dalle',l:'0',L:'0',h:'0'});renderVolumes();}
 function addLineaire(){collectMetrer();lineaires.push({id:genId(),nom:'Plinthe',lg:'0'});renderLineaires();}
-function collectMetrer(){document.querySelectorAll('#surfaces-list [data-sid]').forEach(function(row){var s=surfaces.find(function(x){return x.id===row.dataset.sid;});if(!s)return;row.querySelectorAll('[data-sf]').forEach(function(inp){s[inp.dataset.sf]=inp.value;});});document.querySelectorAll('#deductions-list [data-did]').forEach(function(row){var d=deductions.find(function(x){return x.id===row.dataset.did;});if(!d)return;row.querySelectorAll('[data-dd]').forEach(function(inp){d[inp.dataset.dd]=inp.value;});});document.querySelectorAll('#volumes-list [data-vid]').forEach(function(row){var v=volumes.find(function(x){return x.id===row.dataset.vid;});if(!v)return;row.querySelectorAll('[data-vf]').forEach(function(inp){v[inp.dataset.vf]=inp.value;});});document.querySelectorAll('#lineaires-list [data-lid2]').forEach(function(row){var l=lineaires.find(function(x){return x.id===row.dataset.lid2;});if(!l)return;row.querySelectorAll('[data-lf]').forEach(function(inp){l[inp.dataset.lf]=inp.value;});});}
+function addMur(){collectMetrer();murs.push({id:genId(),nom:'Mur',l:'0',hg:'0',hd:'0',ouvertures:[]});renderMurs();}
+function calcMurSurf(m){return (parseFloat(m.l)||0)*((parseFloat(m.hg)||0)+(parseFloat(m.hd)||0))/2;}
+function calcMurOuv(m){return (m.ouvertures||[]).reduce(function(a,o){return a+(parseFloat(o.l)||0)*(parseFloat(o.h)||0);},0);}
+function renderMurs(){
+  var cont=document.getElementById('murs-list');if(!cont)return;
+  cont.innerHTML=murs.map(function(m){
+    var surf=calcMurSurf(m);var ouv=calcMurOuv(m);var nette=Math.max(0,surf-ouv);
+    var ouvHtml=(m.ouvertures||[]).map(function(o){return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:4px;align-items:center;margin-top:4px;" data-ouvid="'+o.id+'" data-murparent="'+m.id+'"><input type="text" class="form-input" style="font-size:12px;padding:6px;" placeholder="Ouverture" value="'+esc(o.nom||'')+'" data-of="nom"/><input type="number" class="form-input" style="font-size:12px;padding:6px;" placeholder="L(m)" value="'+o.l+'" data-of="l" step="0.01"/><input type="number" class="form-input" style="font-size:12px;padding:6px;" placeholder="H(m)" value="'+o.h+'" data-of="h" step="0.01"/><button class="devis-remove" data-ouvrem="'+o.id+'" data-murp="'+m.id+'">✕</button></div>';}).join('');
+    return '<div class="devis-line" style="margin-bottom:10px;" data-murid="'+m.id+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><input type="text" class="form-input" style="font-size:13px;padding:8px;font-weight:600;flex:1;margin-right:8px;" placeholder="Nom du mur" value="'+esc(m.nom)+'" data-mf="nom"/><button class="devis-remove" data-mrem="'+m.id+'">✕</button></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;">'
+      +'<div><div style="font-size:10px;color:var(--c-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px;">Largeur (m)</div><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="0" value="'+m.l+'" data-mf="l" step="0.01"/></div>'
+      +'<div><div style="font-size:10px;color:var(--c-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px;">Ht. gauche (m)</div><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="0" value="'+m.hg+'" data-mf="hg" step="0.01"/></div>'
+      +'<div><div style="font-size:10px;color:var(--c-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px;">Ht. droite (m)</div><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="0" value="'+m.hd+'" data-mf="hd" step="0.01"/></div>'
+      +'</div>'
+      +'<div style="background:rgba(45,140,240,.08);border:1px solid rgba(45,140,240,.2);border-radius:6px;padding:6px 10px;font-size:12px;margin-bottom:6px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;">'
+      +'<span style="color:var(--c-muted);">Trapèze : '+surf.toFixed(2)+' m²</span>'
+      +(ouv>0?'<span style="color:var(--c-danger);">- '+ouv.toFixed(2)+' m² ouv.</span>':'')
+      +'<span style="color:var(--c-accent);font-weight:600;">Net : '+nette.toFixed(2)+' m²</span>'
+      +'</div>'
+      +(ouvHtml?'<div style="border-top:1px solid var(--c-border);padding-top:6px;margin-bottom:4px;"><div style="font-size:10px;color:var(--c-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Ouvertures à déduire</div>'+ouvHtml+'</div>':'')
+      +'<button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;margin-top:4px;width:100%;" data-addouv="'+m.id+'">+ Ajouter une ouverture (porte/fenêtre)</button>'
+      +'</div>';
+  }).join('');
+  calcMursTotal();
+}
+function calcMursTotal(){
+  var brute=murs.reduce(function(a,m){return a+calcMurSurf(m);},0);
+  var ded=murs.reduce(function(a,m){return a+calcMurOuv(m);},0);
+  var nette=Math.max(0,brute-ded);
+  var eb=document.getElementById('mur-brute');var ed=document.getElementById('mur-deduct');var en=document.getElementById('mur-nette');
+  if(eb)eb.textContent=brute.toFixed(2)+' m²';
+  if(ed)ed.textContent=ded.toFixed(2)+' m²';
+  if(en)en.textContent=nette.toFixed(2)+' m²';
+}
+function collectMetrer(){document.querySelectorAll('#surfaces-list [data-sid]').forEach(function(row){var s=surfaces.find(function(x){return x.id===row.dataset.sid;});if(!s)return;row.querySelectorAll('[data-sf]').forEach(function(inp){s[inp.dataset.sf]=inp.value;});});document.querySelectorAll('#deductions-list [data-did]').forEach(function(row){var d=deductions.find(function(x){return x.id===row.dataset.did;});if(!d)return;row.querySelectorAll('[data-dd]').forEach(function(inp){d[inp.dataset.dd]=inp.value;});});document.querySelectorAll('#volumes-list [data-vid]').forEach(function(row){var v=volumes.find(function(x){return x.id===row.dataset.vid;});if(!v)return;row.querySelectorAll('[data-vf]').forEach(function(inp){v[inp.dataset.vf]=inp.value;});});document.querySelectorAll('#lineaires-list [data-lid2]').forEach(function(row){var l=lineaires.find(function(x){return x.id===row.dataset.lid2;});if(!l)return;row.querySelectorAll('[data-lf]').forEach(function(inp){l[inp.dataset.lf]=inp.value;});});document.querySelectorAll('#murs-list [data-murid]').forEach(function(row){var m=murs.find(function(x){return x.id===row.dataset.murid;});if(!m)return;row.querySelectorAll('[data-mf]').forEach(function(inp){m[inp.dataset.mf]=inp.value;});row.querySelectorAll('[data-ouvid]').forEach(function(orow){var oid=orow.dataset.ouvid;var o=m.ouvertures.find(function(x){return x.id===oid;});if(!o)return;orow.querySelectorAll('[data-of]').forEach(function(inp){o[inp.dataset.of]=inp.value;});});});}
 function renderSurfaces(){document.getElementById('surfaces-list').innerHTML=surfaces.map(function(s){return '<div class="devis-line" data-sid="'+s.id+'"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(s.nom)+'" data-sf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L(m)" value="'+s.l+'" data-sf="l" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="H(m)" value="'+s.h+'" data-sf="h" step="0.01"/><button class="devis-remove" data-srem="'+s.id+'">✕</button></div><div style="font-size:11px;color:var(--c-muted);margin-top:4px;">= '+((parseFloat(s.l)||0)*(parseFloat(s.h)||0)).toFixed(2)+' m²</div></div>';}).join('');renderDeductions();calcSurfaces();}
 function renderDeductions(){document.getElementById('deductions-list').innerHTML=deductions.map(function(d){return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:6px;align-items:center;margin-bottom:6px;" data-did="'+d.id+'"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Ouverture" value="'+esc(d.nom)+'" data-dd="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L" value="'+d.l+'" data-dd="l" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="H" value="'+d.h+'" data-dd="h" step="0.01"/><button class="devis-remove" data-drem="'+d.id+'">✕</button></div>';}).join('');calcSurfaces();}
 function calcSurfaces(){var brute=surfaces.reduce(function(a,s){return a+(parseFloat(s.l)||0)*(parseFloat(s.h)||0);},0);var ded=deductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0);var nette=Math.max(0,brute-ded);document.getElementById('s-brute').textContent=brute.toFixed(2)+' m²';document.getElementById('s-deduct').textContent=ded.toFixed(2)+' m²';document.getElementById('s-nette').textContent=nette.toFixed(2)+' m²';}
 function renderVolumes(){document.getElementById('volumes-list').innerHTML=volumes.map(function(v){var vol=(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);return '<div class="devis-line" data-vid="'+v.id+'"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(v.nom)+'" data-vf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L" value="'+v.l+'" data-vf="l" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="l" value="'+v.L+'" data-vf="L" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="h" value="'+v.h+'" data-vf="h" step="0.01"/><button class="devis-remove" data-vrem="'+v.id+'">✕</button></div><div style="font-size:11px;color:var(--c-muted);margin-top:4px;">= '+vol.toFixed(3)+' m³</div></div>';}).join('');var tot=volumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);document.getElementById('v-total').textContent=tot.toFixed(3)+' m³';}
 function renderLineaires(){document.getElementById('lineaires-list').innerHTML=lineaires.map(function(l){return '<div class="devis-line" data-lid2="'+l.id+'"><div style="display:grid;grid-template-columns:3fr 2fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(l.nom)+'" data-lf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="Longueur (m)" value="'+l.lg+'" data-lf="lg" step="0.01"/><button class="devis-remove" data-lrem="'+l.id+'">✕</button></div></div>';}).join('');var tot=lineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);document.getElementById('l-total').textContent=tot.toFixed(2)+' ml';}
 function calcToiture(){var type=document.getElementById('toiture-type').value;var L=parseFloat(document.getElementById('t-longueur').value)||0;var l=parseFloat(document.getElementById('t-largeur').value)||0;var deg=parseFloat(document.getElementById('t-pente').value)||35;var debord=parseFloat(document.getElementById('t-debord').value)||0;var rad=deg*Math.PI/180;var slope=1/Math.cos(rad);var surface=0,faitag=0,noue=0;if(type==='1pan'){surface=(L+2*debord)*(l/2+debord)*slope;faitag=L+2*debord;}else if(type==='2pentes'){surface=2*(L+2*debord)*(l/2+debord)*slope;faitag=L+2*debord;}else if(type==='4pentes'){var Ld=L+2*debord;var ld=l+2*debord;surface=Ld*ld*slope-(ld*ld*(slope-1)/2);faitag=Math.max(0,L-l);noue=4*Math.sqrt(Math.pow(l/2,2)+Math.pow(l/2*Math.tan(rad),2));}else if(type==='mansarde'){surface=2*(L+2*debord)*(l/2*slope+l*0.3);faitag=L;}document.getElementById('t-surface').textContent=surface.toFixed(2)+' m²';document.getElementById('t-faitag').textContent=faitag.toFixed(2)+' ml';document.getElementById('t-noue').textContent=noue?noue.toFixed(2)+' ml':'—';}
-function injectMetrer(){collectMetrer();var lines=[];var brute=surfaces.reduce(function(a,s){return a+(parseFloat(s.l)||0)*(parseFloat(s.h)||0);},0);var ded=deductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0);var nette=Math.max(0,brute-ded);if(nette>0)lines.push({id:genId(),designation:'Surface nette ('+surfaces.map(function(s){return s.nom;}).join(', ')+')',unite:'m2',qte:nette.toFixed(2),pu:'0'});var vtot=volumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);if(vtot>0)lines.push({id:genId(),designation:'Volume total',unite:'m3',qte:vtot.toFixed(3),pu:'0'});var ltot=lineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);if(ltot>0)lines.push({id:genId(),designation:'Lineaire total',unite:'ml',qte:ltot.toFixed(2),pu:'0'});var tsurf=document.getElementById('t-surface').textContent;if(tsurf&&tsurf!=='—')lines.push({id:genId(),designation:'Surface toiture',unite:'m2',qte:tsurf.replace(' m²',''),pu:'0'});if(!lines.length){showToast('Aucun metre a injecter','error');return;}lines.forEach(function(l){devisLines.push(l);});document.getElementById('modal-metrer').classList.remove('open');renderDevisLines();if(!document.getElementById('modal-devis').classList.contains('open'))openNewDevis();showToast(lines.length+' ligne(s) injectee(s)','success');}
+function injectMetrer(){
+  collectMetrer();
+  // Sauvegarder les métrés dans le devis si on en a un
+  saveMetrerToDevis();
+  var lines=[];
+  var brute=surfaces.reduce(function(a,s){return a+(parseFloat(s.l)||0)*(parseFloat(s.h)||0);},0);
+  var ded=deductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0);
+  var nette=Math.max(0,brute-ded);
+  if(nette>0)lines.push({id:genId(),designation:'Surface nette ('+surfaces.map(function(s){return s.nom;}).join(', ')+')',unite:'m2',qte:nette.toFixed(2),pu:'0'});
+  var murNette=murs.reduce(function(a,m){return a+Math.max(0,calcMurSurf(m)-calcMurOuv(m));},0);
+  if(murNette>0)lines.push({id:genId(),designation:'Murs pente net ('+murs.map(function(m){return m.nom;}).join(', ')+')',unite:'m2',qte:murNette.toFixed(2),pu:'0'});
+  var vtot=volumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);
+  if(vtot>0)lines.push({id:genId(),designation:'Volume total',unite:'m3',qte:vtot.toFixed(3),pu:'0'});
+  var ltot=lineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);
+  if(ltot>0)lines.push({id:genId(),designation:'Lineaire total',unite:'ml',qte:ltot.toFixed(2),pu:'0'});
+  var tsurf=document.getElementById('t-surface').textContent;
+  if(tsurf&&tsurf!=='—')lines.push({id:genId(),designation:'Surface toiture',unite:'m2',qte:tsurf.replace(' m²',''),pu:'0'});
+  if(!lines.length){showToast('Aucun metre a injecter','error');return;}
+  lines.forEach(function(l){devisLines.push(l);});
+  document.getElementById('modal-metrer').classList.remove('open');
+  renderDevisLines();
+  if(!document.getElementById('modal-devis').classList.contains('open'))openNewDevis();
+  showToast(lines.length+' ligne(s) injectee(s) et sauvegardee(s)','success');
+}
 
 // PLAN SVG
 var lastSVG='';
-function generatePlan(){var txt=document.getElementById('plan-rooms').value.trim();if(!txt){showToast('Saisissez les pieces','error');return;}var rooms=[];txt.split('\n').forEach(function(line){var m=line.trim().match(/^(.+):(\d+\.?\d*)x(\d+\.?\d*)$/i);if(m)rooms.push({nom:m[1].trim(),l:parseFloat(m[2]),w:parseFloat(m[3])});});if(!rooms.length){showToast('Format: NomPiece:LxL','error');return;}var sc=40,mg=60,cH=80;var curX=mg,curY=mg,rowH=0,maxW=320;var placed=[];rooms.forEach(function(r){var rw=r.l*sc;var rh=r.w*sc;if(curX+rw>maxW+mg&&placed.length){curX=mg;curY+=rowH+20;rowH=0;}placed.push({x:curX,y:curY,w:rw,h:rh,nom:r.nom,l:r.l,lg:r.w});curX+=rw+16;if(rh>rowH)rowH=rh;});var tW=maxW+2*mg;var tH=curY+rowH+mg+cH+40;var surf=rooms.reduce(function(a,r){return a+r.l*r.w;},0);var ent=db.settings.entreprise||'ChantiersPro';var sv=['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+tW+' '+tH+'" style="background:#f5f0e8;">'];sv.push('<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#8b7355" stroke-width="1.2" opacity="0.5"/></pattern></defs>');sv.push('<rect width="'+tW+'" height="'+tH+'" fill="#f5f0e8"/>');sv.push('<rect x="20" y="20" width="'+(tW-40)+'" height="'+(tH-40)+'" fill="none" stroke="#2a1f0f" stroke-width="1" opacity="0.3"/>');placed.forEach(function(r){sv.push('<rect x="'+r.x+'" y="'+r.y+'" width="'+r.w+'" height="'+r.h+'" fill="url(#hatch)" stroke="#2a1f0f" stroke-width="2"/>');sv.push('<rect x="'+(r.x+4)+'" y="'+(r.y+4)+'" width="'+(r.w-8)+'" height="'+(r.h-8)+'" fill="#faf7f0"/>');sv.push('<text x="'+(r.x+r.w/2)+'" y="'+(r.y+r.h/2-8)+'" text-anchor="middle" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="11" fill="#2a1f0f" font-weight="500">'+esc(r.nom)+'</text>');sv.push('<text x="'+(r.x+r.w/2)+'" y="'+(r.y+r.h/2+8)+'" text-anchor="middle" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="9" fill="#8b7355">'+(r.l*r.lg).toFixed(1)+' m²</text>');sv.push('<line x1="'+r.x+'" y1="'+(r.y+r.h+12)+'" x2="'+(r.x+r.w)+'" y2="'+(r.y+r.h+12)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<text x="'+(r.x+r.w/2)+'" y="'+(r.y+r.h+24)+'" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#2a1f0f">'+r.l.toFixed(2)+'m</text>');sv.push('<line x1="'+(r.x+r.w+12)+'" y1="'+r.y+'" x2="'+(r.x+r.w+12)+'" y2="'+(r.y+r.h)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<text x="'+(r.x+r.w+22)+'" y="'+(r.y+r.h/2)+'" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="8" fill="#2a1f0f" transform="rotate(-90,'+(r.x+r.w+22)+','+(r.y+r.h/2)+')">'+r.lg.toFixed(2)+'m</text>');});var cy=curY+rowH+mg;var cw=tW-40;var cw4=cw/4;sv.push('<rect x="20" y="'+cy+'" width="'+cw+'" height="'+cH+'" fill="#f0ebe0" stroke="#2a1f0f" stroke-width="1.2"/>');sv.push('<line x1="'+(20+cw4)+'" y1="'+cy+'" x2="'+(20+cw4)+'" y2="'+(cy+cH)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<line x1="'+(20+cw4*2)+'" y1="'+cy+'" x2="'+(20+cw4*2)+'" y2="'+(cy+cH)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<line x1="'+(20+cw4*3)+'" y1="'+cy+'" x2="'+(20+cw4*3)+'" y2="'+(cy+cH)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<line x1="20" y1="'+(cy+24)+'" x2="'+(20+cw)+'" y2="'+(cy+24)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<text x="25" y="'+(cy+14)+'" font-family="DM Mono,monospace" font-size="8" fill="#8b7355">ENTREPRISE</text>');sv.push('<text x="25" y="'+(cy+42)+'" font-family="DM Mono,monospace" font-size="10" fill="#2a1f0f">'+esc(ent)+'</text>');sv.push('<text x="'+(20+cw4*2+5)+'" y="'+(cy+14)+'" font-family="DM Mono,monospace" font-size="8" fill="#8b7355">PLAN</text>');sv.push('<text x="'+(20+cw4*2+5)+'" y="'+(cy+42)+'" font-family="DM Mono,monospace" font-size="10" fill="#2a1f0f">PLAN COTE</text>');sv.push('<text x="'+(20+cw4*2+5)+'" y="'+(cy+58)+'" font-family="DM Mono,monospace" font-size="8" fill="#8b7355">'+new Date().toLocaleDateString('fr-FR')+'</text>');sv.push('<text x="'+(20+cw4*3+5)+'" y="'+(cy+14)+'" font-family="DM Mono,monospace" font-size="8" fill="#8b7355">SURFACE TOTALE</text>');sv.push('<text x="'+(20+cw4*3+5)+'" y="'+(cy+42)+'" font-family="DM Mono,monospace" font-size="14" fill="#2a1f0f" font-weight="bold">'+surf.toFixed(1)+'m²</text>');sv.push('<text x="45" y="'+(cy+cH-10)+'" font-family="DM Mono,monospace" font-size="8" fill="#8b7355">ECHELLE 1/'+sc+'</text>');sv.push('<rect x="160" y="'+(cy+cH-18)+'" width="20" height="6" fill="#2a1f0f"/>');sv.push('<rect x="180" y="'+(cy+cH-18)+'" width="20" height="6" fill="#f5f0e8" stroke="#2a1f0f" stroke-width="0.5"/>');sv.push('<text x="160" y="'+(cy+cH-22)+'" font-family="DM Mono,monospace" font-size="7" fill="#2a1f0f">0</text>');sv.push('<text x="196" y="'+(cy+cH-22)+'" font-family="DM Mono,monospace" font-size="7" fill="#2a1f0f">2m</text>');sv.push('</svg>');lastSVG=sv.join('\n');document.getElementById('plan-container').innerHTML=lastSVG;}
+function generatePlan(){var txt=document.getElementById('plan-rooms').value.trim();if(!txt){showToast('Saisissez les pieces','error');return;}var rooms=[];txt.split('\n').forEach(function(line){var m=line.trim().match(/^(.+):(\d+\.?\d*)x(\d+\.?\d*)$/i);if(m)rooms.push({nom:m[1].trim(),l:parseFloat(m[2]),w:parseFloat(m[3])});});if(!rooms.length){showToast('Format: NomPiece:LxL','error');return;}var sc=40,mg=60,cH=80;var curX=mg,curY=mg,rowH=0,maxW=320;var placed=[];rooms.forEach(function(r){var rw=r.l*sc;var rh=r.w*sc;if(curX+rw>maxW+mg&&placed.length){curX=mg;curY+=rowH+20;rowH=0;}placed.push({x:curX,y:curY,w:rw,h:rh,nom:r.nom,l:r.l,lg:r.w});curX+=rw+16;if(rh>rowH)rowH=rh;});var tW=maxW+2*mg;var tH=curY+rowH+mg+cH+40;var surf=rooms.reduce(function(a,r){return a+r.l*r.w;},0);var ent=db.settings.entreprise||'ChantiersPro';var sv=['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+tW+' '+tH+'" style="background:#f5f0e8;">'];sv.push('<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#8b7355" stroke-width="1.2" opacity="0.5"/></pattern></defs>');sv.push('<rect width="'+tW+'" height="'+tH+'" fill="#f5f0e8"/>');sv.push('<rect x="20" y="20" width="'+(tW-40)+'" height="'+(tH-40)+'" fill="none" stroke="#2a1f0f" stroke-width="1" opacity="0.3"/>');placed.forEach(function(r){sv.push('<rect x="'+r.x+'" y="'+r.y+'" width="'+r.w+'" height="'+r.h+'" fill="url(#hatch)" stroke="#2a1f0f" stroke-width="2"/>');sv.push('<rect x="'+(r.x+4)+'" y="'+(r.y+4)+'" width="'+(r.w-8)+'" height="'+(r.h-8)+'" fill="#faf7f0"/>');sv.push('<text x="'+(r.x+r.w/2)+'" y="'+(r.y+r.h/2-8)+'" text-anchor="middle" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="11" fill="#2a1f0f" font-weight="500">'+esc(r.nom)+'</text>');sv.push('<text x="'+(r.x+r.w/2)+'" y="'+(r.y+r.h/2+8)+'" text-anchor="middle" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="9" fill="#8b7355">'+(r.l*r.lg).toFixed(1)+' m²</text>');sv.push('<line x1="'+r.x+'" y1="'+(r.y+r.h+12)+'" x2="'+(r.x+r.w)+'" y2="'+(r.y+r.h+12)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<text x="'+(r.x+r.w/2)+'" y="'+(r.y+r.h+24)+'" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#2a1f0f">'+r.l.toFixed(2)+'m</text>');sv.push('<line x1="'+(r.x+r.w+12)+'" y1="'+r.y+'" x2="'+(r.x+r.w+12)+'" y2="'+(r.y+r.h)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<text x="'+(r.x+r.w+22)+'" y="'+(r.y+r.h/2)+'" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="8" fill="#2a1f0f" transform="rotate(-90,'+(r.x+r.w+22)+','+(r.y+r.h/2)+')">'+r.lg.toFixed(2)+'m</text>');});var cy=curY+rowH+mg;var cw=tW-40;var cw4=cw/4;sv.push('<rect x="20" y="'+cy+'" width="'+cw+'" height="'+cH+'" fill="#f0ebe0" stroke="#2a1f0f" stroke-width="1.2"/>');sv.push('<line x1="'+(20+cw4)+'" y1="'+cy+'" x2="'+(20+cw4)+'" y2="'+(cy+cH)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<line x1="'+(20+cw4*2)+'" y1="'+cy+'" x2="'+(20+cw4*2)+'" y2="'+(cy+cH)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<line x1="'+(20+cw4*3)+'" y1="'+cy+'" x2="'+(20+cw4*3)+'" y2="'+(cy+cH)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<line x1="20" y1="'+(cy+24)+'" x2="'+(20+cw)+'" y2="'+(cy+24)+'" stroke="#2a1f0f" stroke-width="0.8"/>');sv.push('<text x="25" y="'+(cy+14)+'" font-family="DM Mono,monospace" font-size="8" fill="#8b7355">ENTREPRISE</text>');sv.push('<text x="25" y="'+(cy+42)+'" font-family="DM Mono,monospace" font-size="10" fill="#2a1f0f">'+esc(ent)+'</text>');sv.push('<text x="'+(20+cw4*2+5)+'" y="'+(cy+14)+'" font-family="DM Mono,monospace" font-size="8" fill="#8b7355">PLAN</text>');sv.push('<text x="'+(20+cw4*2+5)+'" y="'+(cy+42)+'" font-family="DM Mono,monospace" font-size="10" fill="#2a1f0f">PLAN COTE</text>');sv.push('<text x="'+(20+cw4*2+5)+'" y="'+(cy+58)+'" font-family="DM Mono,monospace" font-size="8" fill="#8b7355">'+new Date().toLocaleDateString('fr-FR')+'</text>');sv.push('<text x="'+(20+cw4*3+5)+'" y="'+(cy+14)+'" font-family="DM Mono,monospace" font-size="8" fill="#8b7355">SURFACE TOTALE</text>');sv.push('<text x="'+(20+cw4*3+5)+'" y="'+(cy+42)+'" font-family="DM Mono,monospace" font-size="14" fill="#2a1f0f" font-weight="bold">'+surf.toFixed(1)+'m²</text>');sv.push('<text x="45" y="'+(cy+cH-10)+'" font-family="DM Mono,monospace" font-size="8" fill="#8b7355">ECHELLE 1/'+sc+'</text>');sv.push('<rect x="160" y="'+(cy+cH-18)+'" width="20" height="6" fill="#2a1f0f"/>');sv.push('<rect x="180" y="'+(cy+cH-18)+'" width="20" height="6" fill="#f5f0e8" stroke="#2a1f0f" stroke-width="0.5"/>');sv.push('<text x="160" y="'+(cy+cH-22)+'" font-family="DM Mono,monospace" font-size="7" fill="#2a1f0f">0</text>');sv.push('<text x="196" y="'+(cy+cH-22)+'" font-family="DM Mono,monospace" font-size="7" fill="#2a1f0f">2m</text>');sv.push('</svg>');lastSVG=sv.join('\n');document.getElementById('plan-container').innerHTML=lastSVG;saveMetrerToDevis();showToast('Plan genere et sauvegarde','success');}
 function exportSVG(){if(!lastSVG){showToast('Generez un plan','error');return;}var blob=new Blob([lastSVG],{type:'image/svg+xml'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='plan-cote.svg';a.click();URL.revokeObjectURL(url);}
 function exportPlanPDF(){if(!lastSVG){showToast('Generez un plan','error');return;}var w=window.open('','_blank');if(w){w.document.write('<html><head><title>Plan cote</title></head><body style="margin:0;background:#f5f0e8;">'+lastSVG+'</body></html>');w.document.close();setTimeout(function(){w.print();},500);}}
 
@@ -776,7 +895,7 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('btn-add-devis').addEventListener('click',function(){openNewDevis();});
   document.getElementById('close-modal-devis').addEventListener('click',function(){document.getElementById('modal-devis').classList.remove('open');});
   document.getElementById('btn-add-line').addEventListener('click',function(){collectLines();addDevisLine();});
-  document.getElementById('btn-add-metrer-devis').addEventListener('click',function(){openMetrer();});
+  document.getElementById('btn-add-metrer-devis').addEventListener('click',function(){openMetrer(editDevisId);});
   document.getElementById('btn-save-devis').addEventListener('click',function(){collectLines();saveDevis();});
   document.getElementById('btn-export-devis').addEventListener('click',function(){collectLines();saveDevis();var last=editDevisId||(db.devis.length?db.devis[db.devis.length-1].id:null);if(last)exportDevisPDF(last);});
   document.getElementById('d-tva').addEventListener('input',function(){updateTotaux();});
@@ -801,6 +920,7 @@ document.addEventListener('DOMContentLoaded', function(){
   });
   document.getElementById('devis-list').addEventListener('click',function(e){
     var edit=e.target.closest('[data-dedit]');if(edit){openEditDevis(edit.dataset.dedit);return;}
+    var metrer=e.target.closest('[data-dmetrer]');if(metrer){openEditDevis(metrer.dataset.dmetrer);setTimeout(function(){openMetrer(metrer.dataset.dmetrer);},150);return;}
     var pdf=e.target.closest('[data-dpdf]');if(pdf){exportDevisPDF(pdf.dataset.dpdf);return;}
     var del=e.target.closest('[data-ddel]');if(del){db.devis=db.devis.filter(function(d){return d.id!==del.dataset.ddel;});saveDB();renderDevisList();renderGreeting();renderRecentActivity();}
   });
@@ -853,6 +973,20 @@ document.addEventListener('DOMContentLoaded', function(){
   });
   document.getElementById('mtab-lineaires').addEventListener('click',function(e){
     var rem=e.target.closest('[data-lrem]');if(rem){collectMetrer();lineaires=lineaires.filter(function(l){return l.id!==rem.dataset.lrem;});renderLineaires();}
+  });
+
+  // MURS PENTE
+  document.getElementById('btn-add-mur').addEventListener('click',function(){addMur();});
+  document.getElementById('murs-list').addEventListener('input',function(e){
+    var mrow=e.target.closest('[data-murid]');if(!mrow)return;
+    var m=murs.find(function(x){return x.id===mrow.dataset.murid;});if(!m)return;
+    var mf=e.target.dataset.mf;if(mf){m[mf]=e.target.value;renderMurs();return;}
+    var of=e.target.dataset.of;if(of){var orow=e.target.closest('[data-ouvid]');if(orow){var o=m.ouvertures.find(function(x){return x.id===orow.dataset.ouvid;});if(o){o[of]=e.target.value;renderMurs();}}}
+  });
+  document.getElementById('murs-list').addEventListener('click',function(e){
+    var mrem=e.target.closest('[data-mrem]');if(mrem){collectMetrer();murs=murs.filter(function(m){return m.id!==mrem.dataset.mrem;});renderMurs();return;}
+    var addouv=e.target.closest('[data-addouv]');if(addouv){collectMetrer();var m=murs.find(function(x){return x.id===addouv.dataset.addouv;});if(m){m.ouvertures.push({id:genId(),nom:'Fenetre',l:'1.2',h:'1.2'});renderMurs();}return;}
+    var ouvrem=e.target.closest('[data-ouvrem]');if(ouvrem){collectMetrer();var m2=murs.find(function(x){return x.id===ouvrem.dataset.murp;});if(m2){m2.ouvertures=m2.ouvertures.filter(function(o){return o.id!==ouvrem.dataset.ouvrem;});renderMurs();}}
   });
 
   // VOICE
