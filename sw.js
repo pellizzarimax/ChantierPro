@@ -1,16 +1,13 @@
-// Service Worker ChantiersPro - Mode hors ligne
 const CACHE_NAME = 'chantierspro-v1';
 const ASSETS = [
   './',
   './chantierspro.html',
-  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap'
+  'https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap'
 ];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(ASSETS).catch(() => {});
-    })
+    caches.open(CACHE_NAME).then(c => c.addAll(ASSETS).catch(() => {}))
   );
   self.skipWaiting();
 });
@@ -25,24 +22,26 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Toujours réseau d'abord, cache en fallback
+  if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  // Network first pour Firebase et APIs
+  if (url.hostname.includes('firebase') || url.hostname.includes('anthropic') || url.hostname.includes('openai')) {
+    e.respondWith(
+      fetch(e.request).catch(() => new Response(JSON.stringify({error:'offline'}), {headers:{'Content-Type':'application/json'}}))
+    );
+    return;
+  }
+  // Cache first pour assets
   e.respondWith(
-    fetch(e.request)
-      .then(response => {
-        // Mettre en cache les ressources réussies
-        if(response && response.status === 200 && response.type === 'basic') {
-          const cloned = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, cloned));
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(resp => {
+        if (resp && resp.status === 200) {
+          const clone = resp.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
         }
-        return response;
-      })
-      .catch(() => {
-        // Hors ligne : utiliser le cache
-        return caches.match(e.request).then(cached => {
-          return cached || new Response('Hors ligne - données en cache local', {
-            headers: {'Content-Type': 'text/plain'}
-          });
-        });
-      })
+        return resp;
+      }).catch(() => cached);
+    })
   );
 });
