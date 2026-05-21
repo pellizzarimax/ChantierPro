@@ -471,7 +471,49 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       </div>
     </div>
     <hr class="divider"/>
-    <button class="btn btn-primary btn-full" id="btn-inject-metrer">→ Injecter dans le devis</button>
+    <!-- BOUTON APERÇU -->
+    <button class="btn btn-primary btn-full" id="btn-apercu-metrer" style="font-size:15px;padding:14px;">👁 Aperçu &amp; Injecter au devis →</button>
+  </div>
+</div>
+
+<!-- MODAL APERÇU MÉTRÉS -->
+<div class="modal-overlay" id="modal-apercu">
+  <div class="modal modal-full">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="modal-title">👁 Aperçu des mesures</div>
+      <button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-apercu">✕</button>
+    </div>
+
+    <!-- RÉCAP MESURES -->
+    <div id="apercu-recap"></div>
+
+    <!-- PLAN MINIATURE -->
+    <div id="apercu-plan" style="display:none;margin-bottom:16px;">
+      <div class="card-title">Plan coté</div>
+      <div id="apercu-plan-svg" style="background:#f5f0e8;border-radius:10px;overflow:hidden;"></div>
+    </div>
+
+    <hr class="divider"/>
+
+    <!-- CHOIX CLIENT / DEVIS -->
+    <div class="card-title">Injecter dans un devis</div>
+    <div class="form-group">
+      <label class="form-label">Choisir un devis existant</label>
+      <select class="form-input" id="apercu-devis-select">
+        <option value="">— Nouveau devis —</option>
+      </select>
+    </div>
+    <div id="apercu-nouveau-client" style="">
+      <div class="form-group">
+        <label class="form-label">Ou créer pour ce client</label>
+        <input type="text" class="form-input" id="apercu-client-nom" placeholder="Nom du client..."/>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">
+      <button class="btn btn-secondary" id="btn-apercu-retour">← Modifier</button>
+      <button class="btn btn-primary" id="btn-apercu-inject">✅ Injecter</button>
+    </div>
   </div>
 </div>
 <!-- MODAL VOIX -->
@@ -817,29 +859,175 @@ function calcSurfaces(){var brute=surfaces.reduce(function(a,s){return a+(parseF
 function renderVolumes(){document.getElementById('volumes-list').innerHTML=volumes.map(function(v){var vol=(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);return '<div class="devis-line" data-vid="'+v.id+'"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(v.nom)+'" data-vf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L" value="'+v.l+'" data-vf="l" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="l" value="'+v.L+'" data-vf="L" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="h" value="'+v.h+'" data-vf="h" step="0.01"/><button class="devis-remove" data-vrem="'+v.id+'">✕</button></div><div style="font-size:11px;color:var(--c-muted);margin-top:4px;">= '+vol.toFixed(3)+' m³</div></div>';}).join('');var tot=volumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);document.getElementById('v-total').textContent=tot.toFixed(3)+' m³';}
 function renderLineaires(){document.getElementById('lineaires-list').innerHTML=lineaires.map(function(l){return '<div class="devis-line" data-lid2="'+l.id+'"><div style="display:grid;grid-template-columns:3fr 2fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(l.nom)+'" data-lf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="Longueur (m)" value="'+l.lg+'" data-lf="lg" step="0.01"/><button class="devis-remove" data-lrem="'+l.id+'">✕</button></div></div>';}).join('');var tot=lineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);document.getElementById('l-total').textContent=tot.toFixed(2)+' ml';}
 function calcToiture(){var type=document.getElementById('toiture-type').value;var L=parseFloat(document.getElementById('t-longueur').value)||0;var l=parseFloat(document.getElementById('t-largeur').value)||0;var deg=parseFloat(document.getElementById('t-pente').value)||35;var debord=parseFloat(document.getElementById('t-debord').value)||0;var rad=deg*Math.PI/180;var slope=1/Math.cos(rad);var surface=0,faitag=0,noue=0;if(type==='1pan'){surface=(L+2*debord)*(l/2+debord)*slope;faitag=L+2*debord;}else if(type==='2pentes'){surface=2*(L+2*debord)*(l/2+debord)*slope;faitag=L+2*debord;}else if(type==='4pentes'){var Ld=L+2*debord;var ld=l+2*debord;surface=Ld*ld*slope-(ld*ld*(slope-1)/2);faitag=Math.max(0,L-l);noue=4*Math.sqrt(Math.pow(l/2,2)+Math.pow(l/2*Math.tan(rad),2));}else if(type==='mansarde'){surface=2*(L+2*debord)*(l/2*slope+l*0.3);faitag=L;}document.getElementById('t-surface').textContent=surface.toFixed(2)+' m²';document.getElementById('t-faitag').textContent=faitag.toFixed(2)+' ml';document.getElementById('t-noue').textContent=noue?noue.toFixed(2)+' ml':'—';}
-function injectMetrer(){
+function openApercu(){
   collectMetrer();
-  // Sauvegarder les métrés dans le devis si on en a un
-  saveMetrerToDevis();
+  // Calculs
+  var brute=surfaces.reduce(function(a,s){return a+(parseFloat(s.l)||0)*(parseFloat(s.h)||0);},0);
+  var ded=deductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0);
+  var sNette=Math.max(0,brute-ded);
+  var murBrute=murs.reduce(function(a,m){return a+calcMurSurf(m);},0);
+  var murNette=murs.reduce(function(a,m){return a+Math.max(0,calcMurSurf(m)-calcMurOuv(m));},0);
+  var vtot=volumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);
+  var ltot=lineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);
+  var tsurf=document.getElementById('t-surface').textContent;
+  var hasToiture=tsurf&&tsurf!=='—';
+
+  // Construire le récap HTML
+  var recap='';
+  var hasData=false;
+
+  if(surfaces.length||deductions.length){
+    hasData=true;
+    recap+='<div class="card" style="margin-bottom:10px;">';
+    recap+='<div class="card-title">📏 Surfaces sol/mur rectangulaires</div>';
+    surfaces.forEach(function(s){var v=(parseFloat(s.l)||0)*(parseFloat(s.h)||0);recap+='<div class="kv"><label>'+esc(s.nom)+'</label><span style="font-family:var(--font-mono);">'+v.toFixed(2)+' m²</span></div>';});
+    if(deductions.length){recap+='<div class="kv" style="color:var(--c-danger);"><label>Déductions ouvertures</label><span style="font-family:var(--font-mono);">- '+ded.toFixed(2)+' m²</span></div>';}
+    recap+='<div class="kv" style="font-weight:700;"><label>Net</label><span style="font-family:var(--font-mono);color:var(--c-accent);">'+sNette.toFixed(2)+' m²</span></div>';
+    recap+='</div>';
+  }
+
+  if(murs.length){
+    hasData=true;
+    recap+='<div class="card" style="margin-bottom:10px;">';
+    recap+='<div class="card-title">📐 Murs pente (trapèzes)</div>';
+    murs.forEach(function(m){
+      var surf=calcMurSurf(m);var ouv=calcMurOuv(m);var net=Math.max(0,surf-ouv);
+      recap+='<div class="kv"><label>'+esc(m.nom)+'<br/><span style="font-size:10px;color:var(--c-muted);">'+m.l+'m × ('+m.hg+'m + '+m.hd+'m)÷2</span></label>';
+      recap+='<span style="font-family:var(--font-mono);text-align:right;">'+(ouv>0?'<span style="font-size:11px;color:var(--c-danger);">-'+ouv.toFixed(2)+'</span><br/>':'')+'<span style="color:var(--c-accent);">'+net.toFixed(2)+' m²</span></span></div>';
+    });
+    recap+='<div class="kv" style="font-weight:700;"><label>Total murs net</label><span style="font-family:var(--font-mono);color:var(--c-accent);">'+murNette.toFixed(2)+' m²</span></div>';
+    recap+='</div>';
+  }
+
+  if(volumes.length){
+    hasData=true;
+    recap+='<div class="card" style="margin-bottom:10px;">';
+    recap+='<div class="card-title">📦 Volumes</div>';
+    volumes.forEach(function(v){var vol=(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);recap+='<div class="kv"><label>'+esc(v.nom)+'</label><span style="font-family:var(--font-mono);">'+vol.toFixed(3)+' m³</span></div>';});
+    recap+='<div class="kv" style="font-weight:700;"><label>Total</label><span style="font-family:var(--font-mono);color:var(--c-accent);">'+vtot.toFixed(3)+' m³</span></div>';
+    recap+='</div>';
+  }
+
+  if(lineaires.length){
+    hasData=true;
+    recap+='<div class="card" style="margin-bottom:10px;">';
+    recap+='<div class="card-title">📏 Linéaires</div>';
+    lineaires.forEach(function(l){recap+='<div class="kv"><label>'+esc(l.nom)+'</label><span style="font-family:var(--font-mono);">'+(parseFloat(l.lg)||0).toFixed(2)+' ml</span></div>';});
+    recap+='<div class="kv" style="font-weight:700;"><label>Total</label><span style="font-family:var(--font-mono);color:var(--c-accent);">'+ltot.toFixed(2)+' ml</span></div>';
+    recap+='</div>';
+  }
+
+  if(hasToiture){
+    hasData=true;
+    recap+='<div class="card" style="margin-bottom:10px;">';
+    recap+='<div class="card-title">🏠 Toiture</div>';
+    recap+='<div class="kv"><label>Surface</label><span style="font-family:var(--font-mono);color:var(--c-accent);">'+tsurf+'</span></div>';
+    recap+='<div class="kv"><label>Faîtage</label><span style="font-family:var(--font-mono);">'+document.getElementById('t-faitag').textContent+'</span></div>';
+    recap+='</div>';
+  }
+
+  if(!hasData){showToast('Aucune mesure à afficher','error');return;}
+
+  document.getElementById('apercu-recap').innerHTML=recap;
+
+  // Plan SVG miniature
+  var apercuPlan=document.getElementById('apercu-plan');
+  if(lastSVG){apercuPlan.style.display='block';document.getElementById('apercu-plan-svg').innerHTML=lastSVG;}
+  else{apercuPlan.style.display='none';}
+
+  // Peupler le sélecteur de devis
+  var sel=document.getElementById('apercu-devis-select');
+  sel.innerHTML='<option value="">— Nouveau devis —</option>';
+  db.devis.forEach(function(d){var opt=document.createElement('option');opt.value=d.id;opt.textContent=d.numero+' — '+d.client;sel.appendChild(opt);});
+
+  // Pré-remplir le nom si on vient d'un devis
+  if(metrerDevisId){sel.value=metrerDevisId;}
+  updateApercuClientField();
+
+  document.getElementById('modal-metrer').classList.remove('open');
+  document.getElementById('modal-apercu').classList.add('open');
+}
+
+function updateApercuClientField(){
+  var sel=document.getElementById('apercu-devis-select');
+  document.getElementById('apercu-nouveau-client').style.display=sel.value?'none':'block';
+}
+
+function doInjectMetrer(){
+  collectMetrer();
+  var sel=document.getElementById('apercu-devis-select');
+  var targetId=sel.value;
+  var clientNom=document.getElementById('apercu-client-nom').value.trim();
+
+  // Construire les lignes à injecter
   var lines=[];
   var brute=surfaces.reduce(function(a,s){return a+(parseFloat(s.l)||0)*(parseFloat(s.h)||0);},0);
   var ded=deductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0);
-  var nette=Math.max(0,brute-ded);
-  if(nette>0)lines.push({id:genId(),designation:'Surface nette ('+surfaces.map(function(s){return s.nom;}).join(', ')+')',unite:'m2',qte:nette.toFixed(2),pu:'0'});
+  var sNette=Math.max(0,brute-ded);
+  if(sNette>0)lines.push({id:genId(),designation:'Surface nette ('+surfaces.map(function(s){return s.nom;}).join(', ')+')',unite:'m²',qte:sNette.toFixed(2),pu:'0'});
+
   var murNette=murs.reduce(function(a,m){return a+Math.max(0,calcMurSurf(m)-calcMurOuv(m));},0);
-  if(murNette>0)lines.push({id:genId(),designation:'Murs pente net ('+murs.map(function(m){return m.nom;}).join(', ')+')',unite:'m2',qte:murNette.toFixed(2),pu:'0'});
+  if(murNette>0)lines.push({id:genId(),designation:'Murs pente net ('+murs.map(function(m){return m.nom;}).join(', ')+')',unite:'m²',qte:murNette.toFixed(2),pu:'0'});
+
   var vtot=volumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);
-  if(vtot>0)lines.push({id:genId(),designation:'Volume total',unite:'m3',qte:vtot.toFixed(3),pu:'0'});
+  if(vtot>0)lines.push({id:genId(),designation:'Volume total',unite:'m³',qte:vtot.toFixed(3),pu:'0'});
+
   var ltot=lineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);
-  if(ltot>0)lines.push({id:genId(),designation:'Lineaire total',unite:'ml',qte:ltot.toFixed(2),pu:'0'});
+  if(ltot>0)lines.push({id:genId(),designation:'Linéaire total',unite:'ml',qte:ltot.toFixed(2),pu:'0'});
+
   var tsurf=document.getElementById('t-surface').textContent;
-  if(tsurf&&tsurf!=='—')lines.push({id:genId(),designation:'Surface toiture',unite:'m2',qte:tsurf.replace(' m²',''),pu:'0'});
-  if(!lines.length){showToast('Aucun metre a injecter','error');return;}
-  lines.forEach(function(l){devisLines.push(l);});
-  document.getElementById('modal-metrer').classList.remove('open');
-  renderDevisLines();
-  if(!document.getElementById('modal-devis').classList.contains('open'))openNewDevis();
-  showToast(lines.length+' ligne(s) injectee(s) et sauvegardee(s)','success');
+  if(tsurf&&tsurf!=='—')lines.push({id:genId(),designation:'Surface toiture',unite:'m²',qte:tsurf.replace(' m²',''),pu:'0'});
+
+  if(!lines.length){showToast('Aucune mesure à injecter','error');return;}
+
+  var metrerData={
+    surfaces:surfaces.slice(),deductions:deductions.slice(),
+    volumes:volumes.slice(),lineaires:lineaires.slice(),
+    murs:murs.map(function(m){return Object.assign({},m,{ouvertures:(m.ouvertures||[]).slice()});}),
+    planRooms:document.getElementById('plan-rooms').value,planSVG:lastSVG||''
+  };
+
+  if(targetId){
+    // Injecter dans un devis existant
+    var d=db.devis.find(function(x){return x.id===targetId;});
+    if(!d){showToast('Devis introuvable','error');return;}
+    d.lignes=(d.lignes||[]).concat(lines);
+    d.metrer=metrerData;
+    metrerDevisId=targetId;
+    saveDB();renderDevisList();renderRecentActivity();
+    document.getElementById('modal-apercu').classList.remove('open');
+    showToast(lines.length+' ligne(s) injectée(s) dans '+d.numero,'success');
+    // Ouvrir le devis pour voir le résultat
+    setTimeout(function(){openEditDevis(targetId);},300);
+  } else {
+    // Créer un nouveau devis
+    if(!clientNom){showToast('Saisissez un nom de client','error');return;}
+    document.getElementById('modal-apercu').classList.remove('open');
+    devisLines=lines;
+    editDevisId=null;
+    document.getElementById('d-client').value=clientNom;
+    document.getElementById('d-objet').value='';
+    document.getElementById('d-adresse').value='';
+    document.getElementById('d-date').value=new Date().toISOString().split('T')[0];
+    document.getElementById('d-statut').value='brouillon';
+    document.getElementById('d-tva').value=db.settings.tarifs.tva_defaut||10;
+    document.getElementById('d-biosource').checked=false;
+    document.getElementById('d-notes').value='';
+    updateBiosourceUI();
+    document.getElementById('modal-devis-title').textContent='📄 Nouveau devis — '+clientNom;
+    renderDevisLines();
+    // Sauvegarder le devis immédiatement pour pouvoir y attacher les métrés
+    var newId=genId();
+    var newNum=genNum();
+    db.settings.nextNum=(db.settings.nextNum||1)+1;
+    var newDevis={id:newId,numero:newNum,client:clientNom,objet:'',adresse:'',date:new Date().toISOString().split('T')[0],statut:'brouillon',tva:db.settings.tarifs.tva_defaut||10,biosource:false,notes:'',lignes:lines,metrer:metrerData,createdAt:new Date().toISOString()};
+    db.devis.push(newDevis);
+    metrerDevisId=newId;
+    editDevisId=newId;
+    saveDB();renderDevisList();renderGreeting();renderRecentActivity();
+    document.getElementById('modal-devis').classList.add('open');
+    showToast('Nouveau devis créé avec '+lines.length+' ligne(s)','success');
+  }
 }
 
 // PLAN SVG
@@ -949,7 +1137,11 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('btn-add-volume').addEventListener('click',function(){addVolume();});
   document.getElementById('btn-add-lineaire').addEventListener('click',function(){addLineaire();});
   document.getElementById('btn-calc-toiture').addEventListener('click',function(){calcToiture();});
-  document.getElementById('btn-inject-metrer').addEventListener('click',function(){injectMetrer();});
+  document.getElementById('btn-apercu-metrer').addEventListener('click',function(){openApercu();});
+  document.getElementById('close-modal-apercu').addEventListener('click',function(){document.getElementById('modal-apercu').classList.remove('open');});
+  document.getElementById('btn-apercu-retour').addEventListener('click',function(){document.getElementById('modal-apercu').classList.remove('open');document.getElementById('modal-metrer').classList.add('open');});
+  document.getElementById('apercu-devis-select').addEventListener('change',function(){updateApercuClientField();});
+  document.getElementById('btn-apercu-inject').addEventListener('click',function(){doInjectMetrer();});
   document.getElementById('btn-gen-plan').addEventListener('click',function(){generatePlan();});
   document.getElementById('btn-export-svg').addEventListener('click',function(){exportSVG();});
   document.getElementById('btn-export-plan-pdf').addEventListener('click',function(){exportPlanPDF();});
