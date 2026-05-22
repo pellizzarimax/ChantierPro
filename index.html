@@ -159,16 +159,30 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
   <div class="auth-logo">ChantiersPro</div>
   <div class="auth-sub">Gestion de chantier intelligente</div>
   <div class="auth-box">
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login">Connexion</button>
-      <button class="auth-tab" id="tab-register">Inscription</button>
+    <!-- Comptes récents -->
+    <div id="recent-accounts" style="display:none;margin-bottom:16px;">
+      <div style="font-size:11px;color:var(--c-muted);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Comptes récents</div>
+      <div id="recent-accounts-list"></div>
+      <div style="text-align:center;margin-top:8px;"><button id="btn-use-other-account" style="background:none;border:none;color:var(--c-muted);font-size:12px;cursor:pointer;text-decoration:underline;">Utiliser un autre compte</button></div>
     </div>
-    <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="auth-email" placeholder="artisan@example.com" autocomplete="email"/></div>
-    <div class="form-group"><label class="form-label">Mot de passe</label><input type="password" class="form-input" id="auth-password" placeholder="••••••••" autocomplete="current-password"/></div>
-    <div id="auth-name-group" class="form-group" style="display:none;"><label class="form-label">Nom entreprise</label><input type="text" class="form-input" id="auth-name" placeholder="Dupont Renovation"/></div>
-    <div id="auth-error"></div>
-    <button class="btn btn-primary btn-full" style="margin-top:12px;" id="auth-submit">Se connecter</button>
-    <button class="btn btn-secondary btn-full" id="auth-forgot" style="margin-top:4px;font-size:12px;">Mot de passe oublie</button>
+    <!-- Formulaire standard -->
+    <div id="auth-form-block">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login">Connexion</button>
+        <button class="auth-tab" id="tab-register">Inscription</button>
+      </div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="auth-email" placeholder="artisan@example.com" autocomplete="email"/></div>
+      <div class="form-group"><label class="form-label">Mot de passe</label><input type="password" class="form-input" id="auth-password" placeholder="••••••••" autocomplete="current-password"/></div>
+      <div id="auth-name-group" class="form-group" style="display:none;"><label class="form-label">Nom entreprise</label><input type="text" class="form-input" id="auth-name" placeholder="Dupont Renovation"/></div>
+      <!-- Se souvenir de moi -->
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:4px;margin-bottom:4px;">
+        <input type="checkbox" id="auth-remember" style="width:16px;height:16px;accent-color:var(--c-accent);" checked/>
+        <span style="font-size:13px;color:var(--c-muted);">Se souvenir de moi</span>
+      </label>
+      <div id="auth-error"></div>
+      <button class="btn btn-primary btn-full" style="margin-top:12px;" id="auth-submit">Se connecter</button>
+      <button class="btn btn-secondary btn-full" id="auth-forgot" style="margin-top:4px;font-size:12px;">Mot de passe oublié</button>
+    </div>
   </div>
 </div>
 
@@ -655,9 +669,45 @@ loadDB();
 // Firebase
 var fbCfg={apiKey:"AIzaSyB2rdib1rJRusZVoY25VmzO5WP4IAzjfkU",authDomain:"chantierpro-eabab.firebaseapp.com",projectId:"chantierpro-eabab",storageBucket:"chantierpro-eabab.firebasestorage.app",messagingSenderId:"453340640805",appId:"1:453340640805:web:aebf71cb00e7bb02de31cc"};
 var fbApp,fbAuth,fbDb,currentUser=null,fbReady=false;
+// Comptes récents (stockés localement)
+function getRecentAccounts(){try{return JSON.parse(localStorage.getItem('cpm_recent_accounts')||'[]');}catch(e){return[];}}
+function addRecentAccount(email,name){var list=getRecentAccounts();list=list.filter(function(a){return a.email!==email;});list.unshift({email:email,name:name||email,ts:Date.now()});if(list.length>5)list=list.slice(0,5);localStorage.setItem('cpm_recent_accounts',JSON.stringify(list));}
+function removeRecentAccount(email){var list=getRecentAccounts().filter(function(a){return a.email!==email;});localStorage.setItem('cpm_recent_accounts',JSON.stringify(list));}
+
+function renderRecentAccounts(){
+  var list=getRecentAccounts();
+  var block=document.getElementById('recent-accounts');
+  var form=document.getElementById('auth-form-block');
+  if(!list.length){block.style.display='none';form.style.display='block';return;}
+  block.style.display='block';
+  document.getElementById('recent-accounts-list').innerHTML=list.map(function(a){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:10px;margin-bottom:6px;cursor:pointer;" data-recent-email="'+esc(a.email)+'">'
+      +'<div style="width:36px;height:36px;border-radius:50%;background:var(--c-accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">'+esc((a.name||a.email).charAt(0).toUpperCase())+'</div>'
+      +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(a.name||a.email)+'</div><div style="font-size:11px;color:var(--c-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(a.email)+'</div></div>'
+      +'<button style="background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;flex-shrink:0;" data-remove-account="'+esc(a.email)+'" title="Supprimer">×</button>'
+      +'</div>';
+  }).join('');
+}
+
 function initFB(){
-  try{fbApp=firebase.initializeApp(fbCfg);fbAuth=firebase.auth(fbApp);fbDb=firebase.firestore(fbApp);fbDb.enablePersistence({synchronizeTabs:true}).catch(function(){});fbReady=true;
-    fbAuth.onAuthStateChanged(function(u){if(u){currentUser=u;showApp();afterLogin();}else{currentUser=null;hideApp();}});
+  try{
+    fbApp=firebase.initializeApp(fbCfg);fbAuth=firebase.auth(fbApp);fbDb=firebase.firestore(fbApp);
+    fbDb.enablePersistence({synchronizeTabs:true}).catch(function(){});
+    fbReady=true;
+    // Persistance locale (reste connecté)
+    fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
+    fbAuth.onAuthStateChanged(function(u){
+      if(u){
+        currentUser=u;
+        // Mémoriser le compte
+        addRecentAccount(u.email,db.settings.entreprise||u.displayName||u.email);
+        showApp();afterLogin();
+      } else {
+        currentUser=null;
+        renderRecentAccounts();
+        hideApp();
+      }
+    });
   }catch(e){fbReady=false;showApp();afterLogin();}
 }
 function showApp(){document.getElementById('auth-screen').classList.add('hidden');document.getElementById('app').style.display='flex';}
@@ -667,7 +717,27 @@ function afterLogin(){renderGreeting();renderRecentActivity();renderDevisList();
 // AUTH
 var authMode='login';
 function setAuthMode(m){authMode=m;document.getElementById('tab-login').classList.toggle('active',m==='login');document.getElementById('tab-register').classList.toggle('active',m==='register');document.getElementById('auth-name-group').style.display=m==='register'?'block':'none';document.getElementById('auth-submit').textContent=m==='login'?'Se connecter':"S'inscrire";document.getElementById('auth-error').textContent='';}
-function doAuth(){var email=document.getElementById('auth-email').value.trim();var pw=document.getElementById('auth-password').value;var err=document.getElementById('auth-error');err.textContent='';if(!email||!pw){err.textContent='Email et mot de passe requis.';return;}if(!fbReady){showApp();afterLogin();return;}if(authMode==='login'){fbAuth.signInWithEmailAndPassword(email,pw).catch(function(e){err.textContent=fbErr(e.code);});}else{fbAuth.createUserWithEmailAndPassword(email,pw).then(function(){var n=document.getElementById('auth-name').value.trim();if(n){db.settings.entreprise=n;saveDB();}}).catch(function(e){err.textContent=fbErr(e.code);});}}
+function doAuth(){
+  var email=document.getElementById('auth-email').value.trim();
+  var pw=document.getElementById('auth-password').value;
+  var err=document.getElementById('auth-error');
+  err.textContent='';
+  if(!email||!pw){err.textContent='Email et mot de passe requis.';return;}
+  if(!fbReady){showApp();afterLogin();return;}
+  var remember=document.getElementById('auth-remember');
+  var persistence=firebase.auth.Auth.Persistence;
+  var pers=(remember&&remember.checked)?persistence.LOCAL:persistence.SESSION;
+  fbAuth.setPersistence(pers).then(function(){
+    if(authMode==='login'){
+      return fbAuth.signInWithEmailAndPassword(email,pw);
+    } else {
+      return fbAuth.createUserWithEmailAndPassword(email,pw).then(function(){
+        var n=document.getElementById('auth-name').value.trim();
+        if(n){db.settings.entreprise=n;saveDB();}
+      });
+    }
+  }).catch(function(e){err.textContent=fbErr(e.code);});
+}
 function doForgot(){var email=document.getElementById('auth-email').value.trim();if(!email){document.getElementById('auth-error').textContent='Entrez votre email.';return;}if(fbReady)fbAuth.sendPasswordResetEmail(email).then(function(){showToast('Email envoyé !','success');}).catch(function(e){document.getElementById('auth-error').textContent=fbErr(e.code);});}
 function fbErr(c){var m={'auth/user-not-found':'Utilisateur introuvable.','auth/wrong-password':'Mot de passe incorrect.','auth/invalid-credential':'Identifiants invalides.','auth/email-already-in-use':'Email déjà utilisé.','auth/invalid-email':'Email invalide.','auth/weak-password':'Mot de passe trop court.'};return m[c]||'Erreur: '+c;}
 function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');['clients','devis','visites','planning'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){db[c]=x.items;saveDB();}}}).catch(function(){});});}
@@ -767,8 +837,22 @@ function calcCMurOuv(m){return (m.ouvertures||[]).reduce(function(a,o){return a+
 
 function renderCSurfaces(){
   var cont=document.getElementById('c-surfaces-list');if(!cont)return;
-  cont.innerHTML=cSurfaces.map(function(s){return '<div class="devis-line" data-csid="'+s.id+'"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(s.nom)+'" data-csf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L(m)" value="'+s.l+'" data-csf="l" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="H(m)" value="'+s.h+'" data-csf="h" step="0.01"/><button class="devis-remove" data-csrem="'+s.id+'">✕</button></div><div style="font-size:11px;color:var(--c-muted);margin-top:4px;">= '+calcCSurf(s).toFixed(2)+' m²</div></div>';}).join('');
-  document.getElementById('c-deductions-list').innerHTML=cDeductions.map(function(d){return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:6px;align-items:center;margin-bottom:6px;" data-cdid="'+d.id+'"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Ouverture" value="'+esc(d.nom)+'" data-cdd="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L" value="'+d.l+'" data-cdd="l" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="H" value="'+d.h+'" data-cdd="h" step="0.01"/><button class="devis-remove" data-cdrem="'+d.id+'">✕</button></div>';}).join('');
+  cont.innerHTML=cSurfaces.map(function(s){
+    return '<div class="devis-line" data-csid="'+s.id+'"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:6px;align-items:center;">'
+      +'<input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom pièce" value="'+esc(s.nom)+'" data-csf="nom"/>'
+      +'<input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L (m)" value="'+(s.l||'')+'" data-csf="l" step="0.01" inputmode="decimal"/>'
+      +'<input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="H (m)" value="'+(s.h||'')+'" data-csf="h" step="0.01" inputmode="decimal"/>'
+      +'<button class="devis-remove" data-csrem="'+s.id+'">✕</button>'
+      +'</div><div class="cote-tot" style="font-size:11px;color:var(--c-muted);margin-top:4px;">= '+calcCSurf(s).toFixed(2)+' m²</div></div>';
+  }).join('');
+  document.getElementById('c-deductions-list').innerHTML=cDeductions.map(function(d){
+    return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:6px;align-items:center;margin-bottom:6px;" data-cdid="'+d.id+'">'
+      +'<input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Ouverture" value="'+esc(d.nom)+'" data-cdd="nom"/>'
+      +'<input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L" value="'+(d.l||'')+'" data-cdd="l" step="0.01" inputmode="decimal"/>'
+      +'<input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="H" value="'+(d.h||'')+'" data-cdd="h" step="0.01" inputmode="decimal"/>'
+      +'<button class="devis-remove" data-cdrem="'+d.id+'">✕</button>'
+      +'</div>';
+  }).join('');
   calcCSurfaces();
 }
 function calcCSurfaces(){
@@ -782,8 +866,18 @@ function calcCSurfaces(){
 function renderCMurs(){
   var cont=document.getElementById('c-murs-list');if(!cont)return;
   cont.innerHTML=cMurs.map(function(m){var s=calcCMurSurf(m);var o=calcCMurOuv(m);var n=Math.max(0,s-o);
-    var ouvH=(m.ouvertures||[]).map(function(ov){return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:4px;align-items:center;margin-top:4px;" data-couvid="'+ov.id+'" data-cmurp="'+m.id+'"><input type="text" class="form-input" style="font-size:12px;padding:6px;" value="'+esc(ov.nom||'')+'" data-cof="nom"/><input type="number" class="form-input" style="font-size:12px;padding:6px;" value="'+ov.l+'" data-cof="l" step="0.01"/><input type="number" class="form-input" style="font-size:12px;padding:6px;" value="'+ov.h+'" data-cof="h" step="0.01"/><button class="devis-remove" data-couvrem="'+ov.id+'" data-cmurpp="'+m.id+'">✕</button></div>';}).join('');
-    return '<div class="devis-line" style="margin-bottom:10px;" data-cmurid="'+m.id+'"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><input type="text" class="form-input" style="font-size:13px;padding:8px;flex:1;margin-right:8px;font-weight:600;" placeholder="Nom mur" value="'+esc(m.nom)+'" data-cmf="nom"/><button class="devis-remove" data-cmrem="'+m.id+'">✕</button></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;"><div><div style="font-size:10px;color:var(--c-muted);margin-bottom:3px;">LARGEUR (m)</div><input type="number" class="form-input" style="font-size:13px;padding:8px;" value="'+m.l+'" data-cmf="l" step="0.01"/></div><div><div style="font-size:10px;color:var(--c-muted);margin-bottom:3px;">HT. GAUCHE (m)</div><input type="number" class="form-input" style="font-size:13px;padding:8px;" value="'+m.hg+'" data-cmf="hg" step="0.01"/></div><div><div style="font-size:10px;color:var(--c-muted);margin-bottom:3px;">HT. DROITE (m)</div><input type="number" class="form-input" style="font-size:13px;padding:8px;" value="'+m.hd+'" data-cmf="hd" step="0.01"/></div></div><div style="background:rgba(45,140,240,.08);border-radius:6px;padding:6px 10px;font-size:12px;margin-bottom:6px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;"><span style="color:var(--c-muted);">Trapèze: '+s.toFixed(2)+' m²</span>'+(o>0?'<span style="color:var(--c-danger);">-'+o.toFixed(2)+'</span>':'')+'<span style="color:var(--c-accent);font-weight:600;">Net: '+n.toFixed(2)+' m²</span></div>'+(ouvH?'<div style="border-top:1px solid var(--c-border);padding-top:6px;margin-bottom:4px;">'+ouvH+'</div>':'')+'<button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;width:100%;" data-caddouv="'+m.id+'">+ Ouverture</button></div>';
+    var ouvH=(m.ouvertures||[]).map(function(ov){return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:4px;align-items:center;margin-top:4px;" data-couvid="'+ov.id+'" data-cmurp="'+m.id+'"><input type="text" class="form-input" style="font-size:12px;padding:6px;" value="'+esc(ov.nom||'')+'" placeholder="Ouverture" data-cof="nom"/><input type="number" class="form-input" style="font-size:12px;padding:6px;" value="'+(ov.l||'')+'" placeholder="L" data-cof="l" step="0.01" inputmode="decimal"/><input type="number" class="form-input" style="font-size:12px;padding:6px;" value="'+(ov.h||'')+'" placeholder="H" data-cof="h" step="0.01" inputmode="decimal"/><button class="devis-remove" data-couvrem="'+ov.id+'" data-cmurpp="'+m.id+'">✕</button></div>';}).join('');
+    return '<div class="devis-line" style="margin-bottom:10px;" data-cmurid="'+m.id+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><input type="text" class="form-input" style="font-size:13px;padding:8px;flex:1;margin-right:8px;font-weight:600;" placeholder="Nom du mur" value="'+esc(m.nom)+'" data-cmf="nom"/><button class="devis-remove" data-cmrem="'+m.id+'">✕</button></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;">'
+      +'<div><div style="font-size:10px;color:var(--c-muted);margin-bottom:3px;">LARGEUR (m)</div><input type="number" class="form-input" style="font-size:13px;padding:8px;" value="'+(m.l||'')+'" placeholder="ex: 4" data-cmf="l" step="0.01" inputmode="decimal"/></div>'
+      +'<div><div style="font-size:10px;color:var(--c-muted);margin-bottom:3px;">HT. GAUCHE (m)</div><input type="number" class="form-input" style="font-size:13px;padding:8px;" value="'+(m.hg||'')+'" placeholder="ex: 2.4" data-cmf="hg" step="0.01" inputmode="decimal"/></div>'
+      +'<div><div style="font-size:10px;color:var(--c-muted);margin-bottom:3px;">HT. DROITE (m)</div><input type="number" class="form-input" style="font-size:13px;padding:8px;" value="'+(m.hd||'')+'" placeholder="ex: 1.8" data-cmf="hd" step="0.01" inputmode="decimal"/></div>'
+      +'</div>'
+      +'<div class="mur-calc-info" style="background:rgba(45,140,240,.08);border-radius:6px;padding:6px 10px;font-size:12px;margin-bottom:6px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;"><span style="color:var(--c-muted);">Trapèze: '+s.toFixed(2)+' m²</span>'+(o>0?'<span style="color:var(--c-danger);"> − '+o.toFixed(2)+'</span>':'')+'<span style="color:var(--c-accent);font-weight:600;"> Net: '+n.toFixed(2)+' m²</span></div>'
+      +(ouvH?'<div style="border-top:1px solid var(--c-border);padding-top:6px;margin-bottom:4px;">'+ouvH+'</div>':'')
+      +'<button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;width:100%;" data-caddouv="'+m.id+'">+ Ouverture (porte/fenêtre)</button>'
+      +'</div>';
   }).join('');
   var bm=cMurs.reduce(function(a,m){return a+calcCMurSurf(m);},0);var dm=cMurs.reduce(function(a,m){return a+calcCMurOuv(m);},0);var nm=Math.max(0,bm-dm);
   document.getElementById('cm-brute').textContent=bm.toFixed(2)+' m²';document.getElementById('cm-deduct').textContent=dm.toFixed(2)+' m²';document.getElementById('cm-nette').textContent=nm.toFixed(2)+' m²';
@@ -953,27 +1047,68 @@ async function doGenerateDevisFromParcours(){
   var notes=document.getElementById('devis-notes-extra').value.trim();
   document.getElementById('ai-loading').style.display='block';
   document.getElementById('btn-step-next').disabled=true;
+
+  // Calcul des métrés réels
   var sNette=Math.max(0,cSurfaces.reduce(function(a,s){return a+(parseFloat(s.l)||0)*(parseFloat(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0));
   var murNette=cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0);
   var vtot=cVolumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);
   var ltot=cLineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);
   var tsurf=document.getElementById('ct-surface').textContent;
-  var cotesDesc='Métrés saisis sur place:\n'+(sNette>0?'- Surfaces nettes: '+sNette.toFixed(2)+' m²\n':'')+(murNette>0?'- Murs pente nets: '+murNette.toFixed(2)+' m²\n':'')+(vtot>0?'- Volumes: '+vtot.toFixed(3)+' m³\n':'')+(ltot>0?'- Linéaires: '+ltot.toFixed(2)+' ml\n':'')+(tsurf&&tsurf!=='—'?'- Surface toiture: '+tsurf+'\n':'');
-  var prompt='Tu es expert artisan BTP français. Génère un devis détaillé JSON.\nClient: '+(parcoursVisite?parcoursVisite.client:'')+'\nAdresse: '+(parcoursVisite?parcoursVisite.adresse:'')+'\nNature: '+(parcoursVisite?parcoursVisite.nature:'')+'\nDescription: '+(parcoursVisite?parcoursVisite.description:'')+'\n'+cotesDesc+(dictee?'\nDictée artisan: '+dictee:'')+'\n'+(notes?'Notes: '+notes:'')+'\n'+(bio?'IMPORTANT: Utiliser UNIQUEMENT matériaux biosourcés (chanvre, ouate cellulose, ATec homologués).\n':'')+'\nRéponds UNIQUEMENT avec un tableau JSON:\n[{"designation":"...","unite":"m²|m³|ml|h|forfait|u","qte":"...","pu":"..."}]\nSans texte ni markdown. Les PU doivent être cohérents avec le marché BTP français.';
-  var result;try{result=await callAI(prompt);}catch(e){result=localAI((parcoursVisite?parcoursVisite.description:'')+' '+dictee);}
+  var tsurfVal=tsurf&&tsurf!=='—'?parseFloat(tsurf):0;
+  var metrages={sNette:sNette,murNette:murNette,vtot:vtot,ltot:ltot,tsurfVal:tsurfVal};
+
+  // Description détaillée des surfaces pour Claude
+  var surfDetail=cSurfaces.map(function(s){return s.nom+': '+parseFloat(s.l).toFixed(2)+'m × '+parseFloat(s.h).toFixed(2)+'m = '+((parseFloat(s.l)||0)*(parseFloat(s.h)||0)).toFixed(2)+' m²';}).join('\n');
+  var murDetail=cMurs.map(function(m){var n=Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));return m.nom+': '+parseFloat(m.l).toFixed(2)+'m × (Hg '+m.hg+'m + Hd '+m.hd+'m)÷2 = net '+n.toFixed(2)+' m²';}).join('\n');
+
+  var cotesDesc='=== MÉTRÉS RÉELS MESURÉS SUR PLACE ===\n'
+    +(sNette>0?'SURFACES NETTES (après déductions ouvertures): '+sNette.toFixed(2)+' m²\nDétail:\n'+surfDetail+'\n':'')
+    +(murNette>0?'MURS EN PENTE (trapèzes) nets: '+murNette.toFixed(2)+' m²\nDétail:\n'+murDetail+'\n':'')
+    +(vtot>0?'VOLUMES: '+vtot.toFixed(3)+' m³\n':'')
+    +(ltot>0?'LINÉAIRES: '+ltot.toFixed(2)+' ml\n':'')
+    +(tsurfVal>0?'TOITURE: '+tsurfVal.toFixed(2)+' m²\n':'');
+
+  var prompt='Tu es un expert artisan BTP français.\n\n'
+    +cotesDesc+'\n'
+    +'=== TRAVAUX DEMANDÉS ===\n'
+    +'Nature: '+(parcoursVisite?parcoursVisite.nature:'')+'\n'
+    +'Description: '+(parcoursVisite?parcoursVisite.description:'')+'\n'
+    +(dictee?'Observations artisan (dictée): '+dictee+'\n':'')
+    +(notes?'Notes complémentaires: '+notes+'\n':'')
+    +(bio?'\n⚠️ IMPÉRATIF : Utiliser UNIQUEMENT des matériaux biosourcés certifiés (chanvre, ouate de cellulose, ATec homologués).\n':'')
+    +'\n=== RÈGLES ABSOLUES ===\n'
+    +'1. Les quantités (qte) DOIVENT correspondre aux métrés réels ci-dessus, PAS des valeurs arbitraires.\n'
+    +'2. Pour la pose: utilise la surface nette en m² (ex: '+sNette.toFixed(2)+' m²)\n'
+    +'3. Pour les matériaux: ajoute 10% de chutes (ex: '+(sNette*1.1).toFixed(2)+' m²)\n'
+    +'4. Les PU doivent être réalistes pour le marché BTP français 2024.\n'
+    +'5. Réponds UNIQUEMENT avec un tableau JSON, sans texte ni markdown:\n'
+    +'[{"designation":"...","unite":"m²|m³|ml|h|forfait|u","qte":"VALEUR_REELLE","pu":"PRIX_REALISTE"}]';
+
+  var result;
+  try{result=await callAI(prompt);}
+  catch(e){result=localAI((parcoursVisite?parcoursVisite.description:'')+' '+dictee, metrages);}
+
   var lines=[];
-  if(result&&result.startsWith('LOCAL:')){try{lines=JSON.parse(result.slice(6));}catch(e){lines=[];}}
-  else{try{var clean=result.replace(/```json|```/g,'').trim();var m=clean.match(/\[[\s\S]*\]/);if(m)clean=m[0];lines=JSON.parse(clean);}catch(e){lines=[];}}
-  if(!lines.length){try{lines=JSON.parse(localAI((parcoursVisite?parcoursVisite.description:'')||'travaux').slice(6));}catch(e){lines=[{designation:'Travaux',unite:'forfait',qte:'1',pu:'1000'}];}}
+  if(result&&result.startsWith('LOCAL:')){
+    try{lines=JSON.parse(result.slice(6));}catch(e){lines=[];}
+  } else {
+    try{
+      var clean=result.replace(/```json|```/g,'').trim();
+      var m=clean.match(/\[[\s\S]*\]/);if(m)clean=m[0];
+      lines=JSON.parse(clean);
+    }catch(e){lines=[];}
+  }
+  if(!lines.length){
+    try{lines=JSON.parse(localAI((parcoursVisite?parcoursVisite.description:'')||'travaux',metrages).slice(6));}
+    catch(e){lines=[{designation:'Travaux',unite:'m²',qte:String(sNette||1),pu:'85'}];}
+  }
   lines=lines.map(function(l){return {id:genId(),designation:l.designation||'',unite:l.unite||'u',qte:String(l.qte||1),pu:String(l.pu||0)};});
   document.getElementById('ai-loading').style.display='none';
   document.getElementById('btn-step-next').disabled=false;
-  // Créer et ouvrir le devis
   var newId=genId();var newNum=genNum();db.settings.nextNum=(db.settings.nextNum||1)+1;
   var newDevis={id:newId,numero:newNum,client:parcoursVisite?parcoursVisite.client:'',objet:parcoursVisite?parcoursVisite.nature:'',adresse:parcoursVisite?parcoursVisite.adresse:'',date:new Date().toISOString().split('T')[0],statut:'brouillon',tva:db.settings.tarifs.tva_defaut||10,biosource:bio,notes:notes,lignes:lines,planSVG:planSVG,createdAt:new Date().toISOString()};
   db.devis.push(newDevis);saveDB();renderDevisList();renderGreeting();renderRecentActivity();
   document.getElementById('modal-parcours').classList.remove('open');
-  // Ouvrir le devis en édition
   setTimeout(function(){openEditDevis(newId);},300);
   showToast('Devis IA généré !','success');
 }
@@ -1061,7 +1196,74 @@ function renderPlanningList(){var cont=document.getElementById('planning-list');
 // AI
 // ============================================================
 async function callAI(prompt){var ai=db.settings.ai||{};var prov=ai.provider||'claude';if(prov==='local')return localAI(prompt);try{if(prov==='claude'){if(!ai.claudeKey)return localAI(prompt);var r=await fetch((ai.proxyUrl||'https://api.anthropic.com')+'/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':ai.claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:ai.claudeModel||'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]})});if(!r.ok)throw new Error(r.status);var d=await r.json();return d.content&&d.content[0]?d.content[0].text:'';}else if(prov==='openai'){if(!ai.openaiKey)return localAI(prompt);var r2=await fetch((ai.proxyUrl||'https://api.openai.com')+'/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+ai.openaiKey},body:JSON.stringify({model:ai.openaiModel||'gpt-4o-mini',max_tokens:2000,messages:[{role:'user',content:prompt}]})});if(!r2.ok)throw new Error(r2.status);var d2=await r2.json();return d2.choices&&d2.choices[0]?d2.choices[0].message.content:'';}}catch(e){return localAI(prompt);}return localAI(prompt);}
-function localAI(prompt){var lo=(prompt||'').toLowerCase();var lines=[];var t=db.settings.tarifs||{};if(lo.includes('peintur')||lo.includes('peint')){lines.push({designation:"Main d'oeuvre peinture (prépa + 2 couches)",unite:'h',qte:'16',pu:String(t.peintre_mo||38)});lines.push({designation:'Peinture acrylique',unite:'L',qte:'10',pu:'12'});}if(lo.includes('carrelage')||lo.includes('carrel')){lines.push({designation:"Main d'oeuvre pose carrelage",unite:'m²',qte:'20',pu:String(t.carreleur_mo||42)});lines.push({designation:'Carrelage 60×60 grès cérame',unite:'m²',qte:'22',pu:'28'});lines.push({designation:'Colle et joints',unite:'forfait',qte:'1',pu:'120'});}if(lo.includes('plomberie')||lo.includes('bain')||lo.includes('douche')){lines.push({designation:"Main d'oeuvre plomberie",unite:'h',qte:'8',pu:String(t.plombier_mo||62)});lines.push({designation:'Fournitures plomberie',unite:'forfait',qte:'1',pu:'350'});}if(lo.includes('electri')){lines.push({designation:"Main d'oeuvre électricité",unite:'h',qte:'6',pu:String(t.electricien_mo||60)});lines.push({designation:'Fournitures électriques',unite:'forfait',qte:'1',pu:'200'});}if(lo.includes('macon')||lo.includes('béton')){lines.push({designation:"Main d'oeuvre maçonnerie",unite:'h',qte:'12',pu:String(t.macon_mo||45)});lines.push({designation:'Matériaux maçonnerie',unite:'forfait',qte:'1',pu:'280'});}if(lo.includes('menuiserie')||lo.includes('porte')||lo.includes('fenetre')){lines.push({designation:"Main d'oeuvre menuiserie",unite:'h',qte:'8',pu:String(t.menuisier_mo||50)});lines.push({designation:'Fournitures menuiserie',unite:'forfait',qte:'1',pu:'400'});}if(!lines.length){lines.push({designation:'Travaux de rénovation',unite:'forfait',qte:'1',pu:'1500'});lines.push({designation:"Main d'oeuvre",unite:'h',qte:'16',pu:'45'});lines.push({designation:'Fournitures et matériaux',unite:'forfait',qte:'1',pu:'400'});}if(lo.includes('biosourc')||lo.includes('chanvre')||lo.includes('ouate')){lines.push({designation:'Isolation ouate de cellulose (ATec)',unite:'m²',qte:'30',pu:'45'});}return 'LOCAL:'+JSON.stringify(lines);}
+function localAI(prompt,metrages){
+  var lo=(prompt||'').toLowerCase();
+  var lines=[];
+  var t=db.settings.tarifs||{};
+  // Quantités réelles depuis les métrés
+  var qSurf=metrages&&metrages.sNette>0?metrages.sNette:null;
+  var qMur=metrages&&metrages.murNette>0?metrages.murNette:null;
+  var qVol=metrages&&metrages.vtot>0?metrages.vtot:null;
+  var qLin=metrages&&metrages.ltot>0?metrages.ltot:null;
+  // Coefficient chute/coupe (+10%)
+  var qSurfMat=qSurf?+(qSurf*1.10).toFixed(2):null;
+  var qMurMat=qMur?+(qMur*1.10).toFixed(2):null;
+  // Temps de pose estimé (h/m²)
+  var hPoseCarrel=qSurf?+(qSurf*1.2).toFixed(1):16;
+  var hPosePeinture=qSurf?+(qSurf*0.35).toFixed(1):14;
+  var hPoseMur=qMur?+(qMur*1.0).toFixed(1):8;
+  if(lo.includes('carrelage')||lo.includes('carrel')){
+    var surf=qSurf||20;var surfMat=qSurfMat||22;var hPose=+(surf*1.2).toFixed(1);
+    lines.push({designation:"Main d'œuvre pose carrelage",unite:'m²',qte:String(surf),pu:String(t.carreleur_mo||42)});
+    lines.push({designation:'Carrelage 60×60 grès cérame (+10% chutes)',unite:'m²',qte:String(surfMat),pu:'28'});
+    lines.push({designation:'Colle flexible C2',unite:'kg',qte:String(+(surf*4.5).toFixed(0)),pu:'1.80'});
+    lines.push({designation:'Joint époxy ou ciment',unite:'kg',qte:String(+(surf*0.5).toFixed(1)),pu:'8'});
+    if(qMur){lines.push({designation:"Main d'œuvre pose faïence murs pente",unite:'m²',qte:String(qMur),pu:String(t.carreleur_mo||42)});lines.push({designation:'Faïence murs (+10% chutes)',unite:'m²',qte:String(qMurMat),pu:'25'});}
+  }
+  if(lo.includes('peintur')||lo.includes('peint')){
+    var sp=qSurf||20;var sm=qMur||0;var hp=+(sp*0.35+sm*0.35).toFixed(1)||14;
+    lines.push({designation:"Main d'œuvre peinture (prépa + impression + 2 couches)",unite:'m²',qte:String(sp+(sm||0)),pu:String(t.peintre_mo||38)});
+    lines.push({designation:'Peinture acrylique mat',unite:'L',qte:String(+(sp*0.25+sm*0.25).toFixed(1)),pu:'12'});
+    lines.push({designation:'Apprêt / enduit de lissage',unite:'m²',qte:String(sp+(sm||0)),pu:'4'});
+  }
+  if(lo.includes('plomberie')||lo.includes('bain')||lo.includes('douche')){
+    lines.push({designation:"Main d'œuvre plomberie",unite:'h',qte:'8',pu:String(t.plombier_mo||62)});
+    lines.push({designation:'Fournitures plomberie',unite:'forfait',qte:'1',pu:'350'});
+  }
+  if(lo.includes('electri')){
+    lines.push({designation:"Main d'œuvre électricité",unite:'h',qte:'6',pu:String(t.electricien_mo||60)});
+    lines.push({designation:'Fournitures électriques',unite:'forfait',qte:'1',pu:'200'});
+  }
+  if(lo.includes('macon')||lo.includes('béton')){
+    var qv=qVol||5;
+    lines.push({designation:"Main d'œuvre maçonnerie",unite:'h',qte:String(+(qv*3).toFixed(0)),pu:String(t.macon_mo||45)});
+    lines.push({designation:'Béton / matériaux maçonnerie',unite:'m³',qte:String(qv),pu:'120'});
+  }
+  if(lo.includes('menuiserie')||lo.includes('porte')||lo.includes('fenetre')){
+    lines.push({designation:"Main d'œuvre menuiserie",unite:'h',qte:'8',pu:String(t.menuisier_mo||50)});
+    lines.push({designation:'Fournitures menuiserie',unite:'forfait',qte:'1',pu:'400'});
+  }
+  if(lo.includes('isolat')||lo.includes('isolation')){
+    var si=qSurf||qMur||20;
+    lines.push({designation:"Main d'œuvre pose isolation",unite:'m²',qte:String(si),pu:'18'});
+    lines.push({designation:'Laine de verre 100mm',unite:'m²',qte:String(si),pu:'12'});
+  }
+  if(!lines.length){
+    var sq=qSurf||qMur||10;
+    lines.push({designation:'Travaux de rénovation',unite:'m²',qte:String(sq),pu:'85'});
+    lines.push({designation:"Main d'œuvre",unite:'h',qte:String(+(sq*1.5).toFixed(0)),pu:'45'});
+    lines.push({designation:'Fournitures et matériaux',unite:'forfait',qte:'1',pu:String(+(sq*20).toFixed(0))});
+  }
+  if(lo.includes('biosourc')||lo.includes('chanvre')||lo.includes('ouate')){
+    var sb=qSurf||qMur||20;
+    lines.push({designation:'Isolation ouate de cellulose soufflée (ATec)',unite:'m²',qte:String(sb),pu:'45'});
+    lines.push({designation:"Main d'œuvre pose isolation biosourcée",unite:'h',qte:String(+(sb*0.3).toFixed(0)),pu:'40'});
+  }
+  if(qLin&&qLin>0){
+    lines.push({designation:'Plinthes / finitions linéaires',unite:'ml',qte:String(qLin),pu:'18'});
+  }
+  return 'LOCAL:'+JSON.stringify(lines);
+}
 
 // Voix standalone (modal voix)
 var recSA=null,isRecSA=false;
@@ -1097,6 +1299,24 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('auth-submit').addEventListener('click',function(){doAuth();});
   document.getElementById('auth-forgot').addEventListener('click',function(){doForgot();});
   document.getElementById('auth-password').addEventListener('keydown',function(e){if(e.key==='Enter')doAuth();});
+  // Comptes récents
+  document.getElementById('btn-use-other-account').addEventListener('click',function(){
+    document.getElementById('recent-accounts').style.display='none';
+    document.getElementById('auth-form-block').style.display='block';
+    document.getElementById('auth-email').focus();
+  });
+  document.getElementById('recent-accounts-list').addEventListener('click',function(e){
+    var rem=e.target.closest('[data-remove-account]');
+    if(rem){e.stopPropagation();removeRecentAccount(rem.dataset.removeAccount);renderRecentAccounts();return;}
+    var row=e.target.closest('[data-recent-email]');
+    if(row){
+      var email=row.dataset.recentEmail;
+      document.getElementById('recent-accounts').style.display='none';
+      document.getElementById('auth-form-block').style.display='block';
+      document.getElementById('auth-email').value=email;
+      document.getElementById('auth-password').focus();
+    }
+  });
 
   // HEADER
   document.getElementById('header-settings-btn').addEventListener('click',function(){openSettings();});
@@ -1121,23 +1341,34 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('cotes-tabs').addEventListener('click',function(e){var b=e.target.closest('.mtab');if(b)switchCotesTab(b.dataset.ctab);});
 
   // Surfaces
-  document.getElementById('btn-add-csurface').addEventListener('click',function(){cSurfaces.push({id:genId(),nom:'Surface',l:'0',h:'0'});renderCSurfaces();});
+  // SURFACES — input sans re-render
+  document.getElementById('btn-add-csurface').addEventListener('click',function(){cSurfaces.push({id:genId(),nom:'Surface',l:'',h:''});renderCSurfaces();});
   document.getElementById('btn-add-cdeduction').addEventListener('click',function(){cDeductions.push({id:genId(),nom:'Porte',l:'0.9',h:'2.1'});renderCSurfaces();});
+  document.getElementById('ctab-surfaces').addEventListener('focus',function(e){if(e.target.tagName==='INPUT'&&e.target.type==='number'&&(e.target.value==='0'||e.target.value==='0.00'))e.target.value='';},true);
   document.getElementById('ctab-surfaces').addEventListener('input',function(e){
-    var r=e.target.closest('[data-csid]');if(r){var s=cSurfaces.find(function(x){return x.id===r.dataset.csid;});if(s&&e.target.dataset.csf)s[e.target.dataset.csf]=e.target.value;renderCSurfaces();}
-    var dr=e.target.closest('[data-cdid]');if(dr){var d=cDeductions.find(function(x){return x.id===dr.dataset.cdid;});if(d&&e.target.dataset.cdd)d[e.target.dataset.cdd]=e.target.value;calcCSurfaces();}
+    var r=e.target.closest('[data-csid]');if(r){var s=cSurfaces.find(function(x){return x.id===r.dataset.csid;});if(s&&e.target.dataset.csf){s[e.target.dataset.csf]=e.target.value;var tot=r.querySelector('.cote-tot');if(tot)tot.textContent='= '+calcCSurf(s).toFixed(2)+' m²';calcCSurfaces();}}
+    var dr=e.target.closest('[data-cdid]');if(dr){var d=cDeductions.find(function(x){return x.id===dr.dataset.cdid;});if(d&&e.target.dataset.cdd){d[e.target.dataset.cdd]=e.target.value;calcCSurfaces();}}
   });
   document.getElementById('ctab-surfaces').addEventListener('click',function(e){
     var r=e.target.closest('[data-csrem]');if(r){cSurfaces=cSurfaces.filter(function(s){return s.id!==r.dataset.csrem;});renderCSurfaces();}
     var dr=e.target.closest('[data-cdrem]');if(dr){cDeductions=cDeductions.filter(function(d){return d.id!==dr.dataset.cdrem;});renderCSurfaces();}
   });
 
-  // Murs
-  document.getElementById('btn-add-cmur').addEventListener('click',function(){cMurs.push({id:genId(),nom:'Mur',l:'0',hg:'0',hd:'0',ouvertures:[]});renderCMurs();});
+  // MURS — input sans re-render
+  document.getElementById('btn-add-cmur').addEventListener('click',function(){cMurs.push({id:genId(),nom:'Mur',l:'',hg:'',hd:'',ouvertures:[]});renderCMurs();});
+  document.getElementById('ctab-murs').addEventListener('focus',function(e){if(e.target.tagName==='INPUT'&&e.target.type==='number'&&(e.target.value==='0'||e.target.value==='0.00'))e.target.value='';},true);
   document.getElementById('ctab-murs').addEventListener('input',function(e){
-    var r=e.target.closest('[data-cmurid]');if(!r)return;var m=cMurs.find(function(x){return x.id===r.dataset.cmurid;});if(!m)return;
-    if(e.target.dataset.cmf){m[e.target.dataset.cmf]=e.target.value;renderCMurs();return;}
-    if(e.target.dataset.cof){var or=e.target.closest('[data-couvid]');if(or){var o=(m.ouvertures||[]).find(function(x){return x.id===or.dataset.couvid;});if(o){o[e.target.dataset.cof]=e.target.value;renderCMurs();}}}
+    var r=e.target.closest('[data-cmurid]');if(!r)return;
+    var m=cMurs.find(function(x){return x.id===r.dataset.cmurid;});if(!m)return;
+    if(e.target.dataset.cmf){m[e.target.dataset.cmf]=e.target.value;}
+    if(e.target.dataset.cof){var orow=e.target.closest('[data-couvid]');if(orow){var o=(m.ouvertures||[]).find(function(x){return x.id===orow.dataset.couvid;});if(o)o[e.target.dataset.cof]=e.target.value;}}
+    // Mise à jour inline du résultat SANS recréer le DOM
+    var surf=calcCMurSurf(m);var ouv=calcCMurOuv(m);var net=Math.max(0,surf-ouv);
+    var infoEl=r.querySelector('.mur-calc-info');
+    if(infoEl)infoEl.innerHTML='<span style="color:var(--c-muted);">Trapèze: '+surf.toFixed(2)+' m²</span>'+(ouv>0?'<span style="color:var(--c-danger);"> − '+ouv.toFixed(2)+'</span>':'')+'<span style="color:var(--c-accent);font-weight:600;"> Net: '+net.toFixed(2)+' m²</span>';
+    var bm=cMurs.reduce(function(a,x){return a+calcCMurSurf(x);},0);var dm=cMurs.reduce(function(a,x){return a+calcCMurOuv(x);},0);var nm=Math.max(0,bm-dm);
+    var eb=document.getElementById('cm-brute');var ed=document.getElementById('cm-deduct');var en=document.getElementById('cm-nette');
+    if(eb)eb.textContent=bm.toFixed(2)+' m²';if(ed)ed.textContent=dm.toFixed(2)+' m²';if(en)en.textContent=nm.toFixed(2)+' m²';
   });
   document.getElementById('ctab-murs').addEventListener('click',function(e){
     var mr=e.target.closest('[data-cmrem]');if(mr){cMurs=cMurs.filter(function(m){return m.id!==mr.dataset.cmrem;});renderCMurs();return;}
@@ -1145,14 +1376,26 @@ document.addEventListener('DOMContentLoaded',function(){
     var or=e.target.closest('[data-couvrem]');if(or){var m2=cMurs.find(function(x){return x.id===or.dataset.cmurpp;});if(m2){m2.ouvertures=m2.ouvertures.filter(function(o){return o.id!==or.dataset.couvrem;});renderCMurs();}}
   });
 
-  // Volumes
-  document.getElementById('btn-add-cvolume').addEventListener('click',function(){cVolumes.push({id:genId(),nom:'Volume',l:'0',L:'0',h:'0'});renderCVolumes();});
-  document.getElementById('ctab-volumes').addEventListener('input',function(e){var r=e.target.closest('[data-cvid]');if(r){var v=cVolumes.find(function(x){return x.id===r.dataset.cvid;});if(v&&e.target.dataset.cvf){v[e.target.dataset.cvf]=e.target.value;renderCVolumes();}}});
+  // VOLUMES — input sans re-render
+  document.getElementById('btn-add-cvolume').addEventListener('click',function(){cVolumes.push({id:genId(),nom:'Volume',l:'',L:'',h:''});renderCVolumes();});
+  document.getElementById('ctab-volumes').addEventListener('focus',function(e){if(e.target.tagName==='INPUT'&&e.target.type==='number'&&(e.target.value==='0'||e.target.value==='0.00'))e.target.value='';},true);
+  document.getElementById('ctab-volumes').addEventListener('input',function(e){
+    var r=e.target.closest('[data-cvid]');if(!r)return;var v=cVolumes.find(function(x){return x.id===r.dataset.cvid;});if(!v)return;
+    if(e.target.dataset.cvf)v[e.target.dataset.cvf]=e.target.value;
+    var vol=(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);
+    var tot=r.querySelector('.cote-tot');if(tot)tot.textContent='= '+vol.toFixed(3)+' m³';
+    document.getElementById('cv-total').textContent=cVolumes.reduce(function(a,x){return a+(parseFloat(x.l)||0)*(parseFloat(x.L)||0)*(parseFloat(x.h)||0);},0).toFixed(3)+' m³';
+  });
   document.getElementById('ctab-volumes').addEventListener('click',function(e){var r=e.target.closest('[data-cvrem]');if(r){cVolumes=cVolumes.filter(function(v){return v.id!==r.dataset.cvrem;});renderCVolumes();}});
 
-  // Linéaires
-  document.getElementById('btn-add-clineaire').addEventListener('click',function(){cLineaires.push({id:genId(),nom:'Linéaire',lg:'0'});renderCLineaires();});
-  document.getElementById('ctab-lineaires').addEventListener('input',function(e){var r=e.target.closest('[data-clid]');if(r){var l=cLineaires.find(function(x){return x.id===r.dataset.clid;});if(l&&e.target.dataset.clf){l[e.target.dataset.clf]=e.target.value;renderCLineaires();}}});
+  // LINÉAIRES — input sans re-render
+  document.getElementById('btn-add-clineaire').addEventListener('click',function(){cLineaires.push({id:genId(),nom:'Linéaire',lg:''});renderCLineaires();});
+  document.getElementById('ctab-lineaires').addEventListener('focus',function(e){if(e.target.tagName==='INPUT'&&e.target.type==='number'&&(e.target.value==='0'||e.target.value==='0.00'))e.target.value='';},true);
+  document.getElementById('ctab-lineaires').addEventListener('input',function(e){
+    var r=e.target.closest('[data-clid]');if(!r)return;var l=cLineaires.find(function(x){return x.id===r.dataset.clid;});if(!l)return;
+    if(e.target.dataset.clf)l[e.target.dataset.clf]=e.target.value;
+    document.getElementById('cl-total').textContent=cLineaires.reduce(function(a,x){return a+(parseFloat(x.lg)||0);},0).toFixed(2)+' ml';
+  });
   document.getElementById('ctab-lineaires').addEventListener('click',function(e){var r=e.target.closest('[data-clrem]');if(r){cLineaires=cLineaires.filter(function(l){return l.id!==r.dataset.clrem;});renderCLineaires();}});
 
   // Toiture
