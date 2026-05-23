@@ -804,6 +804,8 @@ function stepNext(){
     parcoursVisite={id:genId(),client:client,tel:document.getElementById('v-tel').value,email:document.getElementById('v-email').value,adresse:document.getElementById('v-adresse').value,date:document.getElementById('v-date').value,heure:document.getElementById('v-heure').value,nature:document.getElementById('v-nature').value,description:document.getElementById('v-description').value,budget:document.getElementById('v-budget').value,delai:document.getElementById('v-delai').value,biosource:document.getElementById('v-biosource').checked,photos:visitPhotos.slice(),createdAt:new Date().toISOString()};
     db.visites.push(parcoursVisite);saveDB();renderVisitesList();renderGreeting();
     goToStep(2);
+    // Adapter les onglets de cotes à la nature des travaux
+    applyNatureTabs(parcoursVisite.nature);
   } else if(parcoursStep===2){
     collectCotes();goToStep(3);
   } else if(parcoursStep===3){
@@ -825,6 +827,38 @@ function stepPrev(){
 function switchCotesTab(tab){
   document.querySelectorAll('#cotes-tabs .mtab').forEach(function(b){b.classList.toggle('active',b.dataset.ctab===tab);});
   ['surfaces','murs','volumes','lineaires','toiture'].forEach(function(t){var el=document.getElementById('ctab-'+t);if(el)el.style.display=t===tab?'block':'none';});
+}
+
+// Mapping nature → onglets autorisés + onglet par défaut
+var NATURE_TABS={
+  'Peinture intérieure' :{tabs:['surfaces','murs'],          def:'surfaces'},
+  'Carrelage'           :{tabs:['surfaces','murs','lineaires'],def:'surfaces'},
+  'Salle de bain'       :{tabs:['surfaces','murs','lineaires'],def:'surfaces'},
+  'Cuisine'             :{tabs:['surfaces','murs','lineaires'],def:'surfaces'},
+  'Plomberie'           :{tabs:['surfaces','lineaires'],       def:'lineaires'},
+  'Électricité'         :{tabs:['surfaces','lineaires'],       def:'lineaires'},
+  'Menuiserie'          :{tabs:['surfaces','lineaires'],       def:'lineaires'},
+  'Isolation'           :{tabs:['surfaces','murs'],            def:'surfaces'},
+  'Toiture'             :{tabs:['toiture'],                    def:'toiture'},
+  'Maçonnerie'          :{tabs:['surfaces','murs','volumes','lineaires'],def:'surfaces'},
+  'Rénovation complète' :{tabs:['surfaces','murs','volumes','lineaires','toiture'],def:'surfaces'},
+  'Autre'               :{tabs:['surfaces','murs','volumes','lineaires','toiture'],def:'surfaces'},
+};
+
+function applyNatureTabs(nature){
+  var cfg=NATURE_TABS[nature]||{tabs:['surfaces','murs','volumes','lineaires','toiture'],def:'surfaces'};
+  var all=['surfaces','murs','volumes','lineaires','toiture'];
+  // Afficher/masquer les onglets
+  document.querySelectorAll('#cotes-tabs .mtab').forEach(function(b){
+    var allowed=cfg.tabs.indexOf(b.dataset.ctab)>=0;
+    b.style.display=allowed?'':'none';
+  });
+  // Activer l'onglet par défaut
+  switchCotesTab(cfg.def);
+  // Masquer les sections des onglets cachés
+  all.forEach(function(t){
+    if(cfg.tabs.indexOf(t)<0){var el=document.getElementById('ctab-'+t);if(el)el.style.display='none';}
+  });
 }
 
 function calcCSurf(s){return (parseFloat(s.l)||0)*(parseFloat(s.h)||0);}
