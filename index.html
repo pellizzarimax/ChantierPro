@@ -244,6 +244,11 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         <button class="action-card" id="btn-metrer"><div class="action-card-icon">📐</div><div class="action-card-title">Mesures & Plans</div><div class="action-card-sub">Cotes → Plan → Devis</div></button>
       </div>
       <div class="card"><div class="card-title">📊 Activite recente</div><div id="recent-activity"><div class="empty-state" style="padding:20px;"><div class="empty-state-icon">📋</div><div style="font-size:14px;">Aucune activite</div></div></div></div>
+      <button id="btn-home-docs" style="width:100%;display:flex;align-items:center;gap:14px;text-align:left;padding:16px;border-radius:14px;background:var(--c-surface);border:1px solid var(--c-border);margin-bottom:8px;cursor:pointer;">
+        <span style="font-size:26px;">📁</span>
+        <div><div style="font-size:14px;font-weight:600;color:var(--c-text);">Mes documents</div><div style="font-size:11px;color:var(--c-muted);">Devis · Plans · PDF · Batappli</div></div>
+        <span style="margin-left:auto;color:var(--c-accent);">→</span>
+      </button>
     </div>
 
     <!-- VISITES -->
@@ -298,7 +303,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     <button class="nav-btn active" data-view="accueil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
     <button class="nav-btn" data-view="visites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>Visites</button>
     <button class="nav-btn" data-view="devis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Devis</button>
-    <button class="nav-btn" data-view="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Docs</button>
+    <button class="nav-btn" data-view="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Clients</button>
     <button class="nav-btn" data-view="planning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Planning</button>
   </nav>
 </div>
@@ -1464,6 +1469,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // ACCUEIL
   document.getElementById('btn-nouvelle-visite').addEventListener('click',function(){openParcours();});
+  document.getElementById('btn-home-docs').addEventListener('click',function(){showView('docs');renderDocs();});
   document.getElementById('btn-dicter').addEventListener('click',function(){document.getElementById('voice-standalone-transcript').textContent='';document.getElementById('btn-voice-to-devis').style.display='none';document.getElementById('modal-voice').classList.add('open');});
   document.getElementById('btn-scanner').addEventListener('click',function(){document.getElementById('scanner-preview').innerHTML='';document.getElementById('scanner-ai-output').style.display='none';document.getElementById('modal-scanner').classList.add('open');});
   document.getElementById('btn-devis-rapide').addEventListener('click',function(){openNewDevis();});
