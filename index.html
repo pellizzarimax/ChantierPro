@@ -16,7 +16,7 @@
   --c-bg:#080d18;--c-surface:#0d1525;--c-surface2:#111e33;--c-border:#1a2d4a;
   --c-accent:#2d8cf0;--c-accent2:#1a6fd4;--c-text:#dde8f8;--c-muted:#4a6a90;
   --c-success:#22c55e;--c-danger:#ef4444;--c-info:#60a5fa;--r:12px;
-  --font-display:'Syne',sans-serif;--font-mono:'DM Mono',monospace;--font-body:'Inter',sans-serif;
+  --font-display:'Instrument Sans',sans-serif;--font-mono:'JetBrains Mono',monospace;--font-body:'Manrope',sans-serif;
   --safe-bottom:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -146,7 +146,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 .step-bar.done,.step-bar.active{background:var(--c-accent);}
 .step-bar.todo{background:var(--c-border);}
 /* PLAN */
-#plan-preview{background:#f5f0e8;border-radius:10px;overflow:hidden;}
+#plan-preview{background:#ffffff;border-radius:10px;overflow:hidden;}
 #plan-preview svg{width:100%;height:auto;display:block;}
 @media(max-width:360px){.action-grid{grid-template-columns:1fr;}}
 </style>
@@ -340,7 +340,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         </div>
         <div class="form-group"><label class="form-label">Description / Contraintes</label><textarea class="form-input" id="v-description" rows="3" placeholder="Décrivez les travaux, contraintes, accès..."></textarea></div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Budget (€)</label><input type="number" class="form-input" id="v-budget" placeholder="5000"/></div>
+          <div class="form-group"><label class="form-label">Budget (€)</label><input type="number" class="form-input" id="v-budget" placeholder="5000" inputmode="decimal"/></div>
           <div class="form-group"><label class="form-label">Délai souhaité</label><input type="text" class="form-input" id="v-delai" placeholder="3 semaines"/></div>
         </div>
         <div class="form-group">
@@ -417,12 +417,12 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
             <select class="form-input" id="ct-type"><option value="1pan">1 pan</option><option value="2pentes">2 pentes</option><option value="4pentes">4 pentes (pavillon)</option><option value="mansarde">Mansarde</option></select>
           </div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">Longueur (m)</label><input type="number" class="form-input" id="ct-longueur" placeholder="10" step="0.1"/></div>
-            <div class="form-group"><label class="form-label">Largeur (m)</label><input type="number" class="form-input" id="ct-largeur" placeholder="8" step="0.1"/></div>
+            <div class="form-group"><label class="form-label">Longueur (m)</label><input type="number" class="form-input" id="ct-longueur" placeholder="10" step="0.1" inputmode="decimal"/></div>
+            <div class="form-group"><label class="form-label">Largeur (m)</label><input type="number" class="form-input" id="ct-largeur" placeholder="8" step="0.1" inputmode="decimal"/></div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">Pente (°)</label><input type="number" class="form-input" id="ct-pente" placeholder="35" min="1" max="89"/></div>
-            <div class="form-group"><label class="form-label">Débord (m)</label><input type="number" class="form-input" id="ct-debord" placeholder="0.5" step="0.1"/></div>
+            <div class="form-group"><label class="form-label">Pente (°)</label><input type="number" class="form-input" id="ct-pente" placeholder="35" min="1" max="89" inputmode="decimal"/></div>
+            <div class="form-group"><label class="form-label">Débord (m)</label><input type="number" class="form-input" id="ct-debord" placeholder="0.5" step="0.1" inputmode="decimal"/></div>
           </div>
           <button class="btn btn-primary btn-full" id="btn-calc-ctoiture">Calculer</button>
           <div class="totaux-box" style="margin-top:8px;">
@@ -432,20 +432,24 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         </div>
       </div>
 
-      <!-- ÉTAPE 3 : PLAN COTÉ -->
+      <!-- ÉTAPE 3 : PLAN COTÉ PREMIUM -->
       <div id="step-3" style="display:none;">
-        <div style="background:rgba(45,140,240,.08);border:1px solid rgba(45,140,240,.2);border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--c-muted);">
-          🗺️ Le plan est généré automatiquement depuis vos cotes. Vous pouvez l'exporter en PDF ou le partager.
+        <div style="background:rgba(45,140,240,.08);border:1px solid rgba(45,140,240,.2);border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--c-muted);">
+          📐 Plan style archi NF — cotations, hachures, cartouche. Tapez pour agrandir.
         </div>
-        <div id="plan-preview" style="margin-bottom:12px;min-height:200px;display:flex;align-items:center;justify-content:center;">
-          <div style="color:var(--c-muted);font-size:13px;">Plan en cours de génération...</div>
+        <!-- Miniature cliquable -->
+        <div id="plan-preview" style="border:1px solid var(--c-border);border-radius:10px;overflow:hidden;margin-bottom:12px;min-height:180px;cursor:pointer;position:relative;background:#fff;">
+          <div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:4px 10px;border-radius:99px;pointer-events:none;z-index:2;">🔍 Agrandir</div>
+          <div style="color:var(--c-muted);font-size:13px;display:flex;align-items:center;justify-content:center;min-height:180px;" id="plan-loading-msg">Plan en cours de génération...</div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
-          <button class="btn btn-secondary" style="padding:10px;font-size:12px;" id="btn-plan-pdf">📄 PDF</button>
-          <button class="btn btn-secondary" style="padding:10px;font-size:12px;" id="btn-plan-share">↗ Partager</button>
-          <button class="btn btn-secondary" style="padding:10px;font-size:12px;" id="btn-plan-mail">✉️ Mail</button>
-        </div>
+        <!-- Récap métrés -->
         <div style="background:var(--c-surface2);border-radius:10px;padding:12px;margin-bottom:12px;" id="plan-recap-cotes"></div>
+        <!-- Actions -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <button class="btn btn-secondary" style="padding:11px;font-size:13px;" id="btn-plan-pdf">📄 PDF</button>
+          <button class="btn btn-secondary" style="padding:11px;font-size:13px;" id="btn-plan-share">↗ Partager</button>
+        </div>
+        <button class="btn btn-primary btn-full" id="btn-plan-inject" style="padding:14px;font-size:14px;">⚡ Injecter dans un devis</button>
       </div>
 
       <!-- ÉTAPE 4 : DEVIS IA -->
@@ -517,7 +521,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <div style="font-size:10px;color:var(--c-muted);">QTÉ</div><div style="font-size:10px;color:var(--c-muted);">PU HT</div><div></div>
     </div>
     <div id="devis-lines-container"></div>
-    <div class="form-group" style="margin-top:12px;"><label class="form-label">TVA (%)</label><input type="number" class="form-input" id="d-tva" value="10" min="0" max="20"/></div>
+    <div class="form-group" style="margin-top:12px;"><label class="form-label">TVA (%)</label><input type="number" class="form-input" id="d-tva" value="10" min="0" max="20" inputmode="decimal"/></div>
     <div class="form-group">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:10px;" id="biosource-toggle">
         <input type="checkbox" id="d-biosource" style="width:18px;height:18px;accent-color:var(--c-accent);flex-shrink:0;"/>
@@ -633,14 +637,14 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     </div>
     <div class="settings-panel" id="stab-tarifs">
       <div class="card-title">Main d'oeuvre (€/h)</div>
-      <div class="form-row"><div class="form-group"><label class="form-label">Carreleur</label><input type="number" class="form-input" id="t-carreleur" value="42"/></div><div class="form-group"><label class="form-label">Peintre</label><input type="number" class="form-input" id="t-peintre" value="38"/></div></div>
-      <div class="form-row"><div class="form-group"><label class="form-label">Plombier</label><input type="number" class="form-input" id="t-plombier" value="62"/></div><div class="form-group"><label class="form-label">Electricien</label><input type="number" class="form-input" id="t-electricien" value="60"/></div></div>
-      <div class="form-row"><div class="form-group"><label class="form-label">Menuisier</label><input type="number" class="form-input" id="t-menuisier" value="50"/></div><div class="form-group"><label class="form-label">Macon</label><input type="number" class="form-input" id="t-macon" value="45"/></div></div>
-      <div class="form-row"><div class="form-group"><label class="form-label">Marge (%)</label><input type="number" class="form-input" id="t-marge" value="0"/></div><div class="form-group"><label class="form-label">TVA defaut</label><input type="number" class="form-input" id="t-tva" value="10"/></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Carreleur</label><input type="number" class="form-input" id="t-carreleur" value="42" inputmode="decimal"/></div><div class="form-group"><label class="form-label">Peintre</label><input type="number" class="form-input" id="t-peintre" value="38" inputmode="decimal"/></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Plombier</label><input type="number" class="form-input" id="t-plombier" value="62" inputmode="decimal"/></div><div class="form-group"><label class="form-label">Electricien</label><input type="number" class="form-input" id="t-electricien" value="60" inputmode="decimal"/></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Menuisier</label><input type="number" class="form-input" id="t-menuisier" value="50" inputmode="decimal"/></div><div class="form-group"><label class="form-label">Macon</label><input type="number" class="form-input" id="t-macon" value="45" inputmode="decimal"/></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Marge (%)</label><input type="number" class="form-input" id="t-marge" value="0" inputmode="decimal"/></div><div class="form-group"><label class="form-label">TVA defaut</label><input type="number" class="form-input" id="t-tva" value="10" inputmode="decimal"/></div></div>
       <div class="form-group"><label class="form-label">Notes tarifaires</label><textarea class="form-input" id="t-notes" rows="2"></textarea></div>
     </div>
     <div class="settings-panel" id="stab-devis-cfg">
-      <div class="form-row"><div class="form-group"><label class="form-label">Préfixe</label><input type="text" class="form-input" id="s-prefix"/></div><div class="form-group"><label class="form-label">N° suivant</label><input type="number" class="form-input" id="s-nextnum" value="1"/></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Préfixe</label><input type="text" class="form-input" id="s-prefix"/></div><div class="form-group"><label class="form-label">N° suivant</label><input type="number" class="form-input" id="s-nextnum" value="1" inputmode="decimal"/></div></div>
       <div style="background:var(--c-surface2);padding:12px;border-radius:8px;font-family:var(--font-mono);font-size:13px;color:var(--c-accent);">Prochain : <span id="next-num-preview"></span></div>
     </div>
     <div class="settings-panel" id="stab-ia">
@@ -884,12 +888,12 @@ function renderCMurs(){
 }
 function renderCVolumes(){
   var cont=document.getElementById('c-volumes-list');if(!cont)return;
-  cont.innerHTML=cVolumes.map(function(v){var vol=(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);return '<div class="devis-line" data-cvid="'+v.id+'"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(v.nom)+'" data-cvf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L" value="'+v.l+'" data-cvf="l" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="l" value="'+v.L+'" data-cvf="L" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="h" value="'+v.h+'" data-cvf="h" step="0.01"/><button class="devis-remove" data-cvrem="'+v.id+'">✕</button></div><div style="font-size:11px;color:var(--c-muted);margin-top:4px;">= '+vol.toFixed(3)+' m³</div></div>';}).join('');
+  cont.innerHTML=cVolumes.map(function(v){var vol=(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);return '<div class="devis-line" data-cvid="'+v.id+'"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(v.nom)+'" data-cvf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L" value="'+v.l+'" data-cvf="l" step="0.01" inputmode="decimal"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="l" value="'+v.L+'" data-cvf="L" step="0.01" inputmode="decimal"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="h" value="'+v.h+'" data-cvf="h" step="0.01" inputmode="decimal"/><button class="devis-remove" data-cvrem="'+v.id+'">✕</button></div><div style="font-size:11px;color:var(--c-muted);margin-top:4px;">= '+vol.toFixed(3)+' m³</div></div>';}).join('');
   document.getElementById('cv-total').textContent=cVolumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0).toFixed(3)+' m³';
 }
 function renderCLineaires(){
   var cont=document.getElementById('c-lineaires-list');if(!cont)return;
-  cont.innerHTML=cLineaires.map(function(l){return '<div class="devis-line" data-clid="'+l.id+'"><div style="display:grid;grid-template-columns:3fr 2fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(l.nom)+'" data-clf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="Longueur (m)" value="'+l.lg+'" data-clf="lg" step="0.01"/><button class="devis-remove" data-clrem="'+l.id+'">✕</button></div></div>';}).join('');
+  cont.innerHTML=cLineaires.map(function(l){return '<div class="devis-line" data-clid="'+l.id+'"><div style="display:grid;grid-template-columns:3fr 2fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(l.nom)+'" data-clf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="Longueur (m)" value="'+l.lg+'" data-clf="lg" step="0.01" inputmode="decimal"/><button class="devis-remove" data-clrem="'+l.id+'">✕</button></div></div>';}).join('');
   document.getElementById('cl-total').textContent=cLineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0).toFixed(2)+' ml';
 }
 
@@ -912,84 +916,173 @@ function calcCToiture(){
 function buildAndShowPlan(){
   collectCotes();
   var rooms=[];
-  cSurfaces.forEach(function(s){var l=parseFloat(s.l)||0;var h=parseFloat(s.h)||0;if(l>0&&h>0)rooms.push({nom:s.nom||'Surface',l:l,w:h,type:'rect'});});
+  cSurfaces.forEach(function(s){var l=parseFloat(s.l)||0;var hh=parseFloat(s.h)||0;if(l>0&&hh>0)rooms.push({nom:s.nom||'Surface',l:l,w:hh,type:'rect'});});
   cMurs.forEach(function(m){var l=parseFloat(m.l)||0;var hg=parseFloat(m.hg)||0;var hd=parseFloat(m.hd)||0;if(l>0&&(hg>0||hd>0))rooms.push({nom:m.nom||'Mur',l:l,w:(hg+hd)/2,hg:hg,hd:hd,type:'trapeze',ouvertures:m.ouvertures||[]});});
-  var sc=42,mg=55,cH=88,gap=20,maxW=340;
-  var curX=mg,curY=mg,rowH=0;
-  var placed=[];
-  rooms.forEach(function(r){var rw=Math.max(r.l*sc,55);var rh=Math.max(r.w*sc,35);if(curX+rw>maxW+mg&&placed.length){curX=mg;curY+=rowH+gap;rowH=0;}placed.push(Object.assign({},r,{x:curX,y:curY,pw:rw,ph:rh}));curX+=rw+gap;if(rh>rowH)rowH=rh;});
-  var tW=Math.max(maxW+2*mg,420);var tH=(placed.length>0?curY+rowH+mg:mg+40)+cH+30;
+
+  /* Métrés */
   var sNette=Math.max(0,cSurfaces.reduce(function(a,s){return a+(parseFloat(s.l)||0)*(parseFloat(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0));
   var murNette=cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0);
   var vtot=cVolumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);
   var ltot=cLineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);
-  var tsurf=document.getElementById('ct-surface').textContent;var hasToiture=tsurf&&tsurf!=='—';
+  var tsurf=document.getElementById('ct-surface').textContent;
+  var hasToiture=tsurf&&tsurf!=='—';
+
+  /* Layout */
+  var sc=48,mg=58,cH=100,gap=24,maxW=360;
+  var curX=mg,curY=mg,rowH=0;
+  var placed=[];
+  rooms.forEach(function(r){
+    var rw=Math.max(r.l*sc,60);var rh=Math.max(r.w*sc,42);
+    if(curX+rw>maxW+mg&&placed.length){curX=mg;curY+=rowH+gap;rowH=0;}
+    placed.push(Object.assign({},r,{x:curX,y:curY,pw:rw,ph:rh}));
+    curX+=rw+gap;if(rh>rowH)rowH=rh;
+  });
+  var tW=Math.max(maxW+2*mg,480);
+  var bodyH=(placed.length>0?curY+rowH+mg:mg+30);
+  var tH=bodyH+cH+20;
   var ent=db.settings.entreprise||'ChantiersPro';
   var sv=[];
-  sv.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+tW+' '+tH+'">');
-  sv.push('<rect width="'+tW+'" height="'+tH+'" fill="#f5f0e8"/>');
-  sv.push('<defs><pattern id="h1" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#8b7355" stroke-width="1.2" opacity="0.45"/></pattern><pattern id="h2" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#3a6a9a" stroke-width="1" opacity="0.5"/></pattern></defs>');
-  sv.push('<rect x="14" y="14" width="'+(tW-28)+'" height="'+(tH-28)+'" fill="none" stroke="#2a1f0f" stroke-width="0.7" opacity="0.2"/>');
-  if(placed.length===0){sv.push('<text x="'+(tW/2)+'" y="'+(tH/2-cH/2)+'" text-anchor="middle" font-family="DM Mono,monospace" font-size="13" fill="#8b7355">Saisissez des cotes pour afficher le plan</text>');}
+
+  sv.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+tW+' '+tH+'" style="font-family:JetBrains Mono,monospace;">');
+  sv.push('<rect width="'+tW+'" height="'+tH+'" fill="#ffffff"/>');
+  /* Cadre double trait NF */
+  sv.push('<rect x="4" y="4" width="'+(tW-8)+'" height="'+(tH-8)+'" fill="none" stroke="#444" stroke-width="0.5"/>');
+  sv.push('<rect x="8" y="8" width="'+(tW-16)+'" height="'+(tH-16)+'" fill="none" stroke="#111" stroke-width="1.8"/>');
+
+  sv.push('<defs>');
+  sv.push('<pattern id="hwall" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#444" stroke-width="0.8"/></pattern>');
+  sv.push('<pattern id="hslope" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#3a6aaa" stroke-width="0.9"/></pattern>');
+  sv.push('<marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0.5 L5,3 L0,5.5 Z" fill="#222"/></marker>');
+  sv.push('<marker id="arrl" markerWidth="6" markerHeight="6" refX="1" refY="3" orient="auto-start-reverse"><path d="M0,0.5 L5,3 L0,5.5 Z" fill="#222"/></marker>');
+  sv.push('</defs>');
+
+  if(placed.length===0){
+    sv.push('<text x="'+(tW/2)+'" y="'+(bodyH/2)+'" text-anchor="middle" font-size="13" fill="#aaa">Saisissez des cotes à l\'étape 2</text>');
+  }
+
   placed.forEach(function(r){
-    var x=r.x,y=r.y,w=r.pw,h=r.ph;
+    var x=r.x,y=r.y,w=r.pw,hh=r.ph;
+    var surfStr=(r.l*r.w).toFixed(2);
+    var tk=8; /* épaisseur mur px */
+
     if(r.type==='trapeze'){
-      var hgP=(parseFloat(r.hg)||0)*sc,hdP=(parseFloat(r.hd)||0)*sc;
-      var maxH=Math.max(hgP,hdP);var pts=x+','+(y+h)+' '+(x+w)+','+(y+h)+' '+(x+w)+','+(y+h-hdP)+' '+x+','+(y+h-hgP);
-      sv.push('<polygon points="'+pts+'" fill="#e8f0f8" stroke="#1a4a7a" stroke-width="2"/>');
-      sv.push('<polygon points="'+pts+'" fill="url(#h2)" opacity="0.5"/>');
-      var cy=y+h-(hgP+hdP)/4;
-      sv.push('<text x="'+(x+w/2)+'" y="'+(cy-7)+'" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="#1a4a7a" font-weight="500">'+esc(r.nom)+'</text>');
-      sv.push('<text x="'+(x+w/2)+'" y="'+(cy+7)+'" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#4a7aaa">'+r.l.toFixed(1)+'×('+r.hg+'+'+r.hd+')÷2</text>');
-      // Cotes L
-      sv.push('<line x1="'+x+'" y1="'+(y+h+10)+'" x2="'+(x+w)+'" y2="'+(y+h+10)+'" stroke="#1a4a7a" stroke-width="0.7"/>');
-      sv.push('<text x="'+(x+w/2)+'" y="'+(y+h+22)+'" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#1a4a7a">'+parseFloat(r.l).toFixed(2)+'m</text>');
-      // Hauteurs
-      sv.push('<line x1="'+(x-8)+'" y1="'+(y+h)+'" x2="'+(x-8)+'" y2="'+(y+h-hgP)+'" stroke="#1a4a7a" stroke-width="0.7"/>');
-      sv.push('<text x="'+(x-12)+'" y="'+(y+h-hgP/2)+'" text-anchor="end" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="7" fill="#1a4a7a">'+r.hg+'m</text>');
-      sv.push('<line x1="'+(x+w+8)+'" y1="'+(y+h)+'" x2="'+(x+w+8)+'" y2="'+(y+h-hdP)+'" stroke="#1a4a7a" stroke-width="0.7"/>');
-      sv.push('<text x="'+(x+w+12)+'" y="'+(y+h-hdP/2)+'" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="7" fill="#1a4a7a">'+r.hd+'m</text>');
-      // Ouvertures
-      (r.ouvertures||[]).forEach(function(o,oi){var ow=Math.min((parseFloat(o.l)||0)*sc,w/Math.max(r.ouvertures.length,1)-4);var oh=Math.min((parseFloat(o.h)||0)*sc,hgP-4);var ox=x+10+oi*((w-20)/Math.max(r.ouvertures.length,1));sv.push('<rect x="'+ox+'" y="'+(y+h-oh-2)+'" width="'+ow+'" height="'+oh+'" fill="#c8e0f0" stroke="#1a4a7a" stroke-width="1" stroke-dasharray="3,2"/>');sv.push('<line x1="'+ox+'" y1="'+(y+h-oh-2)+'" x2="'+(ox+ow)+'" y2="'+(y+h-2)+'" stroke="#1a4a7a" stroke-width="0.5" opacity="0.5"/>');sv.push('<line x1="'+(ox+ow)+'" y1="'+(y+h-oh-2)+'" x2="'+ox+'" y2="'+(y+h-2)+'" stroke="#1a4a7a" stroke-width="0.5" opacity="0.5"/>');});
+      var hgPx=(parseFloat(r.hg)||0)*sc;
+      var hdPx=(parseFloat(r.hd)||0)*sc;
+      var pts=x+','+(y+hh)+' '+(x+w)+','+(y+hh)+' '+(x+w)+','+(y+hh-hdPx)+' '+x+','+(y+hh-hgPx);
+      sv.push('<polygon points="'+pts+'" fill="#e8f0f8"/>');
+      sv.push('<polygon points="'+pts+'" fill="url(#hslope)" opacity="0.55"/>');
+      sv.push('<polygon points="'+pts+'" fill="none" stroke="#1a4a7a" stroke-width="1.8"/>');
+      var cy2=y+hh-(hgPx+hdPx)/4;
+      sv.push('<text x="'+(x+w/2)+'" y="'+(cy2-9)+'" text-anchor="middle" font-size="10" fill="#1a3a6a" font-weight="700">'+esc(r.nom)+'</text>');
+      sv.push('<text x="'+(x+w/2)+'" y="'+(cy2+5)+'" text-anchor="middle" font-size="9" fill="#3a6aaa">'+surfStr+' m²</text>');
+      /* Cotation L */
+      var cotY=y+hh+16;
+      sv.push('<line x1="'+x+'" y1="'+(y+hh+3)+'" x2="'+x+'" y2="'+(cotY+3)+'" stroke="#333" stroke-width="0.6"/>');
+      sv.push('<line x1="'+(x+w)+'" y1="'+(y+hh+3)+'" x2="'+(x+w)+'" y2="'+(cotY+3)+'" stroke="#333" stroke-width="0.6"/>');
+      sv.push('<line x1="'+x+'" y1="'+cotY+'" x2="'+(x+w)+'" y2="'+cotY+'" stroke="#333" stroke-width="0.7" marker-start="url(#arrl)" marker-end="url(#arr)"/>');
+      sv.push('<rect x="'+(x+w/2-20)+'" y="'+(cotY-7)+'" width="40" height="12" fill="#fff"/>');
+      sv.push('<text x="'+(x+w/2)+'" y="'+(cotY+2)+'" text-anchor="middle" font-size="8.5" fill="#111">'+parseFloat(r.l).toFixed(2)+' m</text>');
+      /* Cotation Hg */
+      sv.push('<line x1="'+(x-4)+'" y1="'+(y+hh)+'" x2="'+(x-14)+'" y2="'+(y+hh)+'" stroke="#333" stroke-width="0.6"/>');
+      sv.push('<line x1="'+(x-4)+'" y1="'+(y+hh-hgPx)+'" x2="'+(x-14)+'" y2="'+(y+hh-hgPx)+'" stroke="#333" stroke-width="0.6"/>');
+      sv.push('<line x1="'+(x-10)+'" y1="'+(y+hh)+'" x2="'+(x-10)+'" y2="'+(y+hh-hgPx)+'" stroke="#333" stroke-width="0.7" marker-start="url(#arrl)" marker-end="url(#arr)"/>');
+      sv.push('<rect x="'+(x-28)+'" y="'+(y+hh-hgPx/2-6)+'" width="22" height="12" fill="#fff"/>');
+      sv.push('<text x="'+(x-17)+'" y="'+(y+hh-hgPx/2+2)+'" text-anchor="middle" font-size="7.5" fill="#1a3a6a">'+parseFloat(r.hg).toFixed(2)+'m</text>');
+      /* Cotation Hd */
+      sv.push('<line x1="'+(x+w+4)+'" y1="'+(y+hh)+'" x2="'+(x+w+14)+'" y2="'+(y+hh)+'" stroke="#333" stroke-width="0.6"/>');
+      sv.push('<line x1="'+(x+w+4)+'" y1="'+(y+hh-hdPx)+'" x2="'+(x+w+14)+'" y2="'+(y+hh-hdPx)+'" stroke="#333" stroke-width="0.6"/>');
+      sv.push('<line x1="'+(x+w+10)+'" y1="'+(y+hh)+'" x2="'+(x+w+10)+'" y2="'+(y+hh-hdPx)+'" stroke="#333" stroke-width="0.7" marker-start="url(#arrl)" marker-end="url(#arr)"/>');
+      sv.push('<rect x="'+(x+w+12)+'" y="'+(y+hh-hdPx/2-6)+'" width="22" height="12" fill="#fff"/>');
+      sv.push('<text x="'+(x+w+23)+'" y="'+(y+hh-hdPx/2+2)+'" text-anchor="middle" font-size="7.5" fill="#1a3a6a">'+parseFloat(r.hd).toFixed(2)+'m</text>');
+      /* Ouvertures */
+      (r.ouvertures||[]).forEach(function(o,oi){
+        var ow=Math.min((parseFloat(o.l)||0)*sc,w/Math.max(r.ouvertures.length,1)-4);
+        var oh=Math.min((parseFloat(o.h)||0)*sc,hgPx-4);
+        var ox=x+10+oi*((w-20)/Math.max(r.ouvertures.length,1));
+        sv.push('<rect x="'+ox+'" y="'+(y+hh-oh-2)+'" width="'+ow+'" height="'+oh+'" fill="#d0e8f8" stroke="#1a4a7a" stroke-width="1" stroke-dasharray="3,2"/>');
+      });
+
     } else {
-      sv.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="url(#h1)" stroke="#2a1f0f" stroke-width="2"/>');
-      sv.push('<rect x="'+(x+4)+'" y="'+(y+4)+'" width="'+(w-8)+'" height="'+(h-8)+'" fill="#faf7f0"/>');
-      sv.push('<text x="'+(x+w/2)+'" y="'+(y+h/2-8)+'" text-anchor="middle" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="11" fill="#2a1f0f" font-weight="500">'+esc(r.nom)+'</text>');
-      sv.push('<text x="'+(x+w/2)+'" y="'+(y+h/2+8)+'" text-anchor="middle" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="9" fill="#8b7355">'+r.l.toFixed(1)+'×'+r.w.toFixed(1)+'='+( r.l*r.w).toFixed(1)+' m²</text>');
-      sv.push('<line x1="'+x+'" y1="'+(y+h+10)+'" x2="'+(x+w)+'" y2="'+(y+h+10)+'" stroke="#2a1f0f" stroke-width="0.7"/>');
-      sv.push('<text x="'+(x+w/2)+'" y="'+(y+h+22)+'" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#2a1f0f">'+r.l.toFixed(2)+'m</text>');
-      sv.push('<line x1="'+(x+w+10)+'" y1="'+y+'" x2="'+(x+w+10)+'" y2="'+(y+h)+'" stroke="#2a1f0f" stroke-width="0.7"/>');
-      sv.push('<text x="'+(x+w+22)+'" y="'+(y+h/2)+'" dominant-baseline="middle" font-family="DM Mono,monospace" font-size="8" fill="#2a1f0f" transform="rotate(-90,'+(x+w+22)+','+(y+h/2)+')">'+r.w.toFixed(2)+'m</text>');
+      /* Fond pièce + hachures mur */
+      sv.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+hh+'" fill="url(#hwall)" stroke="#111" stroke-width="1.8"/>');
+      sv.push('<rect x="'+(x+tk)+'" y="'+(y+tk)+'" width="'+(w-2*tk)+'" height="'+(hh-2*tk)+'" fill="#fafafa" stroke="#bbb" stroke-width="0.4"/>');
+      sv.push('<text x="'+(x+w/2)+'" y="'+(y+hh/2-8)+'" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="#111" font-weight="700">'+esc(r.nom)+'</text>');
+      sv.push('<text x="'+(x+w/2)+'" y="'+(y+hh/2+8)+'" text-anchor="middle" dominant-baseline="middle" font-size="9.5" fill="#555">'+surfStr+' m²</text>');
+      /* Cotation L */
+      var cotY2=y+hh+16;
+      sv.push('<line x1="'+x+'" y1="'+(y+hh+3)+'" x2="'+x+'" y2="'+(cotY2+3)+'" stroke="#333" stroke-width="0.6"/>');
+      sv.push('<line x1="'+(x+w)+'" y1="'+(y+hh+3)+'" x2="'+(x+w)+'" y2="'+(cotY2+3)+'" stroke="#333" stroke-width="0.6"/>');
+      sv.push('<line x1="'+x+'" y1="'+cotY2+'" x2="'+(x+w)+'" y2="'+cotY2+'" stroke="#333" stroke-width="0.7" marker-start="url(#arrl)" marker-end="url(#arr)"/>');
+      sv.push('<rect x="'+(x+w/2-22)+'" y="'+(cotY2-7)+'" width="44" height="12" fill="#fff"/>');
+      sv.push('<text x="'+(x+w/2)+'" y="'+(cotY2+2)+'" text-anchor="middle" font-size="8.5" fill="#111">'+r.l.toFixed(2)+' m</text>');
+      /* Cotation H */
+      sv.push('<line x1="'+(x+w+4)+'" y1="'+y+'" x2="'+(x+w+16)+'" y2="'+y+'" stroke="#333" stroke-width="0.6"/>');
+      sv.push('<line x1="'+(x+w+4)+'" y1="'+(y+hh)+'" x2="'+(x+w+16)+'" y2="'+(y+hh)+'" stroke="#333" stroke-width="0.6"/>');
+      sv.push('<line x1="'+(x+w+12)+'" y1="'+y+'" x2="'+(x+w+12)+'" y2="'+(y+hh)+'" stroke="#333" stroke-width="0.7" marker-start="url(#arrl)" marker-end="url(#arr)"/>');
+      sv.push('<rect x="'+(x+w+14)+'" y="'+(y+hh/2-6)+'" width="28" height="12" fill="#fff"/>');
+      sv.push('<text x="'+(x+w+28)+'" y="'+(y+hh/2+2)+'" text-anchor="middle" font-size="7.5" fill="#111" transform="rotate(-90,'+(x+w+28)+','+(y+hh/2)+')">'+r.w.toFixed(2)+' m</text>');
     }
   });
-  // CARTOUCHE
-  var cy=(placed.length>0?curY+rowH:mg)+mg;
-  var cw=tW-2*mg;var c4=cw/4;
-  sv.push('<rect x="'+mg+'" y="'+cy+'" width="'+cw+'" height="'+cH+'" fill="#f0ebe0" stroke="#2a1f0f" stroke-width="1.2"/>');
-  sv.push('<line x1="'+(mg+c4)+'" y1="'+cy+'" x2="'+(mg+c4)+'" y2="'+(cy+cH)+'" stroke="#2a1f0f" stroke-width="0.7"/>');
-  sv.push('<line x1="'+(mg+c4*2)+'" y1="'+cy+'" x2="'+(mg+c4*2)+'" y2="'+(cy+cH)+'" stroke="#2a1f0f" stroke-width="0.7"/>');
-  sv.push('<line x1="'+(mg+c4*3)+'" y1="'+cy+'" x2="'+(mg+c4*3)+'" y2="'+(cy+cH)+'" stroke="#2a1f0f" stroke-width="0.7"/>');
-  sv.push('<line x1="'+mg+'" y1="'+(cy+26)+'" x2="'+(mg+cw)+'" y2="'+(cy+26)+'" stroke="#2a1f0f" stroke-width="0.7"/>');
-  sv.push('<text x="'+(mg+6)+'" y="'+(cy+14)+'" font-family="DM Mono,monospace" font-size="7" fill="#8b7355" font-weight="600">ENTREPRISE</text>');
-  sv.push('<text x="'+(mg+6)+'" y="'+(cy+44)+'" font-family="DM Mono,monospace" font-size="10" fill="#2a1f0f" font-weight="600">'+esc(ent)+'</text>');
-  if(db.settings.tel)sv.push('<text x="'+(mg+6)+'" y="'+(cy+60)+'" font-family="DM Mono,monospace" font-size="8" fill="#5a5a5a">'+esc(db.settings.tel)+'</text>');
-  sv.push('<text x="'+(mg+c4+6)+'" y="'+(cy+14)+'" font-family="DM Mono,monospace" font-size="7" fill="#8b7355" font-weight="600">CLIENT</text>');
-  if(parcoursVisite)sv.push('<text x="'+(mg+c4+6)+'" y="'+(cy+44)+'" font-family="DM Mono,monospace" font-size="9" fill="#2a1f0f">'+esc(parcoursVisite.client)+'</text>');
-  sv.push('<text x="'+(mg+c4*2+6)+'" y="'+(cy+14)+'" font-family="DM Mono,monospace" font-size="7" fill="#8b7355" font-weight="600">PLAN COTÉ</text>');
-  sv.push('<text x="'+(mg+c4*2+6)+'" y="'+(cy+44)+'" font-family="DM Mono,monospace" font-size="9" fill="#2a1f0f">'+new Date().toLocaleDateString('fr-FR')+'</text>');
-  sv.push('<text x="'+(mg+c4*3+6)+'" y="'+(cy+14)+'" font-family="DM Mono,monospace" font-size="7" fill="#8b7355" font-weight="600">MÉTRÉS</text>');
-  var mlines=[];if(sNette>0)mlines.push('Surf: '+sNette.toFixed(1)+' m²');if(murNette>0)mlines.push('Murs: '+murNette.toFixed(1)+' m²');if(vtot>0)mlines.push('Vol: '+vtot.toFixed(2)+' m³');if(ltot>0)mlines.push('Lin: '+ltot.toFixed(1)+' ml');if(hasToiture)mlines.push('Toit: '+tsurf);
-  mlines.slice(0,3).forEach(function(t,i){sv.push('<text x="'+(mg+c4*3+6)+'" y="'+(cy+32+i*16)+'" font-family="DM Mono,monospace" font-size="8" fill="#2a1f0f">'+esc(t)+'</text>');});
-  sv.push('<text x="'+(mg+8)+'" y="'+(cy+cH-6)+'" font-family="DM Mono,monospace" font-size="7" fill="#8b7355">ÉCHELLE 1/'+sc+'</text>');
-  sv.push('<rect x="'+(mg+80)+'" y="'+(cy+cH-16)+'" width="20" height="5" fill="#2a1f0f"/>');
-  sv.push('<rect x="'+(mg+100)+'" y="'+(cy+cH-16)+'" width="20" height="5" fill="#f5f0e8" stroke="#2a1f0f" stroke-width="0.5"/>');
+
+  /* ── CARTOUCHE NF ── */
+  var cw=tW-2*mg; var c4=cw/4;
+  sv.push('<rect x="'+mg+'" y="'+bodyH+'" width="'+cw+'" height="'+cH+'" fill="#ffffff" stroke="#111" stroke-width="1.5"/>');
+  [1,2,3].forEach(function(i){sv.push('<line x1="'+(mg+c4*i)+'" y1="'+bodyH+'" x2="'+(mg+c4*i)+'" y2="'+(bodyH+cH)+'" stroke="#111" stroke-width="0.8"/>');});
+  sv.push('<line x1="'+mg+'" y1="'+(bodyH+24)+'" x2="'+(mg+cw)+'" y2="'+(bodyH+24)+'" stroke="#111" stroke-width="0.6"/>');
+  /* Col 1 Entreprise */
+  sv.push('<text x="'+(mg+5)+'" y="'+(bodyH+16)+'" font-size="7" fill="#888" font-weight="700" letter-spacing="1">MAÎTRE D\'OEUVRE</text>');
+  sv.push('<text x="'+(mg+5)+'" y="'+(bodyH+40)+'" font-size="11" fill="#111" font-weight="700">'+esc(ent)+'</text>');
+  if(db.settings.siret)sv.push('<text x="'+(mg+5)+'" y="'+(bodyH+55)+'" font-size="8" fill="#555">SIRET : '+esc(db.settings.siret)+'</text>');
+  if(db.settings.tel)sv.push('<text x="'+(mg+5)+'" y="'+(bodyH+68)+'" font-size="8" fill="#555">'+esc(db.settings.tel)+'</text>');
+  if(db.settings.email)sv.push('<text x="'+(mg+5)+'" y="'+(bodyH+81)+'" font-size="7.5" fill="#777">'+esc(db.settings.email)+'</text>');
+  /* Col 2 Client */
+  sv.push('<text x="'+(mg+c4+5)+'" y="'+(bodyH+16)+'" font-size="7" fill="#888" font-weight="700" letter-spacing="1">CLIENT / CHANTIER</text>');
+  if(parcoursVisite){
+    sv.push('<text x="'+(mg+c4+5)+'" y="'+(bodyH+40)+'" font-size="10.5" fill="#111" font-weight="600">'+esc(parcoursVisite.client)+'</text>');
+    if(parcoursVisite.adresse)sv.push('<text x="'+(mg+c4+5)+'" y="'+(bodyH+55)+'" font-size="8" fill="#555">'+esc(parcoursVisite.adresse.slice(0,28))+'</text>');
+    if(parcoursVisite.nature)sv.push('<text x="'+(mg+c4+5)+'" y="'+(bodyH+69)+'" font-size="8" fill="#777">'+esc(parcoursVisite.nature)+'</text>');
+  }
+  /* Col 3 Plan */
+  sv.push('<text x="'+(mg+c4*2+5)+'" y="'+(bodyH+16)+'" font-size="7" fill="#888" font-weight="700" letter-spacing="1">PLAN</text>');
+  sv.push('<text x="'+(mg+c4*2+5)+'" y="'+(bodyH+40)+'" font-size="11" fill="#111" font-weight="600">PLAN COTÉ</text>');
+  sv.push('<text x="'+(mg+c4*2+5)+'" y="'+(bodyH+55)+'" font-size="8.5" fill="#555">Éch. 1/'+sc+'</text>');
+  sv.push('<text x="'+(mg+c4*2+5)+'" y="'+(bodyH+68)+'" font-size="8.5" fill="#555">'+new Date().toLocaleDateString('fr-FR')+'</text>');
+  sv.push('<text x="'+(mg+c4*2+5)+'" y="'+(bodyH+83)+'" font-size="7.5" fill="#999">NF P02-001</text>');
+  /* Col 4 Métrés */
+  sv.push('<text x="'+(mg+c4*3+5)+'" y="'+(bodyH+16)+'" font-size="7" fill="#888" font-weight="700" letter-spacing="1">MÉTRÉS</text>');
+  var mlines=[];
+  if(sNette>0)mlines.push(['Surf. nette',sNette.toFixed(2)+' m²']);
+  if(murNette>0)mlines.push(['Murs nets',murNette.toFixed(2)+' m²']);
+  if(vtot>0)mlines.push(['Volume',vtot.toFixed(3)+' m³']);
+  if(ltot>0)mlines.push(['Linéaires',ltot.toFixed(2)+' ml']);
+  if(hasToiture)mlines.push(['Toiture',tsurf]);
+  mlines.slice(0,4).forEach(function(ml,i){
+    sv.push('<text x="'+(mg+c4*3+5)+'" y="'+(bodyH+32+i*14)+'" font-size="8" fill="#333">'+esc(ml[0])+'</text>');
+    sv.push('<text x="'+(mg+c4*4-5)+'" y="'+(bodyH+32+i*14)+'" text-anchor="end" font-size="8.5" fill="#2d8cf0" font-weight="700">'+esc(ml[1])+'</text>');
+  });
+
   sv.push('</svg>');
   planSVG=sv.join('\n');
-  var prev=document.getElementById('plan-preview');prev.innerHTML=planSVG;
-  // Recap cotes
+
+  /* Miniature avec indicateur agrandir */
+  var prev=document.getElementById('plan-preview');
+  var hint=prev.querySelector('div[style*="bottom"]');
+  prev.innerHTML='';
+  var svgWrap=document.createElement('div');
+  svgWrap.innerHTML=planSVG;
+  var svgEl=svgWrap.querySelector('svg');
+  if(svgEl){svgEl.style.width='100%';svgEl.style.height='auto';svgEl.style.display='block';}
+  prev.appendChild(svgWrap);
+  var badge=document.createElement('div');
+  badge.textContent='🔍 Agrandir';
+  badge.style.cssText='position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:4px 10px;border-radius:99px;pointer-events:none;z-index:2;';
+  prev.appendChild(badge);
+  prev.onclick=function(){openPlanFullscreen();};
+
+  /* Récap métrés */
   var recap='<div style="font-size:12px;">';
-  if(sNette>0)recap+='<div class="kv"><label style="font-size:12px;">Surfaces net</label><span style="font-family:var(--font-mono);color:var(--c-accent);">'+sNette.toFixed(2)+' m²</span></div>';
-  if(murNette>0)recap+='<div class="kv"><label style="font-size:12px;">Murs pente net</label><span style="font-family:var(--font-mono);color:var(--c-accent);">'+murNette.toFixed(2)+' m²</span></div>';
+  if(sNette>0)recap+='<div class="kv"><label style="font-size:12px;">Surfaces nettes</label><span style="font-family:var(--font-mono);color:var(--c-accent);">'+sNette.toFixed(2)+' m²</span></div>';
+  if(murNette>0)recap+='<div class="kv"><label style="font-size:12px;">Murs pente nets</label><span style="font-family:var(--font-mono);color:var(--c-accent);">'+murNette.toFixed(2)+' m²</span></div>';
   if(vtot>0)recap+='<div class="kv"><label style="font-size:12px;">Volumes</label><span style="font-family:var(--font-mono);">'+vtot.toFixed(3)+' m³</span></div>';
   if(ltot>0)recap+='<div class="kv"><label style="font-size:12px;">Linéaires</label><span style="font-family:var(--font-mono);">'+ltot.toFixed(2)+' ml</span></div>';
   if(hasToiture)recap+='<div class="kv"><label style="font-size:12px;">Toiture</label><span style="font-family:var(--font-mono);">'+tsurf+'</span></div>';
@@ -1000,10 +1093,17 @@ function buildAndShowPlan(){
 function exportPlanPDF(){
   if(!planSVG){showToast('Pas de plan généré','error');return;}
   var client=parcoursVisite?parcoursVisite.client:'';
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Plan coté — '+esc(client)+'</title><style>body{margin:0;background:#f5f0e8;}svg{width:100vw;height:auto;display:block;}@media print{body{margin:0;}}</style></head><body>'+planSVG+'</body></html>';
-  var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);}else{showToast('Autorisez les popups','error');}
+  var htm='<!DOCTYPE html><html><head><meta charset="UTF-8\/"><title>Plan coté<\/title>'
+    +'<style>body{margin:0;background:#fff;}svg{width:100vw;height:auto;display:block;}'
+    +'@media print{body{margin:0;}@page{size:A4 landscape;margin:0;}}<\/style>'
+    +'<\/head><body>'+planSVG
+    +'<div style="text-align:center;padding:16px;">'
+    +'<button onclick="window.print()" style="padding:12px 24px;background:#2d8cf0;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;">Imprimer \/ Sauvegarder PDF<\/button>'
+    +'<\/div><\/body><\/html>';
+  var w=window.open('','_blank');
+  if(w){w.document.write(htm);w.document.close();setTimeout(function(){w.print();},500);}
+  else{showToast('Autorisez les popups','error');}
 }
-
 function sharePlan(byMail){
   if(!planSVG){showToast('Pas de plan généré','error');return;}
   if(byMail){
@@ -1122,9 +1222,9 @@ function updateBiosourceUI(){var c=document.getElementById('d-biosource').checke
 function addDevisLine(){devisLines.push({id:genId(),designation:'',unite:'u',qte:'1',pu:'0'});renderDevisLines();}
 function removeDevisLine(id){devisLines=devisLines.filter(function(l){return l.id!==id;});renderDevisLines();}
 function collectLines(){document.querySelectorAll('#devis-lines-container .devis-line').forEach(function(row){var lid=row.dataset.lid;var l=devisLines.find(function(x){return x.id===lid;});if(!l)return;row.querySelectorAll('input[data-f]').forEach(function(inp){l[inp.dataset.f]=inp.value;});});}
-function renderDevisLines(){var cont=document.getElementById('devis-lines-container');cont.innerHTML=devisLines.map(function(l){var tot=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);return '<div class="devis-line" data-lid="'+l.id+'"><div class="dl-grid"><input type="text" placeholder="Désignation" value="'+esc(l.designation||'')+'" data-f="designation"/><input type="text" placeholder="m²" value="'+esc(l.unite||'')+'" data-f="unite"/><input type="number" placeholder="Qté" value="'+esc(l.qte||'')+'" data-f="qte" step="0.01"/><input type="number" placeholder="PU" value="'+esc(l.pu||'')+'" data-f="pu" step="0.01"/><button class="devis-remove" data-rem="'+l.id+'">✕</button></div><div class="devis-line-total">= '+fmtMoney(tot)+'</div></div>';}).join('');updateTotaux();}
+function renderDevisLines(){var cont=document.getElementById('devis-lines-container');cont.innerHTML=devisLines.map(function(l){var tot=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);return '<div class="devis-line" data-lid="'+l.id+'"><div class="dl-grid"><input type="text" placeholder="Désignation" value="'+esc(l.designation||'')+'" data-f="designation"/><input type="text" placeholder="m²" value="'+esc(l.unite||'')+'" data-f="unite"/><input type="number" placeholder="Qté" value="'+esc(l.qte||'')+'" data-f="qte" step="0.01" inputmode="decimal"/><input type="number" placeholder="PU" value="'+esc(l.pu||'')+'" data-f="pu" step="0.01" inputmode="decimal"/><button class="devis-remove" data-rem="'+l.id+'">✕</button></div><div class="devis-line-total">= '+fmtMoney(tot)+'</div></div>';}).join('');updateTotaux();}
 function updateTotaux(){var tvr=parseFloat(document.getElementById('d-tva').value)||10;var ht=0;devisLines.forEach(function(l){ht+=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);});var tva=ht*tvr/100;document.getElementById('total-ht').textContent=fmtMoney(ht);document.getElementById('total-tva-amount').textContent=fmtMoney(tva)+' ('+tvr+'%)';document.getElementById('total-ttc').textContent=fmtMoney(ht+tva);}
-function saveDevis(){var client=document.getElementById('d-client').value.trim();if(!client){showToast('Nom client requis','error');return;}collectLines();var prev=editDevisId?db.devis.find(function(d){return d.id===editDevisId;}):null;var dv={id:editDevisId||genId(),numero:prev?prev.numero:genNum(),client:client,objet:document.getElementById('d-objet').value,adresse:document.getElementById('d-adresse').value,date:document.getElementById('d-date').value,statut:document.getElementById('d-statut').value,tva:parseFloat(document.getElementById('d-tva').value)||10,biosource:document.getElementById('d-biosource').checked,notes:document.getElementById('d-notes').value,lignes:devisLines.slice(),planSVG:prev?prev.planSVG:'',createdAt:prev?prev.createdAt:new Date().toISOString()};if(!editDevisId)db.settings.nextNum=(db.settings.nextNum||1)+1;if(editDevisId){var i=db.devis.findIndex(function(d){return d.id===editDevisId;});if(i>=0)db.devis[i]=dv;}else{db.devis.push(dv);}saveDB();renderDevisList();renderGreeting();renderRecentActivity();document.getElementById('modal-devis').classList.remove('open');showToast('Devis enregistré','success');}
+function saveDevis(){var client=document.getElementById('d-client').value.trim();if(!client){showToast('Nom client requis','error');return;}collectLines();var prev=editDevisId?db.devis.find(function(d){return d.id===editDevisId;}):null;var planSVGfinal=window._pendingPlanSVG||(prev?prev.planSVG||'':'');window._pendingPlanSVG=null;var dv={id:editDevisId||genId(),numero:prev?prev.numero:genNum(),client:client,objet:document.getElementById('d-objet').value,adresse:document.getElementById('d-adresse').value,date:document.getElementById('d-date').value,statut:document.getElementById('d-statut').value,tva:parseFloat(document.getElementById('d-tva').value)||10,biosource:document.getElementById('d-biosource').checked,notes:document.getElementById('d-notes').value,lignes:devisLines.slice(),planSVG:planSVGfinal,createdAt:prev?prev.createdAt:new Date().toISOString()};if(!editDevisId)db.settings.nextNum=(db.settings.nextNum||1)+1;if(editDevisId){var i=db.devis.findIndex(function(d){return d.id===editDevisId;});if(i>=0)db.devis[i]=dv;}else{db.devis.push(dv);}saveDB();renderDevisList();renderGreeting();renderRecentActivity();document.getElementById('modal-devis').classList.remove('open');showToast('Devis enregistré','success');}
 
 function renderDevisList(){var cont=document.getElementById('devis-list');var list=db.devis.slice().reverse();if(devisFilter!=='all')list=list.filter(function(d){return d.statut===devisFilter;});if(!list.length){cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📄</div><div style="font-size:14px;">Aucun devis</div></div>';return;}cont.innerHTML=list.map(function(d){var ttc=calcTTC(d);var hasPlan=!!(d.planSVG);return '<div class="list-item"><div class="list-item-header"><div><div class="list-item-title">'+esc(d.client)+(d.biosource?' <span style="font-size:11px;background:rgba(34,197,94,.15);color:var(--c-success);padding:2px 7px;border-radius:99px;margin-left:4px;">🌿 Bio</span>':'')+(hasPlan?' <span style="font-size:11px;background:rgba(45,140,240,.15);color:var(--c-accent);padding:2px 7px;border-radius:99px;margin-left:4px;">🗺</span>':'')+'</div><div class="list-item-sub">'+esc(d.numero)+' · '+fmtDate(d.date)+'</div></div><div><div class="list-item-amount">'+fmtMoney(ttc)+'</div><div style="text-align:right;margin-top:4px;"><span class="badge badge-'+d.statut+'">'+d.statut+'</span></div></div></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;"><button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dedit="'+d.id+'">✏️</button>'+(hasPlan?'<button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-dplan="'+d.id+'" title="Voir plan">🗺</button>':'')+' <button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dpdf="'+d.id+'">📥 PDF</button><button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dbat="'+d.id+'" title="Export Batappli" style="color:var(--c-success);">🟢 Bat.</button><button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-ddel="'+d.id+'">🗑</button></div></div>';}).join('');}
 
@@ -1286,7 +1386,111 @@ function openSettings(){populateSettings();document.getElementById('modal-settin
 // ============================================================
 // EVENT LISTENERS
 // ============================================================
+
+/* ──── PLAN PLEIN ÉCRAN ──── */
+var _pfsScale=1,_pfsX=0,_pfsY=0,_pfsPinchD=0,_pfsPinchS=1,_pfsDrag=null;
+function _pfsTransform(){
+  var el=document.getElementById('planfs-inner');
+  if(el)el.style.transform='translate('+_pfsX+'px,'+_pfsY+'px) scale('+_pfsScale+')';
+}
+function openPlanFullscreen(){
+  if(!planSVG){showToast('Pas de plan généré','error');return;}
+  var fs=document.getElementById('modal-plan-fs');
+  var inner=document.getElementById('planfs-inner');
+  inner.innerHTML=planSVG;
+  var svgEl=inner.querySelector('svg');
+  if(svgEl){svgEl.style.maxWidth=(window.innerWidth-16)+'px';svgEl.style.height='auto';}
+  _pfsScale=1;_pfsX=0;_pfsY=0;_pfsDrag=null;
+  _pfsTransform();
+  fs.style.display='flex';
+  var hint=document.getElementById('planfs-hint');
+  if(hint){hint.style.opacity='1';setTimeout(function(){hint.style.opacity='0';},2800);}
+}
+function closePlanFullscreen(){
+  document.getElementById('modal-plan-fs').style.display='none';
+}
+function _initPlanfsGestures(){
+  var wrap=document.getElementById('planfs-wrap');
+  if(!wrap)return;
+  var lastTap=0;
+  wrap.addEventListener('touchend',function(e){
+    var now=Date.now();
+    if(now-lastTap<280&&e.touches.length===0){
+      _pfsScale=1;_pfsX=0;_pfsY=0;
+      var el=document.getElementById('planfs-inner');
+      if(el){el.style.transition='transform .3s ease';_pfsTransform();setTimeout(function(){el.style.transition='';},320);}
+    }
+    lastTap=now;
+  },{passive:true});
+  wrap.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){_pfsPinchD=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);_pfsPinchS=_pfsScale;}
+    else if(e.touches.length===1){_pfsDrag={x:e.touches[0].clientX-_pfsX,y:e.touches[0].clientY-_pfsY};}
+  },{passive:true});
+  wrap.addEventListener('touchmove',function(e){
+    e.preventDefault();
+    if(e.touches.length===2){var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);_pfsScale=Math.min(6,Math.max(0.4,_pfsPinchS*(d/_pfsPinchD)));_pfsTransform();}
+    else if(e.touches.length===1&&_pfsDrag){_pfsX=e.touches[0].clientX-_pfsDrag.x;_pfsY=e.touches[0].clientY-_pfsDrag.y;_pfsTransform();}
+  },{passive:false});
+  wrap.addEventListener('touchend',function(e){if(e.touches.length<2)_pfsPinchD=0;if(e.touches.length===0)_pfsDrag=null;},{passive:true});
+  wrap.addEventListener('wheel',function(e){e.preventDefault();_pfsScale=Math.min(6,Math.max(0.4,_pfsScale*(e.deltaY<0?1.12:0.9)));_pfsTransform();},{passive:false});
+}
+
+/* ──── INJECTION DANS LE DEVIS ──── */
+function injectPlanIntoDevis(){
+  if(!planSVG){showToast('Pas de plan généré','error');return;}
+  closePlanFullscreen();
+  /* Fermer le parcours */
+  document.getElementById('modal-parcours').classList.remove('open');
+  /* Lignes pré-remplies depuis métrés */
+  var sN=Math.max(0,cSurfaces.reduce(function(a,s){return a+(parseFloat(s.l)||0)*(parseFloat(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0));
+  var mN=cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0);
+  var vT=cVolumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);
+  var lT=cLineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);
+  var nat=(parcoursVisite?parcoursVisite.nature||'':'').toLowerCase();
+  var t=db.settings.tarifs||{};
+  var lines=[];
+
+  if(nat.includes('carrelage')||nat.includes('carrel')){
+    if(sN>0){lines.push({id:genId(),designation:"Main d'œuvre pose carrelage",unite:'m²',qte:sN.toFixed(2),pu:String(t.carreleur_mo||42)});lines.push({id:genId(),designation:'Carrelage 60×60 grès cérame (+10% chutes)',unite:'m²',qte:(sN*1.1).toFixed(2),pu:'28'});lines.push({id:genId(),designation:'Colle C2 flexible',unite:'kg',qte:(sN*4.5).toFixed(0),pu:'1.80'});lines.push({id:genId(),designation:'Joint époxy',unite:'kg',qte:(sN*0.5).toFixed(1),pu:'8'});}
+    if(mN>0){lines.push({id:genId(),designation:"Main d'œuvre faïence murs",unite:'m²',qte:mN.toFixed(2),pu:String(t.carreleur_mo||42)});lines.push({id:genId(),designation:'Faïence murs (+10% chutes)',unite:'m²',qte:(mN*1.1).toFixed(2),pu:'25'});}
+  } else if(nat.includes('peinture')||nat.includes('peint')){
+    var sp=sN+mN;
+    if(sp>0){lines.push({id:genId(),designation:"Main d'œuvre peinture (prépa + 2 couches)",unite:'m²',qte:sp.toFixed(2),pu:String(t.peintre_mo||38)});lines.push({id:genId(),designation:'Peinture acrylique mat',unite:'L',qte:(sp*0.25).toFixed(1),pu:'12'});lines.push({id:genId(),designation:'Apprêt / enduit de lissage',unite:'m²',qte:sp.toFixed(2),pu:'4'});}
+  } else if(nat.includes('isolat')){
+    var si=sN||mN||20;lines.push({id:genId(),designation:"Main d'œuvre isolation",unite:'m²',qte:si.toFixed(2),pu:'18'});lines.push({id:genId(),designation:'Laine de verre 100mm',unite:'m²',qte:si.toFixed(2),pu:'12'});
+  } else if(nat.includes('macon')||nat.includes('béton')){
+    if(vT>0)lines.push({id:genId(),designation:"Main d'œuvre maçonnerie",unite:'h',qte:(vT*3).toFixed(0),pu:String(t.macon_mo||45)});
+    if(sN>0)lines.push({id:genId(),designation:'Matériaux maçonnerie',unite:'m²',qte:sN.toFixed(2),pu:'65'});
+  } else {
+    /* Générique */
+    if(sN>0)lines.push({id:genId(),designation:'Surfaces nettes',unite:'m²',qte:sN.toFixed(2),pu:'0'});
+    if(mN>0)lines.push({id:genId(),designation:'Murs pente nets',unite:'m²',qte:mN.toFixed(2),pu:'0'});
+    if(vT>0)lines.push({id:genId(),designation:'Volume total',unite:'m³',qte:vT.toFixed(3),pu:'0'});
+    if(lT>0)lines.push({id:genId(),designation:'Linéaires',unite:'ml',qte:lT.toFixed(2),pu:'0'});
+  }
+  if(!lines.length){lines.push({id:genId(),designation:'Travaux',unite:'forfait',qte:'1',pu:'0'});}
+
+  /* Ouvrir modal devis pré-rempli */
+  editDevisId=null;
+  devisLines=lines;
+  document.getElementById('d-client').value=parcoursVisite?parcoursVisite.client||'':'';
+  document.getElementById('d-objet').value=parcoursVisite?parcoursVisite.nature||'':'';
+  document.getElementById('d-adresse').value=parcoursVisite?parcoursVisite.adresse||'':'';
+  document.getElementById('d-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('d-statut').value='brouillon';
+  document.getElementById('d-tva').value=db.settings.tarifs.tva_defaut||10;
+  document.getElementById('d-biosource').checked=!!(parcoursVisite&&parcoursVisite.biosource);
+  document.getElementById('d-notes').value='';
+  document.getElementById('modal-devis-title').textContent='📄 Nouveau devis';
+  window._pendingPlanSVG=planSVG;
+  renderDevisLines();
+  setTimeout(function(){document.getElementById('modal-devis').classList.add('open');},200);
+  showToast(lines.length+' lignes injectées ✓','success');
+}
+
 document.addEventListener('DOMContentLoaded',function(){
+  // Clear zero global sur tous les champs numériques de l'app
+  document.addEventListener('focus',function(e){if(e.target&&e.target.tagName==='INPUT'&&e.target.type==='number'){var v=e.target.value;if(v==='0'||v==='0.0'||v==='0.00')e.target.value='';}},true);
   initFB();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
   function upd(){var off=!navigator.onLine;document.getElementById('offline-banner').classList.toggle('show',off);document.getElementById('app-offline-spacer').style.display=off?'block':'none';}
@@ -1344,7 +1548,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // SURFACES — input sans re-render
   document.getElementById('btn-add-csurface').addEventListener('click',function(){cSurfaces.push({id:genId(),nom:'Surface',l:'',h:''});renderCSurfaces();});
   document.getElementById('btn-add-cdeduction').addEventListener('click',function(){cDeductions.push({id:genId(),nom:'Porte',l:'0.9',h:'2.1'});renderCSurfaces();});
-  document.getElementById('ctab-surfaces').addEventListener('focus',function(e){if(e.target.tagName==='INPUT'&&e.target.type==='number'&&(e.target.value==='0'||e.target.value==='0.00'))e.target.value='';},true);
+  
   document.getElementById('ctab-surfaces').addEventListener('input',function(e){
     var r=e.target.closest('[data-csid]');if(r){var s=cSurfaces.find(function(x){return x.id===r.dataset.csid;});if(s&&e.target.dataset.csf){s[e.target.dataset.csf]=e.target.value;var tot=r.querySelector('.cote-tot');if(tot)tot.textContent='= '+calcCSurf(s).toFixed(2)+' m²';calcCSurfaces();}}
     var dr=e.target.closest('[data-cdid]');if(dr){var d=cDeductions.find(function(x){return x.id===dr.dataset.cdid;});if(d&&e.target.dataset.cdd){d[e.target.dataset.cdd]=e.target.value;calcCSurfaces();}}
@@ -1356,7 +1560,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // MURS — input sans re-render
   document.getElementById('btn-add-cmur').addEventListener('click',function(){cMurs.push({id:genId(),nom:'Mur',l:'',hg:'',hd:'',ouvertures:[]});renderCMurs();});
-  document.getElementById('ctab-murs').addEventListener('focus',function(e){if(e.target.tagName==='INPUT'&&e.target.type==='number'&&(e.target.value==='0'||e.target.value==='0.00'))e.target.value='';},true);
+  
   document.getElementById('ctab-murs').addEventListener('input',function(e){
     var r=e.target.closest('[data-cmurid]');if(!r)return;
     var m=cMurs.find(function(x){return x.id===r.dataset.cmurid;});if(!m)return;
@@ -1378,7 +1582,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // VOLUMES — input sans re-render
   document.getElementById('btn-add-cvolume').addEventListener('click',function(){cVolumes.push({id:genId(),nom:'Volume',l:'',L:'',h:''});renderCVolumes();});
-  document.getElementById('ctab-volumes').addEventListener('focus',function(e){if(e.target.tagName==='INPUT'&&e.target.type==='number'&&(e.target.value==='0'||e.target.value==='0.00'))e.target.value='';},true);
+  
   document.getElementById('ctab-volumes').addEventListener('input',function(e){
     var r=e.target.closest('[data-cvid]');if(!r)return;var v=cVolumes.find(function(x){return x.id===r.dataset.cvid;});if(!v)return;
     if(e.target.dataset.cvf)v[e.target.dataset.cvf]=e.target.value;
@@ -1390,7 +1594,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // LINÉAIRES — input sans re-render
   document.getElementById('btn-add-clineaire').addEventListener('click',function(){cLineaires.push({id:genId(),nom:'Linéaire',lg:''});renderCLineaires();});
-  document.getElementById('ctab-lineaires').addEventListener('focus',function(e){if(e.target.tagName==='INPUT'&&e.target.type==='number'&&(e.target.value==='0'||e.target.value==='0.00'))e.target.value='';},true);
+  
   document.getElementById('ctab-lineaires').addEventListener('input',function(e){
     var r=e.target.closest('[data-clid]');if(!r)return;var l=cLineaires.find(function(x){return x.id===r.dataset.clid;});if(!l)return;
     if(e.target.dataset.clf)l[e.target.dataset.clf]=e.target.value;
@@ -1404,7 +1608,12 @@ document.addEventListener('DOMContentLoaded',function(){
   // Plan (étape 3)
   document.getElementById('btn-plan-pdf').addEventListener('click',function(){exportPlanPDF();});
   document.getElementById('btn-plan-share').addEventListener('click',function(){sharePlan(false);});
-  document.getElementById('btn-plan-mail').addEventListener('click',function(){sharePlan(true);});
+  document.getElementById('btn-plan-inject').addEventListener('click',function(){injectPlanIntoDevis();});
+  /* Plein écran */
+  document.getElementById('btn-planfs-close').addEventListener('click',function(){closePlanFullscreen();});
+  document.getElementById('btn-planfs-pdf').addEventListener('click',function(){closePlanFullscreen();exportPlanPDF();});
+  document.getElementById('btn-planfs-inject').addEventListener('click',function(){injectPlanIntoDevis();});
+  _initPlanfsGestures();
 
   // Étape 4 - voix
   document.getElementById('voice-record-btn').addEventListener('click',function(){startVoiceInParcours();});
