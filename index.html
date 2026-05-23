@@ -275,7 +275,19 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     </div>
 
     <!-- PLANNING -->
-    <div class="view" id="view-planning">
+    <!-- VUE DOCUMENTS -->
+    <div class="view" id="view-docs">
+      <div class="section-title">Documents</div>
+      <div class="section-sub">Tous vos fichiers générés</div>
+      <!-- Filtres -->
+      <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;">
+        <button class="snav-btn active" data-docs-filter="all">Tous</button>
+        <button class="snav-btn" data-docs-filter="devis">Devis</button>
+        <button class="snav-btn" data-docs-filter="plan">Plans</button>
+        <button class="snav-btn" data-docs-filter="signe">Signés</button>
+      </div>
+      <div id="docs-list"></div>
+    </div>
       <div class="section-title">Planning</div><div class="section-sub">Organisation des chantiers</div>
       <button class="btn btn-primary btn-full" id="btn-add-planning">+ Nouvel evenement</button>
       <div id="planning-list"><div class="empty-state"><div class="empty-state-icon">📅</div><div style="font-size:14px;">Aucun evenement</div></div></div>
@@ -286,7 +298,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     <button class="nav-btn active" data-view="accueil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
     <button class="nav-btn" data-view="visites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>Visites</button>
     <button class="nav-btn" data-view="devis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Devis</button>
-    <button class="nav-btn" data-view="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Clients</button>
+    <button class="nav-btn" data-view="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Docs</button>
     <button class="nav-btn" data-view="planning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Planning</button>
   </nav>
 </div>
@@ -708,7 +720,51 @@ function initFB(){
 }
 function showApp(){document.getElementById('auth-screen').classList.add('hidden');document.getElementById('app').style.display='flex';}
 function hideApp(){document.getElementById('auth-screen').classList.remove('hidden');document.getElementById('app').style.display='none';}
-function afterLogin(){renderGreeting();renderRecentActivity();renderDevisList();renderVisitesList();renderClientsList();renderPlanningList();populateSettings();if(fbReady&&currentUser)syncFromFS();}
+function afterLogin(){renderGreeting();renderRecentActivity();renderDevisList();renderVisitesList();renderClientsList();renderPlanningList();renderDocs();populateSettings();if(fbReady&&currentUser)syncFromFS();}
+
+var docsFilter='all';
+function renderDocs(){
+  var cont=document.getElementById('docs-list');if(!cont)return;
+  var list=db.devis.slice().reverse();
+  if(docsFilter==='devis') list=list.filter(function(d){return !d.planSVG||true;}); // tous les devis
+  else if(docsFilter==='plan') list=list.filter(function(d){return !!d.planSVG;});
+  else if(docsFilter==='signe') list=list.filter(function(d){return d.statut==='signé';});
+  if(!list.length){
+    cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📁</div><div style="font-size:14px;">Aucun document</div><div style="font-size:12px;color:var(--c-muted);margin-top:6px;">Vos devis et plans apparaîtront ici</div></div>';
+    return;
+  }
+  cont.innerHTML=list.map(function(d){
+    var ttc=calcTTC(d);
+    var hasPlan=!!(d.planSVG);
+    var dateStr=fmtDate(d.date);
+    var statutColor={brouillon:'var(--c-muted)',envoyé:'#60a5fa',signé:'var(--c-success)',refusé:'var(--c-danger)'}[d.statut]||'var(--c-muted)';
+    return '<div class="list-item" style="margin-bottom:10px;">'
+      // En-tête : icône type + infos
+      +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
+      +'<div style="width:42px;height:42px;border-radius:10px;background:var(--c-surface2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">'+(hasPlan?'🗺':'📄')+'</div>'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.client)+'</div>'
+      +'<div style="font-size:11px;color:var(--c-muted);">'+esc(d.numero)+' · '+dateStr+'</div>'
+      +'<div style="font-size:11px;margin-top:2px;display:flex;align-items:center;gap:6px;">'
+      +'<span style="color:'+statutColor+';font-weight:600;">'+d.statut+'</span>'
+      +(d.biosource?'<span style="color:var(--c-success);">🌿</span>':'')
+      +(hasPlan?'<span style="color:var(--c-accent);font-size:10px;">+ plan</span>':'')
+      +'</div>'
+      +'</div>'
+      +'<div style="text-align:right;flex-shrink:0;">'
+      +'<div style="font-family:var(--font-mono);font-size:13px;color:var(--c-accent);">'+fmtMoney(ttc)+'</div>'
+      +'</div>'
+      +'</div>'
+      // Actions
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">'
+      +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;flex-direction:column;gap:2px;display:flex;align-items:center;" data-dedit="'+d.id+'"><span>✏️</span><span style="font-size:9px;">Modifier</span></button>'
+      +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;flex-direction:column;gap:2px;display:flex;align-items:center;" data-dpdf="'+d.id+'"><span>📄</span><span style="font-size:9px;">PDF</span></button>'
+      +(hasPlan?'<button class="btn btn-secondary" style="padding:8px;font-size:12px;flex-direction:column;gap:2px;display:flex;align-items:center;" data-dplan="'+d.id+'"><span>🗺</span><span style="font-size:9px;">Plan</span></button>':'<div></div>')
+      +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;flex-direction:column;gap:2px;display:flex;align-items:center;" data-dbat="'+d.id+'"><span>🟢</span><span style="font-size:9px;">Batappli</span></button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
 
 // AUTH
 var authMode='login';
@@ -756,6 +812,8 @@ function renderRecentActivity(){var cont=document.getElementById('recent-activit
 // ============================================================
 var parcoursStep=1;
 var cSurfaces=[],cDeductions=[],cVolumes=[],cLineaires=[],cMurs=[];
+// Normalise virgule → point pour iOS (clavier français)
+function pN(v){return parseFloat(String(v==null?0:v).replace(/,/g,'.'))||0;}
 var parcoursVisite=null;
 var planSVG='';
 
@@ -861,9 +919,9 @@ function applyNatureTabs(nature){
   });
 }
 
-function calcCSurf(s){return (parseFloat(s.l)||0)*(parseFloat(s.h)||0);}
-function calcCMurSurf(m){return (parseFloat(m.l)||0)*((parseFloat(m.hg)||0)+(parseFloat(m.hd)||0))/2;}
-function calcCMurOuv(m){return (m.ouvertures||[]).reduce(function(a,o){return a+(parseFloat(o.l)||0)*(parseFloat(o.h)||0);},0);}
+function calcCSurf(s){return (pN(s.l)||0)*(pN(s.h)||0);}
+function calcCMurSurf(m){return (pN(m.l)||0)*((pN(m.hg)||0)+(pN(m.hd)||0))/2;}
+function calcCMurOuv(m){return (m.ouvertures||[]).reduce(function(a,o){return a+(pN(o.l)||0)*(pN(o.h)||0);},0);}
 
 function renderCSurfaces(){
   var cont=document.getElementById('c-surfaces-list');if(!cont)return;
@@ -887,7 +945,7 @@ function renderCSurfaces(){
 }
 function calcCSurfaces(){
   var b=cSurfaces.reduce(function(a,s){return a+calcCSurf(s);},0);
-  var d=cDeductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0);
+  var d=cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0);
   var n=Math.max(0,b-d);
   document.getElementById('cs-brute').textContent=b.toFixed(2)+' m²';
   document.getElementById('cs-deduct').textContent=d.toFixed(2)+' m²';
@@ -914,13 +972,13 @@ function renderCMurs(){
 }
 function renderCVolumes(){
   var cont=document.getElementById('c-volumes-list');if(!cont)return;
-  cont.innerHTML=cVolumes.map(function(v){var vol=(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);return '<div class="devis-line" data-cvid="'+v.id+'"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(v.nom)+'" data-cvf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L" value="'+v.l+'" data-cvf="l" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="l" value="'+v.L+'" data-cvf="L" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="h" value="'+v.h+'" data-cvf="h" step="0.01"/><button class="devis-remove" data-cvrem="'+v.id+'">✕</button></div><div style="font-size:11px;color:var(--c-muted);margin-top:4px;">= '+vol.toFixed(3)+' m³</div></div>';}).join('');
-  document.getElementById('cv-total').textContent=cVolumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0).toFixed(3)+' m³';
+  cont.innerHTML=cVolumes.map(function(v){var vol=(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);return '<div class="devis-line" data-cvid="'+v.id+'"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(v.nom)+'" data-cvf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L" value="'+v.l+'" data-cvf="l" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="l" value="'+v.L+'" data-cvf="L" step="0.01"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="h" value="'+v.h+'" data-cvf="h" step="0.01"/><button class="devis-remove" data-cvrem="'+v.id+'">✕</button></div><div style="font-size:11px;color:var(--c-muted);margin-top:4px;">= '+vol.toFixed(3)+' m³</div></div>';}).join('');
+  document.getElementById('cv-total').textContent=cVolumes.reduce(function(a,v){return a+(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);},0).toFixed(3)+' m³';
 }
 function renderCLineaires(){
   var cont=document.getElementById('c-lineaires-list');if(!cont)return;
   cont.innerHTML=cLineaires.map(function(l){return '<div class="devis-line" data-clid="'+l.id+'"><div style="display:grid;grid-template-columns:3fr 2fr 20px;gap:6px;align-items:center;"><input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(l.nom)+'" data-clf="nom"/><input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="Longueur (m)" value="'+l.lg+'" data-clf="lg" step="0.01"/><button class="devis-remove" data-clrem="'+l.id+'">✕</button></div></div>';}).join('');
-  document.getElementById('cl-total').textContent=cLineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0).toFixed(2)+' ml';
+  document.getElementById('cl-total').textContent=cLineaires.reduce(function(a,l){return a+(pN(l.lg)||0);},0).toFixed(2)+' ml';
 }
 
 function collectCotes(){
@@ -942,8 +1000,8 @@ function calcCToiture(){
 function buildAndShowPlan(){
   collectCotes();
   var rooms=[];
-  cSurfaces.forEach(function(s){var l=parseFloat(s.l)||0;var h=parseFloat(s.h)||0;if(l>0&&h>0)rooms.push({nom:s.nom||'Surface',l:l,w:h,type:'rect'});});
-  cMurs.forEach(function(m){var l=parseFloat(m.l)||0;var hg=parseFloat(m.hg)||0;var hd=parseFloat(m.hd)||0;if(l>0&&(hg>0||hd>0))rooms.push({nom:m.nom||'Mur',l:l,w:(hg+hd)/2,hg:hg,hd:hd,type:'trapeze',ouvertures:m.ouvertures||[]});});
+  cSurfaces.forEach(function(s){var l=pN(s.l)||0;var h=pN(s.h)||0;if(l>0&&h>0)rooms.push({nom:s.nom||'Surface',l:l,w:h,type:'rect'});});
+  cMurs.forEach(function(m){var l=pN(m.l)||0;var hg=pN(m.hg)||0;var hd=pN(m.hd)||0;if(l>0&&(hg>0||hd>0))rooms.push({nom:m.nom||'Mur',l:l,w:(hg+hd)/2,hg:hg,hd:hd,type:'trapeze',ouvertures:m.ouvertures||[]});});
   var mg=55,cH=88,gap=20;
   // Calcul de l'échelle automatique selon les dimensions réelles
   var maxRoomW=rooms.reduce(function(a,r){return Math.max(a,r.l);},0)||1;
@@ -963,10 +1021,10 @@ function buildAndShowPlan(){
   var placed=[];
   rooms.forEach(function(r){var rw=Math.max(r.l*sc,55);var rh=Math.max(r.w*sc,35);if(curX+rw>maxW+mg&&placed.length){curX=mg;curY+=rowH+gap;rowH=0;}placed.push(Object.assign({},r,{x:curX,y:curY,pw:rw,ph:rh}));curX+=rw+gap;if(rh>rowH)rowH=rh;});
   var tW=Math.max(maxW+2*mg,420);var tH=(placed.length>0?curY+rowH+mg:mg+40)+cH+30;
-  var sNette=Math.max(0,cSurfaces.reduce(function(a,s){return a+(parseFloat(s.l)||0)*(parseFloat(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0));
+  var sNette=Math.max(0,cSurfaces.reduce(function(a,s){return a+(pN(s.l)||0)*(pN(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0));
   var murNette=cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0);
-  var vtot=cVolumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);
-  var ltot=cLineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);
+  var vtot=cVolumes.reduce(function(a,v){return a+(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);},0);
+  var ltot=cLineaires.reduce(function(a,l){return a+(pN(l.lg)||0);},0);
   var tsurf=document.getElementById('ct-surface').textContent;var hasToiture=tsurf&&tsurf!=='—';
   var ent=db.settings.entreprise||'ChantiersPro';
   var sv=[];
@@ -994,7 +1052,7 @@ function buildAndShowPlan(){
       sv.push('<line x1="'+(x+w+8)+'" y1="'+(y+h)+'" x2="'+(x+w+8)+'" y2="'+(y+h-hdP)+'" stroke="#1a4a7a" stroke-width="0.7"/>');
       sv.push('<text x="'+(x+w+12)+'" y="'+(y+h-hdP/2)+'" dominant-baseline="middle" font-family="JetBrains Mono,monospace" font-size="7" fill="#1a4a7a">'+r.hd+'m</text>');
       // Ouvertures
-      (r.ouvertures||[]).forEach(function(o,oi){var ow=Math.min((parseFloat(o.l)||0)*sc,w/Math.max(r.ouvertures.length,1)-4);var oh=Math.min((parseFloat(o.h)||0)*sc,hgP-4);var ox=x+10+oi*((w-20)/Math.max(r.ouvertures.length,1));sv.push('<rect x="'+ox+'" y="'+(y+h-oh-2)+'" width="'+ow+'" height="'+oh+'" fill="#c8e0f0" stroke="#1a4a7a" stroke-width="1" stroke-dasharray="3,2"/>');sv.push('<line x1="'+ox+'" y1="'+(y+h-oh-2)+'" x2="'+(ox+ow)+'" y2="'+(y+h-2)+'" stroke="#1a4a7a" stroke-width="0.5" opacity="0.5"/>');sv.push('<line x1="'+(ox+ow)+'" y1="'+(y+h-oh-2)+'" x2="'+ox+'" y2="'+(y+h-2)+'" stroke="#1a4a7a" stroke-width="0.5" opacity="0.5"/>');});
+      (r.ouvertures||[]).forEach(function(o,oi){var ow=Math.min((pN(o.l)||0)*sc,w/Math.max(r.ouvertures.length,1)-4);var oh=Math.min((pN(o.h)||0)*sc,hgP-4);var ox=x+10+oi*((w-20)/Math.max(r.ouvertures.length,1));sv.push('<rect x="'+ox+'" y="'+(y+h-oh-2)+'" width="'+ow+'" height="'+oh+'" fill="#c8e0f0" stroke="#1a4a7a" stroke-width="1" stroke-dasharray="3,2"/>');sv.push('<line x1="'+ox+'" y1="'+(y+h-oh-2)+'" x2="'+(ox+ow)+'" y2="'+(y+h-2)+'" stroke="#1a4a7a" stroke-width="0.5" opacity="0.5"/>');sv.push('<line x1="'+(ox+ow)+'" y1="'+(y+h-oh-2)+'" x2="'+ox+'" y2="'+(y+h-2)+'" stroke="#1a4a7a" stroke-width="0.5" opacity="0.5"/>');});
     } else {
       sv.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="url(#h1)" stroke="#2a1f0f" stroke-width="2"/>');
       sv.push('<rect x="'+(x+4)+'" y="'+(y+4)+'" width="'+(w-8)+'" height="'+(h-8)+'" fill="#faf7f0"/>');
@@ -1092,17 +1150,17 @@ async function doGenerateDevisFromParcours(){
   document.getElementById('btn-step-next').disabled=true;
 
   // Calcul des métrés réels
-  var sNette=Math.max(0,cSurfaces.reduce(function(a,s){return a+(parseFloat(s.l)||0)*(parseFloat(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0));
+  var sNette=Math.max(0,cSurfaces.reduce(function(a,s){return a+(pN(s.l)||0)*(pN(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0));
   var murNette=cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0);
-  var vtot=cVolumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);
-  var ltot=cLineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);
+  var vtot=cVolumes.reduce(function(a,v){return a+(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);},0);
+  var ltot=cLineaires.reduce(function(a,l){return a+(pN(l.lg)||0);},0);
   var tsurf=document.getElementById('ct-surface').textContent;
   var tsurfVal=tsurf&&tsurf!=='—'?parseFloat(tsurf):0;
   var metrages={sNette:sNette,murNette:murNette,vtot:vtot,ltot:ltot,tsurfVal:tsurfVal};
 
   // Description détaillée des surfaces pour Claude
-  var surfDetail=cSurfaces.map(function(s){return s.nom+': '+parseFloat(s.l).toFixed(2)+'m × '+parseFloat(s.h).toFixed(2)+'m = '+((parseFloat(s.l)||0)*(parseFloat(s.h)||0)).toFixed(2)+' m²';}).join('\n');
-  var murDetail=cMurs.map(function(m){var n=Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));return m.nom+': '+parseFloat(m.l).toFixed(2)+'m × (Hg '+m.hg+'m + Hd '+m.hd+'m)÷2 = net '+n.toFixed(2)+' m²';}).join('\n');
+  var surfDetail=cSurfaces.map(function(s){return s.nom+': '+pN(s.l).toFixed(2)+'m × '+pN(s.h).toFixed(2)+'m = '+((pN(s.l)||0)*(pN(s.h)||0)).toFixed(2)+' m²';}).join('\n');
+  var murDetail=cMurs.map(function(m){var n=Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));return m.nom+': '+pN(m.l).toFixed(2)+'m × (Hg '+m.hg+'m + Hd '+m.hd+'m)÷2 = net '+n.toFixed(2)+' m²';}).join('\n');
 
   var cotesDesc='=== MÉTRÉS RÉELS MESURÉS SUR PLACE ===\n'
     +(sNette>0?'SURFACES NETTES (après déductions ouvertures): '+sNette.toFixed(2)+' m²\nDétail:\n'+surfDetail+'\n':'')
@@ -1150,7 +1208,7 @@ async function doGenerateDevisFromParcours(){
   document.getElementById('btn-step-next').disabled=false;
   var newId=genId();var newNum=genNum();db.settings.nextNum=(db.settings.nextNum||1)+1;
   var newDevis={id:newId,numero:newNum,client:parcoursVisite?parcoursVisite.client:'',objet:parcoursVisite?parcoursVisite.nature:'',adresse:parcoursVisite?parcoursVisite.adresse:'',date:new Date().toISOString().split('T')[0],statut:'brouillon',tva:db.settings.tarifs.tva_defaut||10,biosource:bio,notes:notes,lignes:lines,planSVG:planSVG,createdAt:new Date().toISOString()};
-  db.devis.push(newDevis);saveDB();renderDevisList();renderGreeting();renderRecentActivity();
+  db.devis.push(newDevis);saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();
   document.getElementById('modal-parcours').classList.remove('open');
   setTimeout(function(){openEditDevis(newId);},300);
   showToast('Devis IA généré !','success');
@@ -1167,7 +1225,7 @@ function removeDevisLine(id){devisLines=devisLines.filter(function(l){return l.i
 function collectLines(){document.querySelectorAll('#devis-lines-container .devis-line').forEach(function(row){var lid=row.dataset.lid;var l=devisLines.find(function(x){return x.id===lid;});if(!l)return;row.querySelectorAll('input[data-f]').forEach(function(inp){l[inp.dataset.f]=inp.value;});});}
 function renderDevisLines(){var cont=document.getElementById('devis-lines-container');cont.innerHTML=devisLines.map(function(l){var tot=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);return '<div class="devis-line" data-lid="'+l.id+'"><div class="dl-grid"><input type="text" placeholder="Désignation" value="'+esc(l.designation||'')+'" data-f="designation"/><input type="text" placeholder="m²" value="'+esc(l.unite||'')+'" data-f="unite"/><input type="number" placeholder="Qté" value="'+esc(l.qte||'')+'" data-f="qte" step="0.01"/><input type="number" placeholder="PU" value="'+esc(l.pu||'')+'" data-f="pu" step="0.01"/><button class="devis-remove" data-rem="'+l.id+'">✕</button></div><div class="devis-line-total">= '+fmtMoney(tot)+'</div></div>';}).join('');updateTotaux();}
 function updateTotaux(){var tvr=parseFloat(document.getElementById('d-tva').value)||10;var ht=0;devisLines.forEach(function(l){ht+=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);});var tva=ht*tvr/100;document.getElementById('total-ht').textContent=fmtMoney(ht);document.getElementById('total-tva-amount').textContent=fmtMoney(tva)+' ('+tvr+'%)';document.getElementById('total-ttc').textContent=fmtMoney(ht+tva);}
-function saveDevis(){var client=document.getElementById('d-client').value.trim();if(!client){showToast('Nom client requis','error');return;}collectLines();var prev=editDevisId?db.devis.find(function(d){return d.id===editDevisId;}):null;var dv={id:editDevisId||genId(),numero:prev?prev.numero:genNum(),client:client,objet:document.getElementById('d-objet').value,adresse:document.getElementById('d-adresse').value,date:document.getElementById('d-date').value,statut:document.getElementById('d-statut').value,tva:parseFloat(document.getElementById('d-tva').value)||10,biosource:document.getElementById('d-biosource').checked,notes:document.getElementById('d-notes').value,lignes:devisLines.slice(),planSVG:prev?prev.planSVG:'',createdAt:prev?prev.createdAt:new Date().toISOString()};if(!editDevisId)db.settings.nextNum=(db.settings.nextNum||1)+1;if(editDevisId){var i=db.devis.findIndex(function(d){return d.id===editDevisId;});if(i>=0)db.devis[i]=dv;}else{db.devis.push(dv);}saveDB();renderDevisList();renderGreeting();renderRecentActivity();document.getElementById('modal-devis').classList.remove('open');showToast('Devis enregistré','success');}
+function saveDevis(){var client=document.getElementById('d-client').value.trim();if(!client){showToast('Nom client requis','error');return;}collectLines();var prev=editDevisId?db.devis.find(function(d){return d.id===editDevisId;}):null;var dv={id:editDevisId||genId(),numero:prev?prev.numero:genNum(),client:client,objet:document.getElementById('d-objet').value,adresse:document.getElementById('d-adresse').value,date:document.getElementById('d-date').value,statut:document.getElementById('d-statut').value,tva:parseFloat(document.getElementById('d-tva').value)||10,biosource:document.getElementById('d-biosource').checked,notes:document.getElementById('d-notes').value,lignes:devisLines.slice(),planSVG:prev?prev.planSVG:'',createdAt:prev?prev.createdAt:new Date().toISOString()};if(!editDevisId)db.settings.nextNum=(db.settings.nextNum||1)+1;if(editDevisId){var i=db.devis.findIndex(function(d){return d.id===editDevisId;});if(i>=0)db.devis[i]=dv;}else{db.devis.push(dv);}saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();document.getElementById('modal-devis').classList.remove('open');showToast('Devis enregistré','success');}
 
 function renderDevisList(){var cont=document.getElementById('devis-list');var list=db.devis.slice().reverse();if(devisFilter!=='all')list=list.filter(function(d){return d.statut===devisFilter;});if(!list.length){cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📄</div><div style="font-size:14px;">Aucun devis</div></div>';return;}cont.innerHTML=list.map(function(d){var ttc=calcTTC(d);var hasPlan=!!(d.planSVG);return '<div class="list-item"><div class="list-item-header"><div><div class="list-item-title">'+esc(d.client)+(d.biosource?' <span style="font-size:11px;background:rgba(34,197,94,.15);color:var(--c-success);padding:2px 7px;border-radius:99px;margin-left:4px;">🌿 Bio</span>':'')+(hasPlan?' <span style="font-size:11px;background:rgba(45,140,240,.15);color:var(--c-accent);padding:2px 7px;border-radius:99px;margin-left:4px;">🗺</span>':'')+'</div><div class="list-item-sub">'+esc(d.numero)+' · '+fmtDate(d.date)+'</div></div><div><div class="list-item-amount">'+fmtMoney(ttc)+'</div><div style="text-align:right;margin-top:4px;"><span class="badge badge-'+d.statut+'">'+d.statut+'</span></div></div></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;"><button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dedit="'+d.id+'">✏️</button>'+(hasPlan?'<button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-dplan="'+d.id+'" title="Voir plan">🗺</button>':'')+' <button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dpdf="'+d.id+'">📥 PDF</button><button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dbat="'+d.id+'" title="Export Batappli" style="color:var(--c-success);">🟢 Bat.</button><button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-ddel="'+d.id+'">🗑</button></div></div>';}).join('');}
 
@@ -1332,10 +1390,10 @@ function openSettings(){populateSettings();document.getElementById('modal-settin
 function injectPlanIntoDevis(){
   if(!planSVG){showToast('Pas de plan','error');return;}
   document.getElementById('modal-parcours').classList.remove('open');
-  var sN=Math.max(0,cSurfaces.reduce(function(a,s){return a+(parseFloat(s.l)||0)*(parseFloat(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(parseFloat(d.l)||0)*(parseFloat(d.h)||0);},0));
+  var sN=Math.max(0,cSurfaces.reduce(function(a,s){return a+(pN(s.l)||0)*(pN(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0));
   var mN=cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0);
-  var vT=cVolumes.reduce(function(a,v){return a+(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);},0);
-  var lT=cLineaires.reduce(function(a,l){return a+(parseFloat(l.lg)||0);},0);
+  var vT=cVolumes.reduce(function(a,v){return a+(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);},0);
+  var lT=cLineaires.reduce(function(a,l){return a+(pN(l.lg)||0);},0);
   var nat=(parcoursVisite?parcoursVisite.nature||'':''  ).toLowerCase();
   var t=db.settings.tarifs||{}; var lines=[];
   if(nat.includes('carrelage')||nat.includes('carrel')){
@@ -1461,7 +1519,7 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('ctab-volumes').addEventListener('input',function(e){
     var r=e.target.closest('[data-cvid]');if(!r)return;var v=cVolumes.find(function(x){return x.id===r.dataset.cvid;});if(!v)return;
     if(e.target.dataset.cvf)v[e.target.dataset.cvf]=e.target.value;
-    var vol=(parseFloat(v.l)||0)*(parseFloat(v.L)||0)*(parseFloat(v.h)||0);
+    var vol=(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);
     var tot=r.querySelector('.cote-tot');if(tot)tot.textContent='= '+vol.toFixed(3)+' m³';
     document.getElementById('cv-total').textContent=cVolumes.reduce(function(a,x){return a+(parseFloat(x.l)||0)*(parseFloat(x.L)||0)*(parseFloat(x.h)||0);},0).toFixed(3)+' m³';
   });
@@ -1509,7 +1567,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var plan=e.target.closest('[data-dplan]');if(plan){showPlanFromDevis(plan.dataset.dplan);return;}
     var pdf=e.target.closest('[data-dpdf]');if(pdf){exportDevisPDF(pdf.dataset.dpdf);return;}
     var bat=e.target.closest('[data-dbat]');if(bat){exportBatappli(bat.dataset.dbat);return;}
-    var del=e.target.closest('[data-ddel]');if(del){db.devis=db.devis.filter(function(d){return d.id!==del.dataset.ddel;});saveDB();renderDevisList();renderGreeting();renderRecentActivity();}
+    var del=e.target.closest('[data-ddel]');if(del){db.devis=db.devis.filter(function(d){return d.id!==del.dataset.ddel;});saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();}
   });
 
   // VISITES
@@ -1523,6 +1581,22 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // PLANNING
   document.getElementById('btn-add-planning').addEventListener('click',function(){openNewPlanning();});
+
+  // DOCS — filtres
+  document.querySelectorAll('[data-docs-filter]').forEach(function(b){
+    b.addEventListener('click',function(){
+      docsFilter=b.dataset.docsFilter;
+      document.querySelectorAll('[data-docs-filter]').forEach(function(x){x.classList.toggle('active',x===b);});
+      renderDocs();
+    });
+  });
+  // DOCS — actions (réutilise les mêmes data-* que la vue devis)
+  document.getElementById('docs-list').addEventListener('click',function(e){
+    var ed=e.target.closest('[data-dedit]');if(ed){openEditDevis(ed.dataset.dedit);return;}
+    var pl=e.target.closest('[data-dplan]');if(pl){showPlanFromDevis(pl.dataset.dplan);return;}
+    var pdf=e.target.closest('[data-dpdf]');if(pdf){exportDevisPDF(pdf.dataset.dpdf);return;}
+    var bat=e.target.closest('[data-dbat]');if(bat){exportBatappli(bat.dataset.dbat);return;}
+  });
   document.getElementById('close-modal-planning').addEventListener('click',function(){document.getElementById('modal-planning').classList.remove('open');});
   document.getElementById('btn-save-planning').addEventListener('click',function(){savePlanning();});
   document.getElementById('planning-list').addEventListener('click',function(e){var d=e.target.closest('[data-pdel]');if(d){db.planning=db.planning.filter(function(p){return p.id!==d.dataset.pdel;});saveDB();renderPlanningList();}});
