@@ -944,7 +944,21 @@ function buildAndShowPlan(){
   var rooms=[];
   cSurfaces.forEach(function(s){var l=parseFloat(s.l)||0;var h=parseFloat(s.h)||0;if(l>0&&h>0)rooms.push({nom:s.nom||'Surface',l:l,w:h,type:'rect'});});
   cMurs.forEach(function(m){var l=parseFloat(m.l)||0;var hg=parseFloat(m.hg)||0;var hd=parseFloat(m.hd)||0;if(l>0&&(hg>0||hd>0))rooms.push({nom:m.nom||'Mur',l:l,w:(hg+hd)/2,hg:hg,hd:hd,type:'trapeze',ouvertures:m.ouvertures||[]});});
-  var sc=42,mg=55,cH=88,gap=20,maxW=340;
+  var mg=55,cH=88,gap=20;
+  // Calcul de l'échelle automatique selon les dimensions réelles
+  var maxRoomW=rooms.reduce(function(a,r){return Math.max(a,r.l);},0)||1;
+  var maxRoomH=rooms.reduce(function(a,r){return Math.max(a,r.w);},0)||1;
+  var totalRoomsW=rooms.reduce(function(a,r){return a+r.l;},0)+gap/42*(rooms.length-1)||1;
+  // Largeur cible de la zone dessin (sans marges)
+  var targetW=340;
+  var targetH=280;
+  // Echelle basée sur la plus grande dimension
+  var scByW=targetW/(totalRoomsW>0?Math.min(totalRoomsW,maxRoomW*2):maxRoomW);
+  var scByH=targetH/(maxRoomH>0?maxRoomH:1);
+  var sc=Math.min(scByW,scByH,42); // max 42px/m, min calculé
+  sc=Math.max(sc,4); // plancher 4px/m pour très grandes surfaces
+  sc=Math.round(sc*10)/10; // arrondi propre
+  var maxW=targetW;
   var curX=mg,curY=mg,rowH=0;
   var placed=[];
   rooms.forEach(function(r){var rw=Math.max(r.l*sc,55);var rh=Math.max(r.w*sc,35);if(curX+rw>maxW+mg&&placed.length){curX=mg;curY+=rowH+gap;rowH=0;}placed.push(Object.assign({},r,{x:curX,y:curY,pw:rw,ph:rh}));curX+=rw+gap;if(rh>rowH)rowH=rh;});
