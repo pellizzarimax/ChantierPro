@@ -288,8 +288,10 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;">
         <button class="snav-btn active" data-docs-filter="all">Tous</button>
         <button class="snav-btn" data-docs-filter="devis">Devis</button>
+        <button class="snav-btn" data-docs-filter="factures">Factures</button>
         <button class="snav-btn" data-docs-filter="plan">Plans</button>
         <button class="snav-btn" data-docs-filter="signe">Signés</button>
+        <button class="snav-btn" data-docs-filter="factures">🧾 Factures</button>
       </div>
       <div id="docs-list"></div>
     </div>
@@ -574,6 +576,68 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
   </div>
 </div>
 
+<!-- MODAL FACTURE -->
+<div class="modal-overlay" id="modal-facture">
+  <div class="modal modal-full">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr">
+      <div class="modal-title" id="modal-facture-title">🧾 Nouvelle facture</div>
+      <button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-facture">✕</button>
+    </div>
+    <!-- Bandeau statut paiement -->
+    <div id="facture-statut-bar" style="margin:0 0 14px;padding:10px 14px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);">
+      <div style="font-size:13px;font-weight:600;" id="facture-statut-txt">En attente de paiement</div>
+      <select class="form-input" id="f-paiement-statut" style="width:auto;padding:6px 10px;font-size:12px;">
+        <option value="attente">En attente</option>
+        <option value="partiel">Acompte versé</option>
+        <option value="payee">Payée ✓</option>
+        <option value="retard">En retard ⚠</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Client *</label><input type="text" class="form-input" id="f-client" placeholder="Nom du client"/></div>
+    <div class="form-group"><label class="form-label">Adresse chantier</label><input type="text" class="form-input" id="f-adresse" placeholder="Adresse"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date émission</label><input type="date" class="form-input" id="f-date-emission"/></div>
+      <div class="form-group"><label class="form-label">Date échéance</label><input type="date" class="form-input" id="f-date-echeance"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Objet</label><input type="text" class="form-input" id="f-objet" placeholder="Travaux de rénovation..."/></div>
+    <hr class="divider"/>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="card-title" style="margin:0;">Lignes</div>
+      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" id="btn-add-fl">+ Ligne</button>
+    </div>
+    <div style="display:grid;grid-template-columns:3fr 1fr 1fr 1fr 24px;gap:6px;margin-bottom:4px;padding:0 4px;">
+      <span style="font-size:10px;color:var(--c-muted);">DÉSIGNATION</span>
+      <span style="font-size:10px;color:var(--c-muted);">U.</span>
+      <span style="font-size:10px;color:var(--c-muted);">QTÉ</span>
+      <span style="font-size:10px;color:var(--c-muted);">PU HT</span>
+      <span></span>
+    </div>
+    <div id="facture-lines"></div>
+    <!-- Acompte -->
+    <div class="form-group" style="margin-top:12px;">
+      <label class="form-label">Acompte déjà versé (€)</label>
+      <input type="number" class="form-input" id="f-acompte" value="0" min="0" inputmode="decimal" placeholder="0"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">TVA (%)</label>
+      <input type="number" class="form-input" id="f-tva" value="10" min="0" max="20" inputmode="decimal"/>
+    </div>
+    <!-- Totaux -->
+    <div class="totaux-box" id="f-totaux">
+      <div class="totaux-row"><label>Total HT</label><span id="f-total-ht">0,00 €</span></div>
+      <div class="totaux-row"><label>TVA</label><span id="f-total-tva">0,00 €</span></div>
+      <div class="totaux-row" id="f-acompte-row" style="display:none;"><label>Acompte versé</label><span id="f-total-acompte" style="color:var(--c-success);">0,00 €</span></div>
+      <div class="totaux-row total-ttc"><label>SOLDE À PAYER</label><span id="f-total-solde">0,00 €</span></div>
+    </div>
+    <div class="form-group" style="margin-top:12px;"><label class="form-label">Notes / Conditions</label><textarea class="form-input" id="f-notes" rows="2" placeholder="Paiement sous 30 jours..."></textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+      <button class="btn btn-secondary" id="btn-save-facture">💾 Enregistrer</button>
+      <button class="btn btn-primary" id="btn-pdf-facture">📄 PDF</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL PLANNING -->
 <div class="modal-overlay" id="modal-planning">
   <div class="modal">
@@ -675,7 +739,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 'use strict';
 var SK='chantierspro_max_v1';
 var yr=new Date().getFullYear();
-var DFLT={clients:[],devis:[],visites:[],planning:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
+var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
 var db=JSON.parse(JSON.stringify(DFLT));
 function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;}}catch(e){db=JSON.parse(JSON.stringify(DFLT));}}
 function saveDB(){try{localStorage.setItem(SK,JSON.stringify(db));}catch(e){}}
@@ -727,51 +791,74 @@ function initFB(){
 }
 function showApp(){document.getElementById('auth-screen').classList.add('hidden');document.getElementById('app').style.display='flex';}
 function hideApp(){document.getElementById('auth-screen').classList.remove('hidden');document.getElementById('app').style.display='none';}
-function afterLogin(){renderGreeting();renderRecentActivity();renderDevisList();renderVisitesList();renderClientsList();renderPlanningList();renderDocs();populateSettings();if(fbReady&&currentUser)syncFromFS();}
+function afterLogin(){renderGreeting();renderRecentActivity();renderDevisList();renderVisitesList();renderClientsList();renderPlanningList();renderDocs();renderFactures();populateSettings();if(fbReady&&currentUser)syncFromFS();}
 
 var docsFilter='all';
 function renderDocs(){
   var cont=document.getElementById('docs-list');if(!cont)return;
-  var list=db.devis.slice().reverse();
-  if(docsFilter==='devis') list=list.filter(function(d){return !d.planSVG||true;}); // tous les devis
-  else if(docsFilter==='plan') list=list.filter(function(d){return !!d.planSVG;});
-  else if(docsFilter==='signe') list=list.filter(function(d){return d.statut==='signé';});
-  if(!list.length){
-    cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📁</div><div style="font-size:14px;">Aucun document</div><div style="font-size:12px;color:var(--c-muted);margin-top:6px;">Vos devis et plans apparaîtront ici</div></div>';
+  var filter=docsFilter;
+  var factures=(filter==='factures'||filter==='all')?db.factures.slice().reverse():[];
+  var devis=[];
+  if(filter!=='factures'){
+    devis=db.devis.slice().reverse();
+    if(filter==='plan')devis=devis.filter(function(d){return !!d.planSVG;});
+    else if(filter==='signe')devis=devis.filter(function(d){return d.statut==='signé';});
+  }
+  if(!devis.length&&!factures.length){
+    cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📁</div><div style="font-size:14px;">Aucun document</div><div style="font-size:12px;color:var(--c-muted);margin-top:6px;">Vos devis et factures apparaîtront ici</div></div>';
     return;
   }
-  cont.innerHTML=list.map(function(d){
-    var ttc=calcTTC(d);
-    var hasPlan=!!(d.planSVG);
-    var dateStr=fmtDate(d.date);
-    var statutColor={brouillon:'var(--c-muted)',envoyé:'#60a5fa',signé:'var(--c-success)',refusé:'var(--c-danger)'}[d.statut]||'var(--c-muted)';
-    return '<div class="list-item" style="margin-bottom:10px;">'
-      // En-tête : icône type + infos
+  var html='';
+  factures.forEach(function(f){
+    var ht=(f.lignes||[]).reduce(function(a,l){return a+(pN(l.qte))*(pN(l.pu));},0);
+    var ttc=ht*(1+(f.tva||10)/100);
+    var solde=Math.max(0,ttc-(f.acompte||0));
+    var sCol={en_attente:'#60a5fa',payee:'var(--c-success)',retard:'var(--c-danger)',partielle:'var(--c-warn)'}[f.paiementStatut]||'var(--c-muted)';
+    var sTxt={en_attente:'En attente',payee:'Payée ✓',retard:'En retard ⚠',partielle:'Partiel'}[f.paiementStatut]||'';
+    html+='<div class="list-item" style="margin-bottom:10px;border-left:3px solid '+sCol+';">'
       +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
-      +'<div style="width:42px;height:42px;border-radius:10px;background:var(--c-surface2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">'+(hasPlan?'🗺':'📄')+'</div>'
+      +'<div style="width:42px;height:42px;border-radius:10px;background:rgba(45,140,240,.1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🧾</div>'
       +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.client)+'</div>'
-      +'<div style="font-size:11px;color:var(--c-muted);">'+esc(d.numero)+' · '+dateStr+'</div>'
-      +'<div style="font-size:11px;margin-top:2px;display:flex;align-items:center;gap:6px;">'
-      +'<span style="color:'+statutColor+';font-weight:600;">'+d.statut+'</span>'
-      +(d.biosource?'<span style="color:var(--c-success);">🌿</span>':'')
-      +(hasPlan?'<span style="color:var(--c-accent);font-size:10px;">+ plan</span>':'')
-      +'</div>'
+      +'<div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(f.client)+'</div>'
+      +'<div style="font-size:11px;color:var(--c-muted);">'+esc(f.numero)+' · '+fmtDate(f.date)+'</div>'
+      +'<div style="font-size:11px;margin-top:2px;color:'+sCol+';font-weight:600;">'+sTxt+(f.devisRef?' · Réf. '+esc(f.devisRef):'')+'</div>'
       +'</div>'
       +'<div style="text-align:right;flex-shrink:0;">'
       +'<div style="font-family:var(--font-mono);font-size:13px;color:var(--c-accent);">'+fmtMoney(ttc)+'</div>'
+      +((f.acompte||0)>0?'<div style="font-size:11px;color:var(--c-success);">Solde: '+fmtMoney(solde)+'</div>':'')
+      +'</div></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">'
+      +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;" data-fedit="'+f.id+'"><span>✏️</span><span style="font-size:9px;">Modifier</span></button>'
+      +'<button class="btn btn-primary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;" data-fpdf="'+f.id+'"><span>📄</span><span style="font-size:9px;">PDF</span></button>'
+      +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--c-danger);" data-fdel="'+f.id+'"><span>🗑</span><span style="font-size:9px;">Suppr.</span></button>'
+      +'</div></div>';
+  });
+  devis.forEach(function(d){
+    var ttc=calcTTC(d);var hasPlan=!!(d.planSVG);
+    var statutColor={brouillon:'var(--c-muted)',envoyé:'#60a5fa',signé:'var(--c-success)',refusé:'var(--c-danger)'}[d.statut]||'var(--c-muted)';
+    html+='<div class="list-item" style="margin-bottom:10px;">'
+      +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
+      +'<div style="width:42px;height:42px;border-radius:10px;background:var(--c-surface2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">'+(hasPlan?'🗺':'📄')+'</div>'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.client)+(d.biosource?' <span style="font-size:10px;color:var(--c-success);">🌿</span>':'')+'</div>'
+      +'<div style="font-size:11px;color:var(--c-muted);">'+esc(d.numero)+' · '+fmtDate(d.date)+'</div>'
+      +'<div style="font-size:11px;margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+      +'<span style="color:'+statutColor+';font-weight:600;">'+d.statut+'</span>'
+      +(hasPlan?'<span style="color:var(--c-accent);font-size:10px;">+ plan</span>':'')
+      +(d.statut==='signé'?'<button class="btn" style="padding:2px 8px;font-size:10px;background:rgba(34,197,94,.15);color:var(--c-success);border:1px solid var(--c-success);border-radius:6px;" data-gen-facture="'+d.id+'">🧾 Facturer</button>':'')
+      +'</div></div>'
+      +'<div style="font-family:var(--font-mono);font-size:13px;color:var(--c-accent);flex-shrink:0;">'+fmtMoney(ttc)+'</div>'
       +'</div>'
-      +'</div>'
-      // Actions
       +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">'
-      +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;flex-direction:column;gap:2px;display:flex;align-items:center;" data-dedit="'+d.id+'"><span>✏️</span><span style="font-size:9px;">Modifier</span></button>'
-      +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;flex-direction:column;gap:2px;display:flex;align-items:center;" data-dpdf="'+d.id+'"><span>📄</span><span style="font-size:9px;">PDF</span></button>'
-      +(hasPlan?'<button class="btn btn-secondary" style="padding:8px;font-size:12px;flex-direction:column;gap:2px;display:flex;align-items:center;" data-dplan="'+d.id+'"><span>🗺</span><span style="font-size:9px;">Plan</span></button>':'<div></div>')
-      +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;flex-direction:column;gap:2px;display:flex;align-items:center;" data-dbat="'+d.id+'"><span>🟢</span><span style="font-size:9px;">Batappli</span></button>'
-      +'</div>'
-      +'</div>';
-  }).join('');
+      +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;" data-dedit="'+d.id+'"><span>✏️</span><span style="font-size:9px;">Modifier</span></button>'
+      +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;" data-dpdf="'+d.id+'"><span>📄</span><span style="font-size:9px;">PDF</span></button>'
+      +(hasPlan?'<button class="btn btn-secondary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;" data-dplan="'+d.id+'"><span>🗺</span><span style="font-size:9px;">Plan</span></button>':'<div></div>')
+      +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;" data-dbat="'+d.id+'"><span>🟢</span><span style="font-size:9px;">Batappli</span></button>'
+      +'</div></div>';
+  });
+  cont.innerHTML=html;
 }
+
 
 // AUTH
 var authMode='login';
@@ -799,8 +886,8 @@ function doAuth(){
 }
 function doForgot(){var email=document.getElementById('auth-email').value.trim();if(!email){document.getElementById('auth-error').textContent='Entrez votre email.';return;}if(fbReady)fbAuth.sendPasswordResetEmail(email).then(function(){showToast('Email envoyé !','success');}).catch(function(e){document.getElementById('auth-error').textContent=fbErr(e.code);});}
 function fbErr(c){var m={'auth/user-not-found':'Utilisateur introuvable.','auth/wrong-password':'Mot de passe incorrect.','auth/invalid-credential':'Identifiants invalides.','auth/email-already-in-use':'Email déjà utilisé.','auth/invalid-email':'Email invalide.','auth/weak-password':'Mot de passe trop court.'};return m[c]||'Erreur: '+c;}
-function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');['clients','devis','visites','planning'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){db[c]=x.items;saveDB();}}}).catch(function(){});});}
-function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');Promise.all(['clients','devis','visites','planning'].map(function(c){return col.doc(c).set({items:db[c],updatedAt:firebase.firestore.FieldValue.serverTimestamp()});})).then(function(){showToast('Synchronisé !','success');}).catch(function(){showToast('Erreur sync','error');});}
+function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');['clients','devis','visites','planning','factures'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){db[c]=x.items;saveDB();}}}).catch(function(){});});}
+function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');Promise.all(['clients','devis','visites','planning','factures'].map(function(c){return col.doc(c).set({items:db[c],updatedAt:firebase.firestore.FieldValue.serverTimestamp()});})).then(function(){showToast('Synchronisé !','success');}).catch(function(){showToast('Erreur sync','error');});}
 
 // NAV/TOAST/UTILS
 function showView(n){document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});var el=document.getElementById('view-'+n);if(el)el.classList.add('active');document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===n);});}
@@ -1234,7 +1321,34 @@ function renderDevisLines(){var cont=document.getElementById('devis-lines-contai
 function updateTotaux(){var tvr=parseFloat(document.getElementById('d-tva').value)||10;var ht=0;devisLines.forEach(function(l){ht+=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);});var tva=ht*tvr/100;document.getElementById('total-ht').textContent=fmtMoney(ht);document.getElementById('total-tva-amount').textContent=fmtMoney(tva)+' ('+tvr+'%)';document.getElementById('total-ttc').textContent=fmtMoney(ht+tva);}
 function saveDevis(){var client=document.getElementById('d-client').value.trim();if(!client){showToast('Nom client requis','error');return;}collectLines();var prev=editDevisId?db.devis.find(function(d){return d.id===editDevisId;}):null;var dv={id:editDevisId||genId(),numero:prev?prev.numero:genNum(),client:client,objet:document.getElementById('d-objet').value,adresse:document.getElementById('d-adresse').value,date:document.getElementById('d-date').value,statut:document.getElementById('d-statut').value,tva:parseFloat(document.getElementById('d-tva').value)||10,biosource:document.getElementById('d-biosource').checked,notes:document.getElementById('d-notes').value,lignes:devisLines.slice(),planSVG:prev?prev.planSVG:'',createdAt:prev?prev.createdAt:new Date().toISOString()};if(!editDevisId)db.settings.nextNum=(db.settings.nextNum||1)+1;if(editDevisId){var i=db.devis.findIndex(function(d){return d.id===editDevisId;});if(i>=0)db.devis[i]=dv;}else{db.devis.push(dv);}saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();document.getElementById('modal-devis').classList.remove('open');showToast('Devis enregistré','success');}
 
-function renderDevisList(){var cont=document.getElementById('devis-list');var list=db.devis.slice().reverse();if(devisFilter!=='all')list=list.filter(function(d){return d.statut===devisFilter;});if(!list.length){cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📄</div><div style="font-size:14px;">Aucun devis</div></div>';return;}cont.innerHTML=list.map(function(d){var ttc=calcTTC(d);var hasPlan=!!(d.planSVG);return '<div class="list-item"><div class="list-item-header"><div><div class="list-item-title">'+esc(d.client)+(d.biosource?' <span style="font-size:11px;background:rgba(34,197,94,.15);color:var(--c-success);padding:2px 7px;border-radius:99px;margin-left:4px;">🌿 Bio</span>':'')+(hasPlan?' <span style="font-size:11px;background:rgba(45,140,240,.15);color:var(--c-accent);padding:2px 7px;border-radius:99px;margin-left:4px;">🗺</span>':'')+'</div><div class="list-item-sub">'+esc(d.numero)+' · '+fmtDate(d.date)+'</div></div><div><div class="list-item-amount">'+fmtMoney(ttc)+'</div><div style="text-align:right;margin-top:4px;"><span class="badge badge-'+d.statut+'">'+d.statut+'</span></div></div></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;"><button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dedit="'+d.id+'">✏️</button>'+(hasPlan?'<button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-dplan="'+d.id+'" title="Voir plan">🗺</button>':'')+' <button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dpdf="'+d.id+'">📥 PDF</button><button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dbat="'+d.id+'" title="Export Batappli" style="color:var(--c-success);">🟢 Bat.</button><button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-ddel="'+d.id+'">🗑</button></div></div>';}).join('');}
+function renderDevisList(){
+  var cont=document.getElementById('devis-list');
+  var list=db.devis.slice().reverse();
+  if(devisFilter!=='all')list=list.filter(function(d){return d.statut===devisFilter;});
+  if(!list.length){cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📄</div><div style="font-size:14px;">Aucun devis</div></div>';return;}
+  cont.innerHTML=list.map(function(d){
+    var ttc=calcTTC(d);var hasPlan=!!(d.planSVG);
+    var btns='';
+    btns+='<button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dedit="'+d.id+'">✏️</button>';
+    if(hasPlan)btns+='<button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-dplan="'+d.id+'" title="Voir plan">🗺</button>';
+    if(d.statut==='envoyé')btns+='<button class="btn btn-primary" style="flex:2;padding:6px;font-size:11px;" data-dsign="'+d.id+'">✍️ Signer</button>';
+    btns+='<button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dpdf="'+d.id+'">📥 PDF</button>';
+    btns+='<button class="btn btn-secondary" style="flex:1;padding:6px;font-size:11px;" data-dbat="'+d.id+'" title="Batappli">🟢</button>';
+    if(d.statut==='signé')btns+='<button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;color:var(--c-success);border-color:rgba(34,197,94,.4);" data-dfact="'+d.id+'" title="Générer facture">🧾</button>';
+    btns+='<button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-ddel="'+d.id+'">🗑</button>';
+    return '<div class="list-item">'
+      +'<div class="list-item-header">'
+      +'<div><div class="list-item-title">'+esc(d.client)
+      +(d.biosource?' <span style="font-size:11px;background:rgba(34,197,94,.15);color:var(--c-success);padding:2px 7px;border-radius:99px;">🌿 Bio</span>':'')
+      +(hasPlan?' <span style="font-size:11px;background:rgba(45,140,240,.15);color:var(--c-accent);padding:2px 7px;border-radius:99px;">🗺</span>':'')
+      +'</div><div class="list-item-sub">'+esc(d.numero)+' · '+fmtDate(d.date)+'</div></div>'
+      +'<div><div class="list-item-amount">'+fmtMoney(ttc)+'</div>'
+      +'<div style="text-align:right;margin-top:4px;"><span class="badge badge-'+d.statut+'">'+d.statut+'</span></div></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">'+btns+'</div>'
+      +'</div>';
+  }).join('');
+}
 
 // EXPORT PDF DEVIS
 function exportDevisPDF(id){var d=db.devis.find(function(x){return x.id===id;});if(!d){showToast('Introuvable','error');return;}var s=db.settings;var ht=(d.lignes||[]).reduce(function(a,l){return a+(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);},0);var tva=ht*(d.tva||10)/100;var ttc=ht+tva;
@@ -1246,7 +1360,7 @@ html+='<div style="background:#f9f9f9;padding:12px;border-radius:6px;margin-bott
 html+='<table><thead><tr><th style="width:50%">Désignation</th><th>Unité</th><th>Qté</th><th>PU HT</th><th>Total HT</th></tr></thead><tbody>'+(d.lignes||[]).map(function(l){var tot=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);return '<tr><td>'+esc(l.designation||'')+'</td><td>'+esc(l.unite||'')+'</td><td>'+esc(l.qte||'')+'</td><td>'+fmtMoney(l.pu)+'</td><td>'+fmtMoney(tot)+'</td></tr>';}).join('')+'</tbody></table>';
 html+='<div style="display:flex;justify-content:flex-end;"><div class="tot"><div class="tr"><span>Total HT</span><span>'+fmtMoney(ht)+'</span></div><div class="tr"><span>TVA '+d.tva+'%</span><span>'+fmtMoney(tva)+'</span></div><div class="ttc"><div class="tr"><span>TOTAL TTC</span><span>'+fmtMoney(ttc)+'</span></div></div></div></div>';
 if(d.notes)html+='<div style="margin-top:20px;font-size:9pt;color:#555;border-top:1px solid #eee;padding-top:12px;">'+esc(d.notes)+'</div>';
-html+='<div style="margin-top:40px;font-size:9pt;"><strong>Bon pour accord :</strong><br/><br/>Signature client :<br/><br/>_______________________________</div>';
+html+='<div style="margin-top:40px;font-size:9pt;"><strong>Bon pour accord :</strong><br/><br/>Signature client :<br/>'+(d.signature?'<img src="'+d.signature+'" style="max-height:70px;max-width:200px;display:block;margin-top:6px;"/>':'<br/>_______________________________')+(d.signedAt?'<br/><span style="font-size:8pt;color:#888;">Signé le '+new Date(d.signedAt).toLocaleDateString('fr-FR')+'</span>':'')+'</div>';
 html+=planSection+'</body></html>';
 var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);}else{showToast('Autorisez les popups','error');}
 }
@@ -1298,6 +1412,214 @@ function renderClientsList(){var cont=document.getElementById('clients-list');if
 var editPlanId=null;
 function openNewPlanning(){editPlanId=null;['p-titre','p-client','p-notes'].forEach(function(id){document.getElementById(id).value='';});var t=new Date().toISOString().split('T')[0];document.getElementById('p-date-debut').value=t;document.getElementById('p-date-fin').value=t;document.getElementById('modal-planning').classList.add('open');}
 function savePlanning(){var titre=document.getElementById('p-titre').value.trim();if(!titre){showToast('Titre requis','error');return;}var e={id:editPlanId||genId(),titre:titre,dateDebut:document.getElementById('p-date-debut').value,dateFin:document.getElementById('p-date-fin').value,client:document.getElementById('p-client').value,metier:document.getElementById('p-metier').value,notes:document.getElementById('p-notes').value};if(editPlanId){var i=db.planning.findIndex(function(x){return x.id===editPlanId;});if(i>=0)db.planning[i]=e;}else{db.planning.push(e);}saveDB();renderPlanningList();document.getElementById('modal-planning').classList.remove('open');showToast('Événement enregistré','success');}
+/* ============================================================
+   FACTURATION
+   ============================================================ */
+var factureLines=[], editFactureId=null;
+
+function genFactureNum(){
+  var s=db.settings;
+  var pfx=(s.factu&&s.factu.factPrefix)||('FA-'+yr+'-');
+  var num=(s.factu&&s.factu.factNextNum)||1;
+  return pfx+String(num).padStart(3,'0');
+}
+
+function calcEcheance(dateEmission, condPaiement){
+  var d=new Date(dateEmission||new Date());
+  var cond=(condPaiement||'30j');
+  if(cond==='30j'){d.setDate(d.getDate()+30);}
+  else if(cond==='45j'){d.setDate(d.getDate()+45);}
+  else if(cond==='60j'){d.setDate(d.getDate()+60);}
+  else if(cond==='reception'){d.setDate(d.getDate()+7);}
+  else if(cond==='avance'){d.setDate(d.getDate()+30);}
+  return d.toISOString().split('T')[0];
+}
+
+function newFactureLine(){return {id:genId(),designation:'',unite:'',qte:'',pu:''};}
+
+function renderFactureLines(){
+  var cont=document.getElementById('facture-lines');if(!cont)return;
+  cont.innerHTML=factureLines.map(function(l){
+    var tot=(pN(l.qte))*(pN(l.pu));
+    return '<div class="devis-line" data-flid="'+l.id+'">'
+      +'<div class="dl-grid">'
+      +'<input type="text" placeholder="Désignation" value="'+esc(l.designation||'')+'" data-ff="designation"/>'
+      +'<input type="text" placeholder="m²" value="'+esc(l.unite||'')+'" data-ff="unite"/>'
+      +'<input type="number" placeholder="Qté" value="'+esc(l.qte||'')+'" data-ff="qte" step="0.01" inputmode="decimal"/>'
+      +'<input type="number" placeholder="PU HT" value="'+esc(l.pu||'')+'" data-ff="pu" step="0.01" inputmode="decimal"/>'
+      +'<button class="devis-remove" data-flrem="'+l.id+'">✕</button>'
+      +'</div><div class="devis-line-total">= '+fmtMoney(tot)+'</div></div>';
+  }).join('');
+  updateFactureTotaux();
+}
+
+function updateFactureTotaux(){
+  var tvaR=pN(document.getElementById('f-tva').value)||10;
+  var acompte=pN(document.getElementById('f-acompte').value)||0;
+  var ht=factureLines.reduce(function(a,l){return a+pN(l.qte)*pN(l.pu);},0);
+  var tva=ht*tvaR/100;
+  var ttc=ht+tva;
+  var solde=Math.max(0,ttc-acompte);
+  document.getElementById('f-total-ht').textContent=fmtMoney(ht);
+  document.getElementById('f-total-tva').textContent=fmtMoney(tva)+' ('+tvaR+'%)';
+  document.getElementById('f-total-solde').textContent=fmtMoney(solde);
+  var ar=document.getElementById('f-acompte-row');
+  if(ar){ar.style.display=acompte>0?'flex':'none';}
+  document.getElementById('f-total-acompte').textContent='− '+fmtMoney(acompte);
+  // Couleur statut bar
+  var statut=document.getElementById('f-paiement-statut').value;
+  var colors={attente:'rgba(96,165,250,.1)',partiel:'rgba(251,191,36,.1)',payee:'rgba(34,197,94,.1)',retard:'rgba(239,68,68,.1)'};
+  var borders={attente:'rgba(96,165,250,.3)',partiel:'rgba(251,191,36,.3)',payee:'rgba(34,197,94,.3)',retard:'rgba(239,68,68,.3)'};
+  var labels={attente:'En attente de paiement',partiel:'Acompte versé — solde à régler',payee:'Payée ✓',retard:'Paiement en retard ⚠'};
+  var bar=document.getElementById('facture-statut-bar');
+  if(bar){bar.style.background=colors[statut];bar.style.borderColor=borders[statut];}
+  var txt=document.getElementById('facture-statut-txt');
+  if(txt)txt.textContent=labels[statut]||'';
+}
+
+function collectFactureLines(){
+  document.querySelectorAll('#facture-lines .devis-line').forEach(function(row){
+    var l=factureLines.find(function(x){return x.id===row.dataset.flid;});
+    if(!l)return;
+    row.querySelectorAll('input[data-ff]').forEach(function(inp){l[inp.dataset.ff]=inp.value;});
+  });
+}
+
+// Ouvrir facture depuis un devis
+function genFactureFromDevis(devisId){
+  var d=db.devis.find(function(x){return x.id===devisId;});if(!d)return;
+  editFactureId=null;
+  factureLines=(d.lignes||[]).map(function(l){return {id:genId(),designation:l.designation||l.desig||'',unite:l.unite||l.u||'',qte:l.qte||l.q||'',pu:l.pu||l.p||''};});
+  if(!factureLines.length)factureLines=[newFactureLine()];
+  document.getElementById('f-client').value=d.client||'';
+  document.getElementById('f-adresse').value=d.adresse||'';
+  document.getElementById('f-objet').value=d.objet||'';
+  var today=new Date().toISOString().split('T')[0];
+  document.getElementById('f-date-emission').value=today;
+  document.getElementById('f-date-echeance').value=calcEcheance(today,db.settings.factu&&db.settings.factu.paiementCond);
+  document.getElementById('f-tva').value=d.tva||10;
+  document.getElementById('f-acompte').value=0;
+  document.getElementById('f-paiement-statut').value='attente';
+  document.getElementById('f-notes').value=(db.settings.factu&&db.settings.factu.penalites)||'';
+  document.getElementById('modal-facture-title').textContent='🧾 Facture — '+d.client;
+  // Stocker ref devis
+  window._pendingDevisRef=devisId;
+  renderFactureLines();
+  document.getElementById('modal-facture').classList.add('open');
+}
+
+// Ouvrir facture existante
+function openFacture(id){
+  var f=db.factures.find(function(x){return x.id===id;});if(!f)return;
+  editFactureId=id;
+  factureLines=(f.lignes||[]).map(function(l){return Object.assign({},l);});
+  document.getElementById('f-client').value=f.client||'';
+  document.getElementById('f-adresse').value=f.adresse||'';
+  document.getElementById('f-objet').value=f.objet||'';
+  document.getElementById('f-date-emission').value=f.dateEmission||'';
+  document.getElementById('f-date-echeance').value=f.dateEcheance||'';
+  document.getElementById('f-tva').value=f.tva||10;
+  document.getElementById('f-acompte').value=f.acompte||0;
+  document.getElementById('f-paiement-statut').value=f.paiementStatut||'attente';
+  document.getElementById('f-notes').value=f.notes||'';
+  document.getElementById('modal-facture-title').textContent='🧾 '+f.numero;
+  renderFactureLines();
+  document.getElementById('modal-facture').classList.add('open');
+}
+
+function saveFacture(){
+  var client=document.getElementById('f-client').value.trim();
+  if(!client){showToast('Nom client requis','error');return;}
+  collectFactureLines();
+  var prev=editFactureId?db.factures.find(function(f){return f.id===editFactureId;}):null;
+  var num=prev?prev.numero:genFactureNum();
+  if(!prev&&db.settings.factu){db.settings.factu.factNextNum=(db.settings.factu.factNextNum||1)+1;saveDB();}
+  var fac={
+    id:editFactureId||genId(),numero:num,
+    client:client,adresse:document.getElementById('f-adresse').value,
+    objet:document.getElementById('f-objet').value,
+    dateEmission:document.getElementById('f-date-emission').value,
+    dateEcheance:document.getElementById('f-date-echeance').value,
+    tva:pN(document.getElementById('f-tva').value)||10,
+    acompte:pN(document.getElementById('f-acompte').value)||0,
+    paiementStatut:document.getElementById('f-paiement-statut').value,
+    notes:document.getElementById('f-notes').value,
+    lignes:factureLines.slice(),
+    devisRef:window._pendingDevisRef||null,
+    createdAt:prev?prev.createdAt:new Date().toISOString()
+  };
+  window._pendingDevisRef=null;
+  if(editFactureId){var i=db.factures.findIndex(function(f){return f.id===editFactureId;});if(i>=0)db.factures[i]=fac;}
+  else{db.factures.push(fac);}
+  saveDB();renderDocs();
+  document.getElementById('modal-facture').classList.remove('open');
+  showToast('Facture '+num+' enregistrée ✓','success');
+}
+
+function exportFacturePDF(id){
+  var f=db.factures.find(function(x){return x.id===id;});
+  if(!f&&editFactureId){collectFactureLines();saveFacture();f=db.factures.find(function(x){return x.id===editFactureId;});}
+  if(!f){showToast('Introuvable','error');return;}
+  var s=db.settings; var sf=s.factu||{};
+  var ht=f.lignes.reduce(function(a,l){return a+pN(l.qte)*pN(l.pu);},0);
+  var tva=ht*(f.tva||10)/100; var ttc=ht+tva; var solde=Math.max(0,ttc-(f.acompte||0));
+  var tvaMention=sf.tvaMention==='franchise'?'TVA non applicable — art. 293 B du CGI':sf.tvaMention==='autoliq'?'TVA auto-liquidée — art. 283-2 CGI':'';
+  var statutColors={attente:'#1e40af',partiel:'#92400e',payee:'#14532d',retard:'#7f1d1d'};
+  var statutLabels={attente:'EN ATTENTE',partiel:'ACOMPTE VERSÉ',payee:'PAYÉE',retard:'EN RETARD'};
+  var rows=f.lignes.map(function(l){var tot=pN(l.qte)*pN(l.pu);return '<tr><td>'+esc(l.designation||'')+'</td><td style="text-align:center;">'+esc(l.unite||'')+'</td><td style="text-align:right;">'+esc(l.qte||'')+'</td><td style="text-align:right;font-family:monospace;">'+fmtMoney(l.pu||0)+'</td><td style="text-align:right;font-weight:600;font-family:monospace;">'+fmtMoney(tot)+'</td></tr>';}).join('');
+  var htm='<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>'+esc(f.numero)+'</title>'
+    +'<style>body{font-family:Arial,sans-serif;padding:18mm;color:#111;font-size:10pt;}'
+    +'h1{font-size:20pt;color:#1a1a1a;font-weight:800;margin-bottom:3px;}'
+    +'.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;}'
+    +'.fact-num{font-size:26pt;font-weight:800;color:#111;letter-spacing:-1px;}'
+    +'.statut-badge{display:inline-block;padding:4px 12px;border-radius:4px;font-size:9pt;font-weight:700;color:#fff;background:'+(statutColors[f.paiementStatut]||'#1e40af')+';margin-top:6px;}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:16px;}'
+    +'th{background:#111;color:#fff;padding:8px 10px;text-align:left;font-size:8.5pt;}'
+    +'td{padding:7px 10px;border-bottom:1px solid #eee;font-size:9pt;}'
+    +'tr:nth-child(even) td{background:#f9f9f9;}'
+    +'.tot{margin-left:auto;width:240px;}'
+    +'.tr{display:flex;justify-content:space-between;padding:6px 0;font-size:9.5pt;border-bottom:1px solid #eee;}'
+    +'.solde{display:flex;justify-content:space-between;padding:10px 0;font-size:13pt;font-weight:800;border-top:2px solid #111;margin-top:4px;}'
+    +'.legal{font-size:7.5pt;color:#888;border-top:1px solid #ddd;padding-top:10px;margin-top:20px;line-height:1.6;}'
+    +'@media print{@page{size:A4;margin:0;}body{padding:10mm;}-webkit-print-color-adjust:exact;print-color-adjust:exact;}</style></head><body>'
+    +'<div class="hdr"><div>'
+    +(s.logo?'<img src="'+s.logo+'" style="height:54px;margin-bottom:8px;display:block;"/>':'')
+    +'<h1>'+esc(s.entreprise||'Mon Entreprise')+'</h1>'
+    +(sf.forme?'<div style="font-size:9pt;color:#666;">'+esc(sf.forme)+(sf.rcs?' — '+esc(sf.rcs):'')+'</div>':'')
+    +'<div style="font-size:9pt;color:#555;margin-top:3px;">'+(s.siret?'SIRET : '+esc(s.siret)+'<br/>':'')+esc(s.tel||'')+' · '+esc(s.email||'')+'<br/>'+esc(s.adresse||'')+'</div>'
+    +'</div><div style="text-align:right;">'
+    +'<div class="fact-num">FACTURE</div>'
+    +'<div style="font-size:14pt;font-weight:600;font-family:monospace;">'+esc(f.numero)+'</div>'
+    +'<div style="font-size:9pt;color:#555;margin-top:3px;">Émission : '+fmtDate(f.dateEmission)+'<br/>Échéance : '+fmtDate(f.dateEcheance)+'</div>'
+    +'<div class="statut-badge">'+(statutLabels[f.paiementStatut]||'EN ATTENTE')+'</div>'
+    +'</div></div>'
+    +'<div style="background:#f8f8f8;padding:12px 15px;border-radius:6px;margin-bottom:20px;border-left:3px solid #111;">'
+    +'<strong>Client :</strong> '+esc(f.client)+'<br/>'+(f.adresse?esc(f.adresse)+'<br/>':'')+'<strong>Objet :</strong> '+esc(f.objet||'')+'</div>'
+    +'<table><thead><tr><th style="width:46%">Désignation</th><th style="width:8%">Unité</th><th style="width:10%">Qté</th><th style="width:15%">PU HT</th><th style="width:21%">Total HT</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div style="display:flex;justify-content:flex-end;margin-bottom:20px;"><div class="tot">'
+    +'<div class="tr"><span>Total HT</span><span style="font-family:monospace;">'+fmtMoney(ht)+'</span></div>'
+    +'<div class="tr"><span>TVA '+f.tva+'%</span><span style="font-family:monospace;">'+fmtMoney(tva)+'</span></div>'
+    +'<div class="tr"><span>Total TTC</span><span style="font-family:monospace;">'+fmtMoney(ttc)+'</span></div>'
+    +(f.acompte>0?'<div class="tr" style="color:#166534;"><span>Acompte versé</span><span style="font-family:monospace;">− '+fmtMoney(f.acompte)+'</span></div>':'')
+    +'<div class="solde"><span>SOLDE À PAYER</span><span style="font-family:monospace;">'+fmtMoney(solde)+'</span></div>'
+    +'</div></div>'
+    +(f.notes?'<div style="font-size:9pt;color:#555;background:#fafafa;border:1px solid #eee;border-radius:6px;padding:10px 13px;margin-bottom:16px;">'+esc(f.notes)+'</div>':'')
+    +'<div style="margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">'
+    +'<div style="border:1px solid #ddd;border-radius:6px;padding:12px;min-height:60px;"><div style="font-size:9pt;color:#888;">Signature entreprise</div></div>'
+    +'<div style="border:1px solid #ddd;border-radius:6px;padding:12px;min-height:60px;"><div style="font-size:9pt;color:#888;">Acquitté le : ___________</div></div>'
+    +'</div>'
+    +'<div class="legal">'
+    +(sf.assur?'Assurance décennale : '+esc(sf.assur)+' — ':'')
+    +(sf.qualibat?esc(sf.qualibat)+' — ':'')
+    +(sf.tvaNum?'N° TVA : '+esc(sf.tvaNum)+' — ':'')
+    +(tvaMention?tvaMention+' — ':'')
+    +(sf.penalites?'Pénalités de retard : '+esc(sf.penalites):'')
+    +'</div></body></html>';
+  var w=window.open('','_blank');
+  if(w){w.document.write(htm);w.document.close();setTimeout(function(){w.print();},600);}
+  else showToast('Autorisez les popups','error');
+}
+
 function renderPlanningList(){var cont=document.getElementById('planning-list');if(!db.planning.length){cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📅</div><div style="font-size:14px;">Aucun événement</div></div>';return;}cont.innerHTML=db.planning.slice().sort(function(a,b){return (a.dateDebut||'').localeCompare(b.dateDebut||'');}).map(function(p){return '<div style="background:var(--c-surface);border-left:3px solid var(--c-accent);border-radius:0 10px 10px 0;padding:12px;margin-bottom:8px;"><div style="font-family:var(--font-mono);font-size:11px;color:var(--c-muted);margin-bottom:4px;">'+fmtDate(p.dateDebut)+(p.dateFin&&p.dateFin!==p.dateDebut?' → '+fmtDate(p.dateFin):'')+'</div><div style="display:flex;justify-content:space-between;align-items:center;"><div><strong style="font-size:13px;">'+esc(p.titre)+'</strong>'+(p.client?' — '+esc(p.client):'')+'<br/><span style="font-size:11px;color:var(--c-muted);">'+esc(p.metier||'')+'</span></div><button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-pdel="'+p.id+'">🗑</button></div></div>';}).join('');}
 
 // ============================================================
@@ -1571,11 +1893,37 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('devis-lines-container').addEventListener('click',function(e){var r=e.target.closest('[data-rem]');if(r){collectLines();removeDevisLine(r.dataset.rem);}});
   document.querySelectorAll('[data-filter]').forEach(function(b){b.addEventListener('click',function(){devisFilter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(function(x){x.classList.toggle('active',x.dataset.filter===devisFilter);});renderDevisList();});});
   document.getElementById('devis-list').addEventListener('click',function(e){
+    var ds=e.target.closest('[data-dsign]');if(ds){openSignature(ds.dataset.dsign);return;}
     var edit=e.target.closest('[data-dedit]');if(edit){openEditDevis(edit.dataset.dedit);return;}
     var plan=e.target.closest('[data-dplan]');if(plan){showPlanFromDevis(plan.dataset.dplan);return;}
     var pdf=e.target.closest('[data-dpdf]');if(pdf){exportDevisPDF(pdf.dataset.dpdf);return;}
     var bat=e.target.closest('[data-dbat]');if(bat){exportBatappli(bat.dataset.dbat);return;}
+    var fact=e.target.closest('[data-dfact]');if(fact){genFactureFromDevis(fact.dataset.dfact);return;}
     var del=e.target.closest('[data-ddel]');if(del){db.devis=db.devis.filter(function(d){return d.id!==del.dataset.ddel;});saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();}
+  });
+
+  // FACTURE
+  document.getElementById('close-modal-facture').addEventListener('click',function(){document.getElementById('modal-facture').classList.remove('open');});
+  document.getElementById('btn-add-fl').addEventListener('click',function(){collectFactureLines();factureLines.push(newFactureLine());renderFactureLines();});
+  document.getElementById('facture-lines').addEventListener('input',function(e){
+    var row=e.target.closest('.devis-line');if(!row)return;
+    var l=factureLines.find(function(x){return x.id===row.dataset.flid;});if(!l)return;
+    var f=e.target.dataset.ff;if(f)l[f]=e.target.value;
+    var tot=pN(l.qte)*pN(l.pu);var t=row.querySelector('.devis-line-total');if(t)t.textContent='= '+fmtMoney(tot);
+    updateFactureTotaux();
+  });
+  document.getElementById('facture-lines').addEventListener('click',function(e){
+    var r=e.target.closest('[data-flrem]');if(r){factureLines=factureLines.filter(function(l){return l.id!==r.dataset.flrem;});renderFactureLines();}
+  });
+  document.getElementById('f-tva').addEventListener('input',updateFactureTotaux);
+  document.getElementById('f-acompte').addEventListener('input',updateFactureTotaux);
+  document.getElementById('f-paiement-statut').addEventListener('change',updateFactureTotaux);
+  document.getElementById('btn-save-facture').addEventListener('click',function(){collectFactureLines();saveFacture();});
+  document.getElementById('btn-pdf-facture').addEventListener('click',function(){collectFactureLines();saveFacture();if(editFactureId)exportFacturePDF(editFactureId);else if(db.factures.length)exportFacturePDF(db.factures[db.factures.length-1].id);});
+  // Docs — actions factures
+  document.getElementById('docs-list').addEventListener('click',function(e){
+    var fe=e.target.closest('[data-fedit]');if(fe){openFacture(fe.dataset.fedit);return;}
+    var fp=e.target.closest('[data-fpdf]');if(fp){exportFacturePDF(fp.dataset.fpdf);return;}
   });
 
   // VISITES
@@ -1589,6 +1937,40 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // PLANNING
   document.getElementById('btn-add-planning').addEventListener('click',function(){openNewPlanning();});
+  // SIGNATURE
+  setupSigCanvas();
+  document.getElementById('close-modal-signature').addEventListener('click',function(){document.getElementById('modal-signature').classList.remove('open');});
+  document.getElementById('btn-sig-clear').addEventListener('click',function(){initSigCanvas();});
+  document.getElementById('btn-sig-valider').addEventListener('click',function(){validerSignature();});
+  // FACTURE
+  document.getElementById('close-modal-facture').addEventListener('click',function(){document.getElementById('modal-facture').classList.remove('open');});
+  document.getElementById('btn-save-facture').addEventListener('click',function(){collectFactureLines();saveFacture();});
+  document.getElementById('btn-pdf-facture').addEventListener('click',function(){collectFactureLines();saveFacture();if(editFactureId)exportFacturePDF(editFactureId);});
+  document.getElementById('btn-add-fline').addEventListener('click',function(){collectFactureLines();factureLines.push({id:genId(),desig:'',unite:'',qte:'',pu:''});renderFactureLines();});
+  document.getElementById('f-tva').addEventListener('input',updateFactureTotaux);
+  document.getElementById('f-acompte').addEventListener('input',updateFactureTotaux);
+  document.getElementById('f-paiement-statut').addEventListener('change',function(){updateFactureBanner(this.value);});
+  document.getElementById('f-lines-container').addEventListener('input',function(e){
+    var row=e.target.closest('.devis-line');if(!row)return;
+    var l=factureLines.find(function(x){return x.id===row.dataset.flid;});if(!l)return;
+    var ff=e.target.dataset.ff;if(ff)l[ff]=e.target.value;
+    var tot=(pN(l.qte))*(pN(l.pu));var t=row.querySelector('.devis-line-total');if(t)t.textContent='= '+fmtMoney(tot);
+    updateFactureTotaux();
+  });
+  document.getElementById('f-lines-container').addEventListener('click',function(e){
+    var r=e.target.closest('[data-frem]');if(r){factureLines=factureLines.filter(function(l){return l.id!==r.dataset.frem;});renderFactureLines();}
+  });
+  // Docs — factures actions
+  document.getElementById('docs-list').addEventListener('click',function(e){
+    var gf=e.target.closest('[data-gen-facture]');if(gf){createFactureFromDevis(gf.dataset.genFacture);return;}
+    var fe=e.target.closest('[data-fedit]');if(fe){openEditFacture(fe.dataset.fedit);return;}
+    var fp=e.target.closest('[data-fpdf]');if(fp){exportFacturePDF(fp.dataset.fpdf);return;}
+    var fd=e.target.closest('[data-fdel]');if(fd){db.factures=db.factures.filter(function(f){return f.id!==fd.dataset.fdel;});saveDB();renderDocs();return;}
+    var ed=e.target.closest('[data-dedit]');if(ed){openEditDevis(ed.dataset.dedit);return;}
+    var pl=e.target.closest('[data-dplan]');if(pl){showPlanFromDevis(pl.dataset.dplan);return;}
+    var pdf=e.target.closest('[data-dpdf]');if(pdf){exportDevisPDF(pdf.dataset.dpdf);return;}
+    var bat=e.target.closest('[data-dbat]');if(bat){exportBatappli(bat.dataset.dbat);return;}
+  });
 
   // DOCS — filtres
   document.querySelectorAll('[data-docs-filter]').forEach(function(b){
@@ -1645,7 +2027,519 @@ window.openParcours=openParcours;window.openNewDevis=openNewDevis;window.openSet
 window.showView=showView;window.showToast=showToast;window.exportBatappli=exportBatappli;
 window.exportDevisPDF=exportDevisPDF;window.syncToFS=syncToFS;
 
+/* ============================================================
+   MODULE FACTURATION
+   ============================================================ */
+
+// Numérotation factures
+function genFactNum(){
+  var s=db.settings;
+  var pfx=(s.factPrefix)||('FA-'+(new Date().getFullYear())+'-');
+  var n=s.factNextNum||1;
+  return pfx+String(n).padStart(3,'0');
+}
+
+// Calcul échéance selon conditions paiement
+function calcEcheance(dateStr){
+  var d=new Date(dateStr||new Date());
+  var cond=(db.settings.factPayCond)||'30j';
+  if(cond==='30j')d.setDate(d.getDate()+30);
+  else if(cond==='45j'){d.setMonth(d.getMonth()+1);d.setDate(0);}// fin de mois +45j approx
+  else if(cond==='60j')d.setDate(d.getDate()+60);
+  else if(cond==='reception')return dateStr;
+  return d.toISOString().split('T')[0];
+}
+
+// Créer facture depuis devis
+function createFactureFromDevis(devisId){
+  var d=db.devis.find(function(x){return x.id===devisId;});
+  if(!d){showToast('Devis introuvable','error');return;}
+  var today=new Date().toISOString().split('T')[0];
+  var f={
+    id:genId(),
+    numero:genFactNum(),
+    devisRef:d.numero,
+    client:d.client,
+    objet:d.objet||'',
+    adresse:d.adresse||'',
+    date:today,
+    echeance:calcEcheance(today),
+    tva:d.tva||10,
+    lignes:(d.lignes||[]).map(function(l){return Object.assign({},l);}),
+    acompte:0,
+    notes:d.notes||'',
+    paiementStatut:'en_attente',
+    planSVG:d.planSVG||'',
+    biosource:d.biosource||false,
+    createdAt:new Date().toISOString()
+  };
+  db.settings.factNextNum=(db.settings.factNextNum||1)+1;
+  db.factures.push(f);
+  saveDB();
+  openEditFacture(f.id);
+  showToast('Facture '+f.numero+' créée ✓','success');
+}
+
+// Lignes facture
+var factureLines=[],editFactureId=null;
+
+function renderFactureLines(){
+  var cont=document.getElementById('f-lines-container');if(!cont)return;
+  cont.innerHTML=factureLines.map(function(l){
+    var tot=(pN(l.qte))*(pN(l.pu));
+    return '<div class="devis-line" data-flid="'+l.id+'"><div class="dl-grid">'
+      +'<input type="text" placeholder="Désignation" value="'+esc(l.designation||l.desig||'')+'" data-ff="desig"/>'
+      +'<input type="text" placeholder="m²" value="'+esc(l.unite||'')+'" data-ff="unite"/>'
+      +'<input type="number" placeholder="Qté" value="'+esc(l.qte||'')+'" data-ff="qte" step="0.01" inputmode="decimal"/>'
+      +'<input type="number" placeholder="PU HT" value="'+esc(l.pu||'')+'" data-ff="pu" step="0.01" inputmode="decimal"/>'
+      +'<button class="devis-remove" data-frem="'+l.id+'">✕</button>'
+      +'</div><div class="devis-line-total">= '+fmtMoney(tot)+'</div></div>';
+  }).join('');
+  updateFactureTotaux();
+}
+
+function updateFactureTotaux(){
+  var tvaR=parseFloat(document.getElementById('f-tva').value)||10;
+  var acompte=pN(document.getElementById('f-acompte').value);
+  var ht=factureLines.reduce(function(a,l){return a+(pN(l.qte))*(pN(l.pu));},0);
+  var tva=ht*tvaR/100;
+  var ttc=ht+tva;
+  var solde=Math.max(0,ttc-acompte);
+  document.getElementById('f-ht').textContent=fmtMoney(ht);
+  document.getElementById('f-tva-amt').textContent=fmtMoney(tva)+' ('+tvaR+'%)';
+  document.getElementById('f-ttc').textContent=fmtMoney(ttc);
+  document.getElementById('f-acompte-disp').textContent='- '+fmtMoney(acompte);
+  document.getElementById('f-solde').textContent=fmtMoney(solde);
+}
+
+function collectFactureLines(){
+  document.querySelectorAll('#f-lines-container .devis-line').forEach(function(row){
+    var l=factureLines.find(function(x){return x.id===row.dataset.flid;});
+    if(!l)return;
+    row.querySelectorAll('input[data-ff]').forEach(function(inp){l[inp.dataset.ff]=inp.value;});
+  });
+}
+
+function openNewFacture(){
+  editFactureId=null;
+  factureLines=[{id:genId(),desig:'',unite:'',qte:'',pu:''}];
+  var today=new Date().toISOString().split('T')[0];
+  document.getElementById('f-client').value='';
+  document.getElementById('f-objet').value='';
+  document.getElementById('f-adresse').value='';
+  document.getElementById('f-date').value=today;
+  document.getElementById('f-echeance').value=calcEcheance(today);
+  document.getElementById('f-tva').value=db.settings.tarifs.tva_defaut||10;
+  document.getElementById('f-acompte').value='0';
+  document.getElementById('f-notes').value='';
+  document.getElementById('f-paiement-statut').value='en_attente';
+  document.getElementById('modal-facture-title').textContent='🧾 Nouvelle facture';
+  updateFactureBanner('en_attente');
+  renderFactureLines();
+  document.getElementById('modal-facture').classList.add('open');
+}
+
+function openEditFacture(id){
+  var f=db.factures.find(function(x){return x.id===id;});if(!f)return;
+  editFactureId=id;
+  factureLines=(f.lignes||[]).map(function(l){return Object.assign({},l);});
+  if(!factureLines.length)factureLines=[{id:genId(),desig:'',unite:'',qte:'',pu:''}];
+  document.getElementById('f-client').value=f.client||'';
+  document.getElementById('f-objet').value=f.objet||'';
+  document.getElementById('f-adresse').value=f.adresse||'';
+  document.getElementById('f-date').value=f.date||'';
+  document.getElementById('f-echeance').value=f.echeance||'';
+  document.getElementById('f-tva').value=f.tva||10;
+  document.getElementById('f-acompte').value=f.acompte||0;
+  document.getElementById('f-notes').value=f.notes||'';
+  document.getElementById('f-paiement-statut').value=f.paiementStatut||'en_attente';
+  document.getElementById('modal-facture-title').textContent='🧾 '+f.numero;
+  updateFactureBanner(f.paiementStatut);
+  renderFactureLines();
+  document.getElementById('modal-facture').classList.add('open');
+}
+
+function updateFactureBanner(statut){
+  var b=document.getElementById('facture-statut-banner');
+  var cfg={
+    en_attente:{bg:'rgba(96,165,250,.1)',col:'#60a5fa',txt:'⏳ En attente de paiement'},
+    payee:{bg:'rgba(34,197,94,.1)',col:'var(--c-success)',txt:'✅ Facture payée'},
+    retard:{bg:'rgba(239,68,68,.1)',col:'var(--c-danger)',txt:'⚠️ Paiement en retard'},
+    partielle:{bg:'rgba(245,158,11,.1)',col:'var(--c-warn)',txt:'🔄 Paiement partiel'}
+  };
+  var c=cfg[statut]||cfg.en_attente;
+  b.style.background=c.bg;b.style.color=c.col;b.textContent=c.txt;
+  b.style.display='flex';
+}
+
+function saveFacture(){
+  var client=document.getElementById('f-client').value.trim();
+  if(!client){showToast('Nom client requis','error');return;}
+  collectFactureLines();
+  var prev=editFactureId?db.factures.find(function(f){return f.id===editFactureId;}):null;
+  var f={
+    id:editFactureId||genId(),
+    numero:prev?prev.numero:genFactNum(),
+    devisRef:prev?prev.devisRef:'',
+    client:client,
+    objet:document.getElementById('f-objet').value,
+    adresse:document.getElementById('f-adresse').value,
+    date:document.getElementById('f-date').value,
+    echeance:document.getElementById('f-echeance').value,
+    tva:parseFloat(document.getElementById('f-tva').value)||10,
+    lignes:factureLines.slice(),
+    acompte:pN(document.getElementById('f-acompte').value),
+    notes:document.getElementById('f-notes').value,
+    paiementStatut:document.getElementById('f-paiement-statut').value,
+    planSVG:prev?prev.planSVG:'',
+    biosource:prev?prev.biosource:false,
+    createdAt:prev?prev.createdAt:new Date().toISOString()
+  };
+  if(!editFactureId)db.settings.factNextNum=(db.settings.factNextNum||1)+1;
+  if(editFactureId){var i=db.factures.findIndex(function(x){return x.id===editFactureId;});if(i>=0)db.factures[i]=f;}
+  else{db.factures.push(f);}
+  saveDB();renderDocs();renderGreeting();
+  document.getElementById('modal-facture').classList.remove('open');
+  showToast('Facture enregistrée ✓','success');
+}
+
+// PDF Facture conforme art. L441-9 CGI
+function exportFacturePDF(id){
+  var f=db.factures.find(function(x){return x.id===id;});if(!f){showToast('Introuvable','error');return;}
+  var s=db.settings;
+  var ht=f.lignes.reduce(function(a,l){return a+(pN(l.qte))*(pN(l.pu));},0);
+  var tva=ht*(f.tva||10)/100;var ttc=ht+tva;var solde=Math.max(0,ttc-(f.acompte||0));
+  var statutTxt={en_attente:'En attente de règlement',payee:'PAYÉE',retard:'EN RETARD DE PAIEMENT',partielle:'Paiement partiel reçu'}[f.paiementStatut]||'';
+  var rows=(f.lignes||[]).map(function(l){
+    var tot=(pN(l.qte))*(pN(l.pu));
+    return '<tr><td>'+esc(l.designation||l.desig||'')+'</td><td style="text-align:center;">'+esc(l.unite||'')+'</td><td style="text-align:right;">'+esc(l.qte||'')+'</td><td style="text-align:right;">'+fmtMoney(l.pu||l.p||0)+'</td><td style="text-align:right;font-weight:600;">'+fmtMoney(tot)+'</td></tr>';
+  }).join('');
+  var htm='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Facture '+esc(f.numero)+'</title>'
+    +'<style>body{font-family:Arial,sans-serif;padding:18mm;color:#111;font-size:10pt;}'
+    +'h1{font-size:20pt;color:#2d8cf0;margin-bottom:3px;}'
+    +'.hdr{display:flex;justify-content:space-between;margin-bottom:24px;}'
+    +'.facture-num{font-size:26pt;font-weight:800;color:#2d8cf0;letter-spacing:-1px;}'
+    +'.statut{display:inline-block;padding:4px 12px;border-radius:99px;font-size:9pt;font-weight:700;margin-top:6px;}'
+    +'.statut.payee{background:#dcfce7;color:#166534;}'
+    +'.statut.retard{background:#fee2e2;color:#991b1b;}'
+    +'.statut.en_attente{background:#dbeafe;color:#1e40af;}'
+    +'.statut.partielle{background:#fef3c7;color:#92400e;}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:16px;}'
+    +'th{background:#2d8cf0;color:#fff;padding:8px 10px;text-align:left;font-size:8.5pt;}'
+    +'td{padding:6px 10px;border-bottom:1px solid #eee;font-size:9pt;}'
+    +'tr:nth-child(even) td{background:#f8f9ff;}'
+    +'.tot{margin-left:auto;width:240px;border:1px solid #ddd;border-radius:6px;overflow:hidden;}'
+    +'.tr{display:flex;justify-content:space-between;padding:7px 12px;font-size:9.5pt;}'
+    +'.tr:nth-child(odd){background:#f8f9ff;}'
+    +'.solde{display:flex;justify-content:space-between;padding:10px 12px;font-size:13pt;font-weight:700;color:#2d8cf0;background:#e8f4ff;}'
+    +'.legal{font-size:7.5pt;color:#888;border-top:1px solid #eee;padding-top:10px;margin-top:16px;line-height:1.6;}'
+    +'@media print{body{padding:10mm;}@page{size:A4;margin:0;}}</style>'
+    +'</head><body>'
+    +'<div class="hdr"><div>'+(s.logo?'<img src="'+s.logo+'" style="height:54px;margin-bottom:7px;display:block;"/>':'')
+    +'<h1>'+esc(s.entreprise||'Mon Entreprise')+'</h1>'
+    +(s.siret?'<div style="font-size:9pt;color:#555;">SIRET : '+esc(s.siret)+'</div>':'')
+    +'<div style="font-size:9pt;color:#555;">'+esc(s.tel||'')+' · '+esc(s.email||'')+'<br/>'+esc(s.adresse||'')+'</div>'
+    +'</div><div style="text-align:right;">'
+    +'<div class="facture-num">FACTURE</div>'
+    +'<div style="font-size:14pt;font-weight:600;font-family:monospace;">'+esc(f.numero)+'</div>'
+    +(f.devisRef?'<div style="font-size:9pt;color:#888;">Réf. devis : '+esc(f.devisRef)+'</div>':'')
+    +'<div style="font-size:9pt;color:#555;margin-top:3px;">Émise le : '+fmtDate(f.date)+'</div>'
+    +'<div style="font-size:9pt;color:#555;">Échéance : <strong>'+fmtDate(f.echeance)+'</strong></div>'
+    +'<div><span class="statut '+f.paiementStatut+'">'+statutTxt+'</span></div>'
+    +'</div></div>'
+    +'<div style="background:#f8f9ff;padding:12px 15px;border-radius:8px;margin-bottom:20px;border-left:3px solid #2d8cf0;">'
+    +'<strong>Facturé à :</strong> '+esc(f.client)+'<br/>'+(f.adresse?esc(f.adresse)+'<br/>':'')+'<strong>Objet :</strong> '+esc(f.objet||'')+'</div>'
+    +'<table><thead><tr><th style="width:46%">Désignation</th><th style="width:8%">Unité</th><th style="width:10%">Qté</th><th style="width:15%">PU HT</th><th style="width:21%">Total HT</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div style="display:flex;justify-content:flex-end;margin-bottom:20px;"><div class="tot">'
+    +'<div class="tr"><span>Total HT</span><span>'+fmtMoney(ht)+'</span></div>'
+    +'<div class="tr"><span>TVA '+f.tva+'%</span><span>'+fmtMoney(tva)+'</span></div>'
+    +'<div class="tr"><span>Total TTC</span><span>'+fmtMoney(ttc)+'</span></div>'
+    +((f.acompte||0)>0?'<div class="tr"><span>Acompte versé</span><span style="color:#22c55e;">- '+fmtMoney(f.acompte)+'</span></div>':'')
+    +'<div class="solde"><span>SOLDE À PAYER</span><span>'+fmtMoney(solde)+'</span></div>'
+    +'</div></div>'
+    +(f.notes?'<div style="font-size:9pt;color:#555;background:#fafafa;border:1px solid #eee;border-radius:6px;padding:10px 13px;margin-bottom:16px;">'+esc(f.notes)+'</div>':'')
+    // Mentions légales
+    +'<div class="legal">'
+    +(s.siret?'SIRET : '+esc(s.siret)+' — ':'')+esc(s.entreprise||'')
+    +(s.factRCS?' — '+esc(s.factRCS):'')+(s.factAPE?' — APE '+esc(s.factAPE):'')
+    +(s.factTVANum?' — N° TVA : '+esc(s.factTVANum):'')+'<br/>'
+    +(s.factAssurance?'Assurance décennale : '+esc(s.factAssurance)+'<br/>':'')
+    +(s.factPenalites?esc(s.factPenalites):'Pénalités de retard : 3× taux légal BCE — Indemnité forfaitaire : 40€ (art. D.441-5 C.com.)')
+    +'</div>'
+    +'</body></html>';
+  var w=window.open('','_blank');
+  if(w){w.document.write(htm);w.document.close();setTimeout(function(){w.print();},600);}
+  else{showToast('Autorisez les popups','error');}
+}
+
+// Rendu liste factures (utilisé dans renderDocs)
+function renderFactures(){
+  // Utilisé dans renderDocs via le filtre 'factures'
+}
+/* ============================================================
+   MODULE SIGNATURE
+   ============================================================ */
+var sigDevisId=null,sigDrawing=false,sigHasStroke=false;
+
+function openSignature(devisId){
+  var d=db.devis.find(function(x){return x.id===devisId;});
+  if(!d){showToast('Devis introuvable','error');return;}
+  sigDevisId=devisId;
+  // Recap
+  var ttc=calcTTC(d);
+  document.getElementById('sig-recap').innerHTML=
+    '<div style="font-weight:700;font-size:14px;margin-bottom:4px;">' +esc(d.client)+'</div>'
+    +'<div style="color:var(--c-muted);font-size:12px;">'+esc(d.numero)+' · '+fmtDate(d.date)+'</div>'
+    +(d.objet?'<div style="font-size:12px;margin-top:2px;">'+esc(d.objet)+'</div>':'')
+    +'<div style="font-family:var(--font-mono);font-size:16px;color:var(--c-accent);margin-top:6px;font-weight:700;">'+fmtMoney(ttc)+' TTC</div>';
+  // Reset canvas
+  initSigCanvas();
+  document.getElementById('modal-signature').classList.add('open');
+}
+
+function initSigCanvas(){
+  var canvas=document.getElementById('sig-canvas');
+  var container=canvas.parentElement;
+  // Taille physique
+  canvas.width=container.offsetWidth||340;
+  canvas.height=container.offsetHeight||220;
+  var ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle='#1a1a2e';
+  ctx.lineWidth=2.5;
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
+  sigHasStroke=false;
+  document.getElementById('sig-placeholder').style.display='flex';
+}
+
+function getSigPos(e,canvas){
+  var r=canvas.getBoundingClientRect();
+  var src=e.touches?e.touches[0]:e;
+  return {
+    x:(src.clientX-r.left)*(canvas.width/r.width),
+    y:(src.clientY-r.top)*(canvas.height/r.height)
+  };
+}
+
+function setupSigCanvas(){
+  var canvas=document.getElementById('sig-canvas');
+  var ctx=canvas.getContext('2d');
+
+  function start(e){
+    e.preventDefault();
+    sigDrawing=true;
+    var pos=getSigPos(e,canvas);
+    ctx.beginPath();ctx.moveTo(pos.x,pos.y);
+    document.getElementById('sig-placeholder').style.display='none';
+  }
+  function move(e){
+    e.preventDefault();
+    if(!sigDrawing)return;
+    var pos=getSigPos(e,canvas);
+    ctx.lineTo(pos.x,pos.y);ctx.stroke();
+    sigHasStroke=true;
+  }
+  function end(e){e.preventDefault();sigDrawing=false;}
+
+  canvas.addEventListener('touchstart',start,{passive:false});
+  canvas.addEventListener('touchmove',move,{passive:false});
+  canvas.addEventListener('touchend',end,{passive:false});
+  canvas.addEventListener('mousedown',start);
+  canvas.addEventListener('mousemove',move);
+  canvas.addEventListener('mouseup',end);
+}
+
+function validerSignature(){
+  if(!sigHasStroke){showToast('Veuillez signer d’abord','error');return;}
+  var canvas=document.getElementById('sig-canvas');
+  var sigData=canvas.toDataURL('image/png');
+  // Sauvegarder dans le devis
+  var idx=db.devis.findIndex(function(x){return x.id===sigDevisId;});
+  if(idx>=0){
+    db.devis[idx].statut='signé';
+    db.devis[idx].signature=sigData;
+    db.devis[idx].signedAt=new Date().toISOString();
+    saveDB();
+    renderDevisList();renderDocs();renderGreeting();renderRecentActivity();
+    document.getElementById('modal-signature').classList.remove('open');
+    showToast('Devis signé ✓','success');
+  }
+}
+
+
 })();
 </script>
+
+<!-- MODAL FACTURE -->
+<div class="modal-overlay" id="modal-facture">
+  <div class="modal modal-full">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr">
+      <div class="modal-title" id="modal-facture-title">🧾 Nouvelle facture</div>
+      <button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-facture">✕</button>
+    </div>
+    <div id="facture-statut-banner" style="margin:0 0 14px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;display:none;align-items:center;justify-content:space-between;"></div>
+    <div class="form-group"><label class="form-label">Client *</label><input type="text" class="form-input" id="f-client" placeholder="Nom du client"/></div>
+    <div class="form-group"><label class="form-label">Objet</label><input type="text" class="form-input" id="f-objet" placeholder="Travaux de rénovation..."/></div>
+    <div class="form-group"><label class="form-label">Adresse</label><input type="text" class="form-input" id="f-adresse" placeholder="Adresse du chantier"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date émission</label><input type="date" class="form-input" id="f-date"/></div>
+      <div class="form-group"><label class="form-label">Date échéance</label><input type="date" class="form-input" id="f-echeance"/></div>
+    </div>
+    <hr class="divider"/>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="card-title" style="margin:0;">Prestations</div>
+      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" id="btn-add-fline">+ Ligne</button>
+    </div>
+    <div style="display:grid;grid-template-columns:3fr 1fr 1fr 1fr 24px;gap:6px;margin-bottom:4px;padding:0 4px;">
+      <span style="font-size:10px;color:var(--c-muted);">DÉSIGNATION</span><span style="font-size:10px;color:var(--c-muted);">U.</span><span style="font-size:10px;color:var(--c-muted);">QTÉ</span><span style="font-size:10px;color:var(--c-muted);">PU HT</span><span></span>
+    </div>
+    <div id="f-lines-container"></div>
+    <div class="form-row" style="margin-top:12px;">
+      <div class="form-group"><label class="form-label">TVA (%)</label><input type="number" class="form-input" id="f-tva" value="10" min="0" max="20" inputmode="decimal"/></div>
+      <div class="form-group"><label class="form-label">Acompte versé (€)</label><input type="number" class="form-input" id="f-acompte" value="0" min="0" inputmode="decimal" placeholder="0"/></div>
+    </div>
+    <div class="totaux-box">
+      <div class="totaux-row"><label>Total HT</label><span id="f-ht">0,00 €</span></div>
+      <div class="totaux-row"><label>TVA</label><span id="f-tva-amt">0,00 €</span></div>
+      <div class="totaux-row"><label>Total TTC</label><span id="f-ttc">0,00 €</span></div>
+      <div class="totaux-row"><label>Acompte versé</label><span id="f-acompte-disp" style="color:var(--c-success);">- 0,00 €</span></div>
+      <div class="totaux-row total-ttc"><label>SOLDE À PAYER</label><span id="f-solde">0,00 €</span></div>
+    </div>
+    <div class="form-group" style="margin-top:12px;"><label class="form-label">Notes / Conditions</label><textarea class="form-input" id="f-notes" rows="2" placeholder="Conditions de paiement, RIB..."></textarea></div>
+    <div class="form-group">
+      <label class="form-label">Statut paiement</label>
+      <select class="form-input" id="f-paiement-statut">
+        <option value="en_attente">⏳ En attente</option>
+        <option value="payee">✅ Payée</option>
+        <option value="retard">⚠️ En retard</option>
+        <option value="partielle">🔄 Paiement partiel</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+      <button class="btn btn-secondary" id="btn-save-facture">💾 Enregistrer</button>
+      <button class="btn btn-primary" id="btn-pdf-facture">📄 PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PLANNING -->
+<div class="modal-overlay" id="modal-planning">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr"><div class="modal-title">📅 Événement</div><button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-planning">✕</button></div>
+    <div class="form-group"><label class="form-label">Titre *</label><input type="text" class="form-input" id="p-titre" placeholder="Chantier Martin"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Début</label><input type="date" class="form-input" id="p-date-debut"/></div>
+      <div class="form-group"><label class="form-label">Fin</label><input type="date" class="form-input" id="p-date-fin"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Client</label><input type="text" class="form-input" id="p-client" placeholder="Nom client"/></div>
+    <div class="form-group"><label class="form-label">Corps de métier</label>
+      <select class="form-input" id="p-metier"><option>Peinture</option><option>Carrelage</option><option>Plomberie</option><option>Électricité</option><option>Menuiserie</option><option>Maçonnerie</option><option>Autre</option></select>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="p-notes" rows="2"></textarea></div>
+    <button class="btn btn-primary btn-full" id="btn-save-planning" style="margin-top:8px;">💾 Enregistrer</button>
+  </div>
+</div>
+
+<!-- MODAL VOIX STANDALONE -->
+<div class="modal-overlay" id="modal-voice">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr"><div class="modal-title">🎤 Dictée vocale</div><button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-voice">✕</button></div>
+    <p style="color:var(--c-muted);font-size:13px;margin-bottom:20px;">Dictez vos travaux — l'IA générera un devis.</p>
+    <button class="voice-btn" id="voice-standalone-btn">🎤</button>
+    <div style="text-align:center;margin:16px 0;font-size:13px;color:var(--c-muted);" id="voice-standalone-status">Appuyez pour commencer</div>
+    <div class="form-input" id="voice-standalone-transcript" style="min-height:80px;margin-bottom:12px;"></div>
+    <button class="btn btn-primary btn-full" id="btn-voice-to-devis" style="display:none;">🤖 Générer le devis</button>
+  </div>
+</div>
+
+<!-- MODAL SCANNER -->
+<div class="modal-overlay" id="modal-scanner">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr"><div class="modal-title">📷 Scanner notes</div><button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-scanner">✕</button></div>
+    <p style="color:var(--c-muted);font-size:13px;margin-bottom:16px;">Photographiez vos notes manuscrites.</p>
+    <input type="file" accept="image/*" capture="environment" id="scanner-input" style="display:none;"/>
+    <button class="btn btn-primary btn-full" id="btn-open-scanner">📸 Prendre une photo</button>
+    <div id="scanner-preview" style="margin:12px 0;"></div>
+    <div id="scanner-ai-output" style="display:none;">
+      <div style="display:none;padding:12px;background:rgba(45,140,240,.05);border-radius:8px;margin-bottom:8px;" id="scanner-loading"><div style="display:flex;align-items:center;gap:8px;"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span style="font-size:13px;color:var(--c-muted);">Analyse...</span></div></div>
+      <div class="form-group"><label class="form-label">Texte extrait</label><textarea class="form-input" id="scanner-text" rows="4"></textarea></div>
+      <button class="btn btn-primary btn-full" id="btn-scanner-to-devis">🤖 Générer le devis</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PARAMÈTRES -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal modal-full">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr"><div class="modal-title">⚙️ Paramètres</div><button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-settings">✕</button></div>
+    <div class="settings-tabs">
+      <button class="stab active" data-stab="entreprise">Entreprise</button>
+      <button class="stab" data-stab="tarifs">Tarifs</button>
+      <button class="stab" data-stab="devis-cfg">Devis</button>
+      <button class="stab" data-stab="ia">IA</button>
+    </div>
+    <div class="settings-panel active" id="stab-entreprise">
+      <div class="form-group"><label class="form-label">Logo</label><input type="file" accept="image/*" id="logo-input" style="display:none;"/>
+        <div style="display:flex;align-items:center;gap:12px;"><div id="logo-preview" style="width:64px;height:64px;background:var(--c-surface2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;border:1px solid var(--c-border);">🏢</div><button class="btn btn-secondary" id="btn-upload-logo">📷 Changer</button></div>
+      </div>
+      <div class="form-group"><label class="form-label">Nom entreprise</label><input type="text" class="form-input" id="s-entreprise" placeholder="Dupont Renovation SARL"/></div>
+      <div class="form-group"><label class="form-label">SIRET</label><input type="text" class="form-input" id="s-siret" placeholder="12345678901234"/></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Tel</label><input type="tel" class="form-input" id="s-tel" placeholder="06 12 34 56 78"/></div>
+        <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="s-email" placeholder="pro@dupont.fr"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Adresse</label><input type="text" class="form-input" id="s-adresse" placeholder="12 rue des Artisans"/></div>
+    </div>
+    <div class="settings-panel" id="stab-tarifs">
+      <div class="card-title">Main d'oeuvre (€/h)</div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Carreleur</label><input type="number" class="form-input" id="t-carreleur" value="42"/></div><div class="form-group"><label class="form-label">Peintre</label><input type="number" class="form-input" id="t-peintre" value="38"/></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Plombier</label><input type="number" class="form-input" id="t-plombier" value="62"/></div><div class="form-group"><label class="form-label">Electricien</label><input type="number" class="form-input" id="t-electricien" value="60"/></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Menuisier</label><input type="number" class="form-input" id="t-menuisier" value="50"/></div><div class="form-group"><label class="form-label">Macon</label><input type="number" class="form-input" id="t-macon" value="45"/></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Marge (%)</label><input type="number" class="form-input" id="t-marge" value="0"/></div><div class="form-group"><label class="form-label">TVA defaut</label><input type="number" class="form-input" id="t-tva" value="10"/></div></div>
+      <div class="form-group"><label class="form-label">Notes tarifaires</label><textarea class="form-input" id="t-notes" rows="2"></textarea></div>
+    </div>
+    <div class="settings-panel" id="stab-devis-cfg">
+      <div class="form-row"><div class="form-group"><label class="form-label">Préfixe</label><input type="text" class="form-input" id="s-prefix"/></div><div class="form-group"><label class="form-label">N° suivant</label><input type="number" class="form-input" id="s-nextnum" value="1"/></div></div>
+      <div style="background:var(--c-surface2);padding:12px;border-radius:8px;font-family:var(--font-mono);font-size:13px;color:var(--c-accent);">Prochain : <span id="next-num-preview"></span></div>
+    </div>
+    <div class="settings-panel" id="stab-ia">
+      <div class="form-group"><label class="form-label">Fournisseur IA</label>
+        <select class="form-input" id="s-ia-provider"><option value="claude">Claude (Anthropic)</option><option value="openai">ChatGPT (OpenAI)</option><option value="local">Mode local</option></select>
+      </div>
+      <div id="claude-cfg"><div class="form-group"><label class="form-label">Clé API Claude</label><input type="password" class="form-input" id="s-claude-key" placeholder="sk-ant-..."/></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-claude-model"><option value="claude-sonnet-4-20250514">Claude Sonnet 4</option><option value="claude-opus-4-5">Claude Opus 4.5</option><option value="claude-haiku-4-5">Claude Haiku 4.5</option></select></div></div>
+      <div id="openai-cfg" style="display:none;"><div class="form-group"><label class="form-label">Clé API OpenAI</label><input type="password" class="form-input" id="s-openai-key" placeholder="sk-..."/></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-openai-model"><option value="gpt-4o-mini">GPT-4o mini</option><option value="gpt-4o">GPT-4o</option></select></div></div>
+      <div class="form-group"><label class="form-label">URL proxy (optionnel)</label><input type="url" class="form-input" id="s-proxy-url" placeholder="https://..."/></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="btn-save-settings" style="margin-top:16px;">💾 Enregistrer</button>
+    <button class="btn btn-danger btn-full" id="btn-logout" style="margin-top:8px;">🚪 Déconnexion</button>
+  </div>
+</div>
+<!-- MODAL SIGNATURE -->
+<div class="modal-overlay" id="modal-signature">
+  <div class="modal modal-full" style="display:flex;flex-direction:column;height:92vh;">
+    <div class="modal-handle"></div>
+    <div class="modal-hdr">
+      <div class="modal-title">✍️ Signature client</div>
+      <button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-signature">✕</button>
+    </div>
+    <div id="sig-recap" style="background:var(--c-surface2);border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;"></div>
+    <div style="font-size:11px;color:var(--c-muted);margin-bottom:8px;text-align:center;">En signant, le client accepte le devis aux conditions indiquées</div>
+    <div style="flex:1;position:relative;border:2px dashed var(--c-border);border-radius:12px;overflow:hidden;background:#fff;min-height:200px;">
+      <canvas id="sig-canvas" style="width:100%;height:100%;touch-action:none;display:block;"></canvas>
+      <div id="sig-placeholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:14px;pointer-events:none;">✍️ Signez ici avec le doigt</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+      <button class="btn btn-secondary" id="btn-sig-clear">🗑 Effacer</button>
+      <button class="btn btn-primary" id="btn-sig-valider">✅ Valider le devis</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
