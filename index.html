@@ -742,7 +742,20 @@ var yr=new Date().getFullYear();
 var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
 var db=JSON.parse(JSON.stringify(DFLT));
 function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;}}catch(e){db=JSON.parse(JSON.stringify(DFLT));}}
-function saveDB(){try{localStorage.setItem(SK,JSON.stringify(db));}catch(e){}}
+function saveDB(){
+  try{localStorage.setItem(SK,JSON.stringify(db));}catch(e){}
+  // Sauvegarder la clé API dans Firebase si disponible
+  if(typeof fbReady!=='undefined'&&fbReady&&typeof currentUser!=='undefined'&&currentUser){
+    var ai=db.settings&&db.settings.ai;
+    if(ai&&(ai.claudeKey||ai.openaiKey)){
+      try{
+        fbDb.collection('users').doc(currentUser.uid).collection('data').doc('_settings')
+          .set({data:db.settings,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
+          .catch(function(){});
+      }catch(e){}
+    }
+  }
+}
 loadDB();
 
 // Firebase
@@ -784,6 +797,12 @@ function initFB(){
       } else {
         currentUser=null;
         renderRecentAccounts();
+  // Pré-remplir le dernier email utilisé
+  var lastEmail=localStorage.getItem('cp_last_email');
+  if(lastEmail){
+    var emailInput=document.getElementById('auth-email');
+    if(emailInput&&!emailInput.value)emailInput.value=lastEmail;
+  }
         hideApp();
       }
     });
@@ -869,12 +888,16 @@ function doAuth(){
   var err=document.getElementById('auth-error');
   err.textContent='';
   if(!email||!pw){err.textContent='Email et mot de passe requis.';return;}
-  if(!fbReady){showApp();afterLogin();return;}
+  if(!fbReady){
+    if(email)localStorage.setItem('cp_last_email',email);
+    showApp();afterLogin();return;
+  }
   var remember=document.getElementById('auth-remember');
   var persistence=firebase.auth.Auth.Persistence;
   var pers=(remember&&remember.checked)?persistence.LOCAL:persistence.SESSION;
   fbAuth.setPersistence(pers).then(function(){
     if(authMode==='login'){
+      localStorage.setItem('cp_last_email',email);
       return fbAuth.signInWithEmailAndPassword(email,pw);
     } else {
       return fbAuth.createUserWithEmailAndPassword(email,pw).then(function(){
@@ -886,7 +909,20 @@ function doAuth(){
 }
 function doForgot(){var email=document.getElementById('auth-email').value.trim();if(!email){document.getElementById('auth-error').textContent='Entrez votre email.';return;}if(fbReady)fbAuth.sendPasswordResetEmail(email).then(function(){showToast('Email envoyé !','success');}).catch(function(e){document.getElementById('auth-error').textContent=fbErr(e.code);});}
 function fbErr(c){var m={'auth/user-not-found':'Utilisateur introuvable.','auth/wrong-password':'Mot de passe incorrect.','auth/invalid-credential':'Identifiants invalides.','auth/email-already-in-use':'Email déjà utilisé.','auth/invalid-email':'Email invalide.','auth/weak-password':'Mot de passe trop court.'};return m[c]||'Erreur: '+c;}
-function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');['clients','devis','visites','planning','factures'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){db[c]=x.items;saveDB();}}}).catch(function(){});});}
+function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');
+  // Charger settings (clé API etc.) depuis Firebase
+  col.doc('_settings').get().then(function(doc){
+    if(doc.exists&&doc.data()&&doc.data().data){
+      var remoteSettings=doc.data().data;
+      // Fusionner : priorité aux données distantes pour la clé API
+      if(remoteSettings.ai){
+        db.settings.ai=Object.assign({},db.settings.ai,remoteSettings.ai);
+        populateSettings();
+        saveDB();
+      }
+    }
+  }).catch(function(){});
+  ['clients','devis','visites','planning','factures'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){db[c]=x.items;saveDB();}}}).catch(function(){});});}
 function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');Promise.all(['clients','devis','visites','planning','factures'].map(function(c){return col.doc(c).set({items:db[c],updatedAt:firebase.firestore.FieldValue.serverTimestamp()});})).then(function(){showToast('Synchronisé !','success');}).catch(function(){showToast('Erreur sync','error');});}
 
 // NAV/TOAST/UTILS
@@ -1128,7 +1164,9 @@ function buildAndShowPlan(){
     else{surfR=2*ldebord*(lardebord/2*slope2+lardebord*0.3);}
     rooms.push({nom:'Toiture '+t.type,l:ldebord,w:lardebord,type:'toiture',nbPans:nbPans,halfLar:halfLar,pente:t.pente,type_toit:t.type,surfReelle:surfR});
   }
-  var mg=55,cH=88,gap=20;
+  var mg=55,gap=20;
+  // cH calculé dynamiquement après mlines (voir plus bas)
+  var cH=88;
   // Calcul de l'échelle automatique selon les dimensions réelles
   var maxRoomW=rooms.reduce(function(a,r){return Math.max(a,r.l);},0)||1;
   var maxRoomH=rooms.reduce(function(a,r){return Math.max(a,r.w);},0)||1;
@@ -1146,7 +1184,19 @@ function buildAndShowPlan(){
   var curX=mg,curY=mg,rowH=0;
   var placed=[];
   rooms.forEach(function(r){var rw=Math.max(r.l*sc,55);var rh=Math.max(r.w*sc,35);if(curX+rw>maxW+mg&&placed.length){curX=mg;curY+=rowH+gap;rowH=0;}placed.push(Object.assign({},r,{x:curX,y:curY,pw:rw,ph:rh}));curX+=rw+gap;if(rh>rowH)rowH=rh;});
-  var tW=Math.max(maxW+2*mg,420);var tH=(placed.length>0?curY+rowH+mg:mg+40)+cH+30;
+  // Pré-calculer nb lignes métrés pour dimensionner le cartouche
+  var _preNbLines=0;
+  if(Math.max(0,cSurfaces.reduce(function(a,s){return a+(pN(s.l)||0)*(pN(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0))>0)_preNbLines++;
+  if(cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0)>0)_preNbLines++;
+  if(cVolumes.reduce(function(a,v){return a+(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);},0)>0)_preNbLines++;
+  if(cLineaires.reduce(function(a,l){return a+(pN(l.lg)||0);},0)>0)_preNbLines++;
+  var _tsurf2=document.getElementById('ct-surface')?document.getElementById('ct-surface').textContent:'';
+  if(_tsurf2&&_tsurf2!=='—'){_preNbLines+=2;// toit + faitage
+    var _tobj=window._toiture||{};if(_tobj.type==='4pentes')_preNbLines++;// arretiers
+  }
+  cH=Math.max(88,28+Math.max(1,_preNbLines)*13+10);
+  var tW=Math.max(maxW+2*mg,420);
+  var tH=(placed.length>0?curY+rowH+mg:mg+40)+cH+30;
   var sNette=Math.max(0,cSurfaces.reduce(function(a,s){return a+(pN(s.l)||0)*(pN(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0));
   var murNette=cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0);
   var vtot=cVolumes.reduce(function(a,v){return a+(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);},0);
@@ -1255,8 +1305,29 @@ function buildAndShowPlan(){
   sv.push('<text x="'+(mg+c4*2+6)+'" y="'+(cy+14)+'" font-family="JetBrains Mono,monospace" font-size="7" fill="#8b7355" font-weight="600">PLAN COTÉ</text>');
   sv.push('<text x="'+(mg+c4*2+6)+'" y="'+(cy+44)+'" font-family="JetBrains Mono,monospace" font-size="9" fill="#2a1f0f">'+new Date().toLocaleDateString('fr-FR')+'</text>');
   sv.push('<text x="'+(mg+c4*3+6)+'" y="'+(cy+14)+'" font-family="JetBrains Mono,monospace" font-size="7" fill="#8b7355" font-weight="600">MÉTRÉS</text>');
-  var mlines=[];if(sNette>0)mlines.push('Surf: '+sNette.toFixed(1)+' m²');if(murNette>0)mlines.push('Murs: '+murNette.toFixed(1)+' m²');if(vtot>0)mlines.push('Vol: '+vtot.toFixed(2)+' m³');if(ltot>0)mlines.push('Lin: '+ltot.toFixed(1)+' ml');if(hasToiture)mlines.push('Toit: '+tsurf);
-  mlines.slice(0,3).forEach(function(t,i){sv.push('<text x="'+(mg+c4*3+6)+'" y="'+(cy+32+i*16)+'" font-family="JetBrains Mono,monospace" font-size="8" fill="#2a1f0f">'+esc(t)+'</text>');});
+  var mlines=[];
+  if(sNette>0)mlines.push('Surf: '+sNette.toFixed(1)+' m\u00b2');
+  if(murNette>0)mlines.push('Murs: '+murNette.toFixed(1)+' m\u00b2');
+  if(vtot>0)mlines.push('Vol: '+vtot.toFixed(2)+' m\u00b3');
+  if(ltot>0)mlines.push('Lin: '+ltot.toFixed(1)+' ml');
+  if(hasToiture){
+    var tRoom=rooms.find(function(r){return r.type==='toiture';});
+    var surfAff=tRoom?tRoom.surfReelle:parseFloat(tsurf)||0;
+    mlines.push('Toit: '+surfAff.toFixed(2)+' m\u00b2');
+    // Faîtage
+    var ftxt=document.getElementById('ct-faitag')?document.getElementById('ct-faitag').textContent:'';
+    var fml=parseFloat(ftxt)||0;
+    if(fml>0)mlines.push('Fa\u00eetage: '+fml.toFixed(2)+' ml');
+    // Arêtiers (4 pentes uniquement)
+    var tObj=window._toiture||{};
+    if(tObj.type==='4pentes'&&tObj.l>0&&tObj.lar>0){
+      var penteArr=(tObj.pente||35)*Math.PI/180;
+      var h2arr=(tObj.lar/2)/Math.cos(penteArr);
+      var arrLen=Math.sqrt(Math.pow(tObj.lar/2,2)+Math.pow(h2arr,2));
+      mlines.push('Ar\u00eatiers: '+(arrLen*4).toFixed(2)+' ml (x4)');
+    }
+  }
+  mlines.forEach(function(t,i){sv.push('<text x="'+(mg+c4*3+6)+'" y="'+(cy+28+i*13)+'" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#2a1f0f">'+esc(t)+'</text>');});
   sv.push('<text x="'+(mg+8)+'" y="'+(cy+cH-6)+'" font-family="JetBrains Mono,monospace" font-size="7" fill="#8b7355">ÉCHELLE 1/'+sc+'</text>');
   sv.push('<rect x="'+(mg+80)+'" y="'+(cy+cH-16)+'" width="20" height="5" fill="#2a1f0f"/>');
   sv.push('<rect x="'+(mg+100)+'" y="'+(cy+cH-16)+'" width="20" height="5" fill="#f5f0e8" stroke="#2a1f0f" stroke-width="0.5"/>');
@@ -1406,23 +1477,55 @@ async function doGenerateDevisFromParcours(){
     +'8. Réponds UNIQUEMENT en JSON valide, sans texte ni markdown:\n'
     +'[{"designation":"...","unite":"m²|m³|ml|h|forfait|u","qte":"VALEUR_REELLE","pu":"PRIX"}]';
 
+  // Ajouter instruction système stricte en tête du prompt
+  var fullPrompt='INSTRUCTION CRITIQUE: Tu dois répondre UNIQUEMENT avec un tableau JSON valide.\n'
+    +'Pas de texte avant, pas de texte après, pas de markdown, pas de ```json.\n'
+    +'Commence directement par [ et termine par ].\n\n'
+    +prompt;
   var result;
-  try{result=await callAI(prompt);}
-  catch(e){result=localAI((parcoursVisite?parcoursVisite.description:'')+' '+dictee, metrages);}
+  try{
+    result=await callAI(fullPrompt);
+    // DEBUG temporaire - voir réponse brute
+    if(result&&!result.startsWith('LOCAL:')){
+      var preview=result.slice(0,80).replace(/\n/g,' ');
+      console.log('=== REPONSE CLAUDE BRUTE ===',result.slice(0,300));
+      showToast('Claude: '+preview,'success');
+    } else if(!result){
+      showToast('Claude: réponse vide','error');
+    }
+  }
+  catch(e){
+    console.warn('Erreur API:',e);
+    // Enrichir metrages avec toiture pour localAI
+    var mt=window._toiture||{};
+    if(mt.l>0)metrages.toiture={type:mt.type,surf:tsurfVal,l:mt.l,lar:mt.lar,pente:mt.pente};
+    result=localAI((parcoursVisite?parcoursVisite.nature+' '+(parcoursVisite.description||''):'')+' '+dictee, metrages);
+  }
 
   var lines=[];
   if(result&&result.startsWith('LOCAL:')){
     try{lines=JSON.parse(result.slice(6));}catch(e){lines=[];}
-  } else {
+  } else if(result){
     try{
-      var clean=result.replace(/```json|```/g,'').trim();
-      var m=clean.match(/\[[\s\S]*\]/);if(m)clean=m[0];
+      // Nettoyage robuste : retirer markdown, texte avant/après le JSON
+      var clean=result
+        .replace(/```json\s*/gi,'').replace(/```\s*/g,'')
+        .replace(/^[^\[]*/, '').replace(/[^\]]*$/, '')
+        .trim();
+      // Fallback : chercher premier [ et dernier ]
+      var ib=result.indexOf('['),ie=result.lastIndexOf(']');
+      if(clean.length<3&&ib>=0&&ie>ib)clean=result.slice(ib,ie+1);
       lines=JSON.parse(clean);
-    }catch(e){lines=[];}
+    }catch(e){
+      console.warn('Parsing JSON Claude échoué:',e.message,'\nRésultat brut:',result&&result.slice(0,200));
+      lines=[];
+    }
   }
-  if(!lines.length){
+  // Fallback localAI avec tous les métrés si Claude échoue ou renvoie vide
+  if(!lines||!lines.length){
+    console.warn('Fallback localAI — vérifier clé API ou réponse Claude');
     try{lines=JSON.parse(localAI((parcoursVisite?parcoursVisite.description:'')||'travaux',metrages).slice(6));}
-    catch(e){lines=[{designation:'Travaux',unite:'m²',qte:String(sNette||1),pu:'85'}];}
+    catch(e){lines=[{designation:'Travaux',unite:'forfait',qte:'1',pu:'0'}];}
   }
   lines=lines.map(function(l){return {id:genId(),designation:l.designation||'',unite:l.unite||'u',qte:String(l.qte||1),pu:String(l.pu||0)};});
   document.getElementById('ai-loading').style.display='none';
