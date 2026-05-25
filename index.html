@@ -1119,7 +1119,14 @@ function buildAndShowPlan(){
     var lardebord=t.lar+2*(t.debord||0);
     var halfLar=lardebord/2/Math.cos(penteRad);
     var nbPans={'1pan':1,'2pentes':2,'4pentes':4,'mansarde':4}[t.type]||2;
-    rooms.push({nom:'Toiture (vue dessus)',l:ldebord,w:lardebord,type:'toiture',nbPans:nbPans,halfLar:halfLar,pente:t.pente,type_toit:t.type});
+    // Surface réelle calculée identiquement à calcToiture()
+    var penteRad2=t.pente*Math.PI/180;var slope2=1/Math.cos(penteRad2);
+    var surfR=0;
+    if(t.type==='1pan'){surfR=ldebord*(lardebord/2)*slope2;}
+    else if(t.type==='2pentes'){surfR=2*ldebord*(lardebord/2)*slope2;}
+    else if(t.type==='4pentes'){surfR=ldebord*lardebord*slope2;}
+    else{surfR=2*ldebord*(lardebord/2*slope2+lardebord*0.3);}
+    rooms.push({nom:'Toiture '+t.type,l:ldebord,w:lardebord,type:'toiture',nbPans:nbPans,halfLar:halfLar,pente:t.pente,type_toit:t.type,surfReelle:surfR});
   }
   var mg=55,cH=88,gap=20;
   // Calcul de l'échelle automatique selon les dimensions réelles
@@ -1173,39 +1180,54 @@ function buildAndShowPlan(){
       // Ouvertures
       (r.ouvertures||[]).forEach(function(o,oi){var ow=Math.min((pN(o.l)||0)*sc,w/Math.max(r.ouvertures.length,1)-4);var oh=Math.min((pN(o.h)||0)*sc,hgP-4);var ox=x+10+oi*((w-20)/Math.max(r.ouvertures.length,1));sv.push('<rect x="'+ox+'" y="'+(y+h-oh-2)+'" width="'+ow+'" height="'+oh+'" fill="#c8e0f0" stroke="#1a4a7a" stroke-width="1" stroke-dasharray="3,2"/>');sv.push('<line x1="'+ox+'" y1="'+(y+h-oh-2)+'" x2="'+(ox+ow)+'" y2="'+(y+h-2)+'" stroke="#1a4a7a" stroke-width="0.5" opacity="0.5"/>');sv.push('<line x1="'+(ox+ow)+'" y1="'+(y+h-oh-2)+'" x2="'+ox+'" y2="'+(y+h-2)+'" stroke="#1a4a7a" stroke-width="0.5" opacity="0.5"/>');});
     } else if(r.type==='toiture'){
-      // Vue de dessus toiture : rectangle emprise + diagonales faîtière
+      // Vue de dessus toiture — emprise au sol
       sv.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="#e8f4e8" stroke="#1a4a7a" stroke-width="2"/>');
-      // Hachures toiture (diagonales)
-      sv.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="url(#h1)" opacity="0.4"/>');
-      // Faîtière centrale (ligne de crête)
-      if(r.nbPans>=2){
-        var cx=x+w/2;
-        if(r.type_toit==='2pentes'||r.type_toit==='mansarde'){
-          // Faîtière horizontale
-          sv.push('<line x1="'+cx+'" y1="'+(y+8)+'" x2="'+cx+'" y2="'+(y+h-8)+'" stroke="#1a4a7a" stroke-width="1.5" stroke-dasharray="4,3"/>');
-          // Lignes de pentes (coins vers faîtière)
-          sv.push('<line x1="'+x+'" y1="'+y+'" x2="'+cx+'" y2="'+(y+8)+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
-          sv.push('<line x1="'+(x+w)+'" y1="'+y+'" x2="'+cx+'" y2="'+(y+8)+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
-          sv.push('<line x1="'+x+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+(y+h-8)+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
-          sv.push('<line x1="'+(x+w)+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+(y+h-8)+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
-        } else if(r.type_toit==='4pentes'){
-          // 4 pentes : diagonales vers le centre
-          var cy2=y+h/2;
-          sv.push('<line x1="'+x+'" y1="'+y+'" x2="'+cx+'" y2="'+cy2+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
-          sv.push('<line x1="'+(x+w)+'" y1="'+y+'" x2="'+cx+'" y2="'+cy2+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
-          sv.push('<line x1="'+x+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+cy2+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
-          sv.push('<line x1="'+(x+w)+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+cy2+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
+      sv.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="url(#h1)" opacity="0.3"/>');
+      var cx=x+w/2;var cy=y+h/2;
+      if(r.type_toit==='2pentes'||r.type_toit==='mansarde'){
+        // Faîtage longitudinal (parallèle au grand côté, centré)
+        sv.push('<line x1="'+cx+'" y1="'+(y+4)+'" x2="'+cx+'" y2="'+(y+h-4)+'" stroke="#1a4a7a" stroke-width="2" stroke-dasharray="5,3"/>');
+        // 4 lignes de rampants (coins → faîtage)
+        sv.push('<line x1="'+x+'" y1="'+y+'" x2="'+cx+'" y2="'+(y+4)+'" stroke="#1a4a7a" stroke-width="1"/>');
+        sv.push('<line x1="'+(x+w)+'" y1="'+y+'" x2="'+cx+'" y2="'+(y+4)+'" stroke="#1a4a7a" stroke-width="1"/>');
+        sv.push('<line x1="'+x+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+(y+h-4)+'" stroke="#1a4a7a" stroke-width="1"/>');
+        sv.push('<line x1="'+(x+w)+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+(y+h-4)+'" stroke="#1a4a7a" stroke-width="1"/>');
+      } else if(r.type_toit==='4pentes'){
+        // Arêtiers à 45° depuis les 4 coins
+        // offset = h/2 (demi-largeur en px)
+        var off=h/2;
+        // Points de départ faîtage
+        var fx1=x+off; var fx2=x+w-off; var fy=y+h/2;
+        // 4 arêtiers (coins → extrémités faîtage) à 45°
+        sv.push('<line x1="'+x+'" y1="'+y+'" x2="'+fx1+'" y2="'+fy+'" stroke="#1a4a7a" stroke-width="1.5"/>');
+        sv.push('<line x1="'+(x+w)+'" y1="'+y+'" x2="'+fx2+'" y2="'+fy+'" stroke="#1a4a7a" stroke-width="1.5"/>');
+        sv.push('<line x1="'+x+'" y1="'+(y+h)+'" x2="'+fx1+'" y2="'+fy+'" stroke="#1a4a7a" stroke-width="1.5"/>');
+        sv.push('<line x1="'+(x+w)+'" y1="'+(y+h)+'" x2="'+fx2+'" y2="'+fy+'" stroke="#1a4a7a" stroke-width="1.5"/>');
+        // Faîtage central (seulement si L > l, sinon point)
+        if(fx2>fx1){
+          sv.push('<line x1="'+fx1+'" y1="'+fy+'" x2="'+fx2+'" y2="'+fy+'" stroke="#1a4a7a" stroke-width="2" stroke-dasharray="5,3"/>');
+          // Label faîtage
+          var flen=(r.l-r.w);if(flen>0)sv.push('<text x="'+((fx1+fx2)/2)+'" y="'+(fy-5)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="7" fill="#1a4a7a">Faît. '+flen.toFixed(2)+' m</text>');
+        } else {
+          // Carré : point central
+          sv.push('<circle cx="'+fx1+'" cy="'+fy+'" r="3" fill="#1a4a7a"/>');
         }
+      } else if(r.type_toit==='1pan'){
+        // 1 seul pan : ligne de rive haute
+        sv.push('<line x1="'+x+'" y1="'+(y+4)+'" x2="'+(x+w)+'" y2="'+(y+4)+'" stroke="#1a4a7a" stroke-width="2" stroke-dasharray="5,3"/>');
+        sv.push('<line x1="'+x+'" y1="'+y+'" x2="'+x+'" y2="'+(y+4)+'" stroke="#1a4a7a" stroke-width="1"/>');
+        sv.push('<line x1="'+(x+w)+'" y1="'+y+'" x2="'+(x+w)+'" y2="'+(y+4)+'" stroke="#1a4a7a" stroke-width="1"/>');
       }
-      // Label
-      sv.push('<text x="'+(x+w/2)+'" y="'+(y+h/2-8)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#1a4a7a" font-weight="500">'+esc(r.nom)+'</text>');
-      sv.push('<text x="'+(x+w/2)+'" y="'+(y+h/2+6)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#4a7aaa">'+r.l.toFixed(2)+' m²</text>');
-      if(r.pente)sv.push('<text x="'+(x+w/2)+'" y="'+(y+h/2+18)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="#7a9aaa">Pente '+r.pente+'°</text>');
-      // Cotations L et l
+      // Labels
+      var typeLabel={'1pan':'1 Pan','2pentes':'2 Pentes','4pentes':'4 Pentes','mansarde':'Mansarde'}[r.type_toit]||r.type_toit;
+      sv.push('<text x="'+(x+w/2)+'" y="'+(cy-10)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#1a4a7a" font-weight="700">Toiture '+typeLabel+'</text>');
+      sv.push('<text x="'+(x+w/2)+'" y="'+cy+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#4a7aaa">'+r.surfReelle.toFixed(2)+' m²</text>');
+      if(r.pente)sv.push('<text x="'+(x+w/2)+'" y="'+(cy+12)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="#7a9aaa">Pente '+r.pente+'°</text>');
+      // Cotations L × l
       sv.push('<line x1="'+x+'" y1="'+(y+h+10)+'" x2="'+(x+w)+'" y2="'+(y+h+10)+'" stroke="#1a4a7a" stroke-width="0.8" marker-start="url(#arrl)" marker-end="url(#arrr)"/>');
       sv.push('<text x="'+(x+w/2)+'" y="'+(y+h+22)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#1a4a7a">'+r.l.toFixed(2)+' m</text>');
       sv.push('<line x1="'+(x-10)+'" y1="'+y+'" x2="'+(x-10)+'" y2="'+(y+h)+'" stroke="#1a4a7a" stroke-width="0.8" marker-start="url(#arrl)" marker-end="url(#arrr)"/>');
-      sv.push('<text x="'+(x-22)+'" y="'+(y+h/2)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#1a4a7a" transform="rotate(-90,'+(x-22)+','+(y+h/2)+')">'+r.w.toFixed(2)+' m</text>');
+      sv.push('<text x="'+(x-22)+'" y="'+cy+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#1a4a7a" transform="rotate(-90,'+(x-22)+','+cy+')">'+r.w.toFixed(2)+' m</text>');
     } else {
       sv.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="url(#h1)" stroke="#2a1f0f" stroke-width="2"/>');
       sv.push('<rect x="'+(x+4)+'" y="'+(y+4)+'" width="'+(w-8)+'" height="'+(h-8)+'" fill="#faf7f0"/>');
@@ -1312,15 +1334,52 @@ async function doGenerateDevisFromParcours(){
   var metrages={sNette:sNette,murNette:murNette,vtot:vtot,ltot:ltot,tsurfVal:tsurfVal};
 
   // Description détaillée des surfaces pour Claude
-  var surfDetail=cSurfaces.map(function(s){return s.nom+': '+pN(s.l).toFixed(2)+'m × '+pN(s.h).toFixed(2)+'m = '+((pN(s.l)||0)*(pN(s.h)||0)).toFixed(2)+' m²';}).join('\n');
-  var murDetail=cMurs.map(function(m){var n=Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));return m.nom+': '+pN(m.l).toFixed(2)+'m × (Hg '+m.hg+'m + Hd '+m.hd+'m)÷2 = net '+n.toFixed(2)+' m²';}).join('\n');
+  var surfDetail=cSurfaces.map(function(s){
+    var brut=(pN(s.l)||0)*(pN(s.h)||0);
+    return '  - '+s.nom+': '+pN(s.l).toFixed(2)+'m × '+pN(s.h).toFixed(2)+'m = '+brut.toFixed(2)+' m²';
+  }).join('\n')
+  +(cDeductions.length>0?'\n  Déductions:\n'+cDeductions.map(function(d){
+    return '    - '+d.nom+': '+pN(d.l).toFixed(2)+'m × '+pN(d.h).toFixed(2)+'m = -'+((pN(d.l)||0)*(pN(d.h)||0)).toFixed(2)+' m²';
+  }).join('\n'):'');
+  var murDetail=cMurs.map(function(m){
+    var brut=calcCMurSurf(m);var net=Math.max(0,brut-calcCMurOuv(m));
+    var ouv=(m.ouvertures||[]).map(function(o){return '    - Ouv. '+o.nom+': '+pN(o.l).toFixed(2)+'m × '+pN(o.h).toFixed(2)+'m = -'+((pN(o.l)||0)*(pN(o.h)||0)).toFixed(2)+' m²';}).join('\n');
+    return '  - '+m.nom+': '+pN(m.l).toFixed(2)+'m × (Hg '+m.hg+'m / Hd '+m.hd+'m) = brut '+brut.toFixed(2)+' m²'
+      +(ouv?'\n'+ouv+' → net '+net.toFixed(2)+' m²':' net '+net.toFixed(2)+' m²');
+  }).join('\n');
 
-  var cotesDesc='=== MÉTRÉS RÉELS MESURÉS SUR PLACE ===\n'
+  var volDetail=cVolumes.map(function(v){
+    return '  - '+v.nom+': '+pN(v.l).toFixed(2)+'m × '+pN(v.L).toFixed(2)+'m × '+pN(v.h).toFixed(2)+'m = '+((pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0)).toFixed(3)+' m³';
+  }).join('\n');
+  var linDetail=cLineaires.map(function(l){
+    return '  - '+l.nom+': '+pN(l.lg).toFixed(2)+' ml';
+  }).join('\n');
+    var cotesDesc='=== MÉTRÉS RÉELS MESURÉS SUR PLACE ===\n'
     +(sNette>0?'SURFACES NETTES (après déductions ouvertures): '+sNette.toFixed(2)+' m²\nDétail:\n'+surfDetail+'\n':'')
     +(murNette>0?'MURS EN PENTE (trapèzes) nets: '+murNette.toFixed(2)+' m²\nDétail:\n'+murDetail+'\n':'')
-    +(vtot>0?'VOLUMES: '+vtot.toFixed(3)+' m³\n':'')
-    +(ltot>0?'LINÉAIRES: '+ltot.toFixed(2)+' ml\n':'')
-    +(tsurfVal>0?'TOITURE: '+tsurfVal.toFixed(2)+' m²\n':'');
+    +(vtot>0?'VOLUMES: '+vtot.toFixed(3)+' m³\nDétail:\n'+volDetail+'\n':'')
+    +(ltot>0?'LINÉAIRES: '+ltot.toFixed(2)+' ml\nDétail:\n'+linDetail+'\n':'')
+    +(tsurfVal>0?(function(){
+      var t=window._toiture||{};
+      var typeLabel={'1pan':'1 pan','2pentes':'2 pentes (shed)','4pentes':'4 pentes (pavillon)','mansarde':'Mansarde'}[t.type]||t.type||'';
+      var ftxt=document.getElementById('ct-faitag')?document.getElementById('ct-faitag').textContent:'—';
+      var fml=parseFloat(ftxt)||0;
+      // Calcul arêtiers pour 4 pentes
+      var arretiers=0,nbArr=0;
+      if(t.type==='4pentes'&&t.l>0&&t.lar>0){
+        var h2=(t.lar/2)/Math.cos((t.pente||35)*Math.PI/180);
+        arretiers=Math.sqrt(Math.pow(t.lar/2,2)+Math.pow(h2,2));
+        nbArr=4;
+      }
+      var lines='TOITURE '+typeLabel.toUpperCase()+':\n'
+        +'  Surface réelle: '+tsurfVal.toFixed(2)+' m²\n'
+        +(fml>0?'  Faîtage: '+fml.toFixed(2)+' ml\n':'')
+        +(arretiers>0?'  Arêtiers (x'+nbArr+'): '+(arretiers*nbArr).toFixed(2)+' ml total ('+arretiers.toFixed(2)+' ml × '+nbArr+')\n':'')
+        +'  Pente: '+(t.pente||35)+'°\n'
+        +'  Longueur: '+(t.l||0)+'m × Largeur: '+(t.lar||0)+'m\n'
+        +(t.debord?'  Débord: '+t.debord+'m\n':'');
+      return lines;
+    })():'');
 
   var prompt='Tu es un expert artisan BTP français.\n\n'
     +cotesDesc+'\n'
@@ -1331,12 +1390,21 @@ async function doGenerateDevisFromParcours(){
     +(notes?'Notes complémentaires: '+notes+'\n':'')
     +(bio?'\n⚠️ IMPÉRATIF : Utiliser UNIQUEMENT des matériaux biosourcés certifiés (chanvre, ouate de cellulose, ATec homologués).\n':'')
     +'\n=== RÈGLES ABSOLUES ===\n'
-    +'1. Les quantités (qte) DOIVENT correspondre aux métrés réels ci-dessus, PAS des valeurs arbitraires.\n'
-    +'2. Pour la pose: utilise la surface nette en m² (ex: '+sNette.toFixed(2)+' m²)\n'
-    +'3. Pour les matériaux: ajoute 10% de chutes (ex: '+(sNette*1.1).toFixed(2)+' m²)\n'
-    +'4. Les PU doivent être réalistes pour le marché BTP français 2024.\n'
-    +'5. Réponds UNIQUEMENT avec un tableau JSON, sans texte ni markdown:\n'
-    +'[{"designation":"...","unite":"m²|m³|ml|h|forfait|u","qte":"VALEUR_REELLE","pu":"PRIX_REALISTE"}]';
+    +'1. Utilise UNIQUEMENT les métrés ci-dessus. Aucune valeur inventée.\n'
+    +(sNette>0?'2. Surfaces: pose='+sNette.toFixed(2)+' m², matériaux='+(sNette*1.1).toFixed(2)+' m² (+10% chutes).\n':'')
+    +(murNette>0?'3. Murs: net='+murNette.toFixed(2)+' m², matériaux='+(murNette*1.05).toFixed(2)+' m² (+5%).\n':'')
+    +(vtot>0?'4. Volumes: '+vtot.toFixed(3)+' m³ — matière + main d\'œuvre adaptée.\n':'')
+    +(ltot>0?'5. Linéaires: '+ltot.toFixed(2)+' ml — inclure pose et fourniture.\n':'')
+    +(tsurfVal>0?(function(){
+      var t=window._toiture||{};
+      var fml=parseFloat((document.getElementById('ct-faitag')||{}).textContent)||0;
+      var arr=0;if(t.type==='4pentes'&&t.l>0&&t.lar>0){var h2=(t.lar/2)/Math.cos((t.pente||35)*Math.PI/180);arr=Math.sqrt(Math.pow(t.lar/2,2)+Math.pow(h2,2))*4;}
+      return '6. Toiture: surface='+tsurfVal.toFixed(2)+' m²'+(fml>0?', faîtage='+fml.toFixed(2)+' ml':'')+(arr>0?', arêtiers='+arr.toFixed(2)+' ml total':'')+'.\n'
+        +'   → OBLIGATOIRE: inclure lignes séparées pour couverture (m²), faîtage (ml), arêtiers si 4 pentes (ml), main-d\'œuvre (m²).\n';
+    })():'')
+    +'7. PU réalistes marché BTP français 2025.\n'
+    +'8. Réponds UNIQUEMENT en JSON valide, sans texte ni markdown:\n'
+    +'[{"designation":"...","unite":"m²|m³|ml|h|forfait|u","qte":"VALEUR_REELLE","pu":"PRIX"}]';
 
   var result;
   try{result=await callAI(prompt);}
