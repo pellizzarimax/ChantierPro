@@ -1855,7 +1855,65 @@ function renderPlanningList(){var cont=document.getElementById('planning-list');
 // ============================================================
 // AI
 // ============================================================
-async function callAI(prompt){var ai=db.settings.ai||{};var prov=ai.provider||'claude';if(prov==='local')return localAI(prompt);try{if(prov==='claude'){if(!ai.claudeKey)return localAI(prompt);var r=await fetch((ai.proxyUrl||'https://api.anthropic.com')+'/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':ai.claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:ai.claudeModel||'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]})});if(!r.ok)throw new Error(r.status);var d=await r.json();return d.content&&d.content[0]?d.content[0].text:'';}else if(prov==='openai'){if(!ai.openaiKey)return localAI(prompt);var r2=await fetch((ai.proxyUrl||'https://api.openai.com')+'/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+ai.openaiKey},body:JSON.stringify({model:ai.openaiModel||'gpt-4o-mini',max_tokens:2000,messages:[{role:'user',content:prompt}]})});if(!r2.ok)throw new Error(r2.status);var d2=await r2.json();return d2.choices&&d2.choices[0]?d2.choices[0].message.content:'';}}catch(e){return localAI(prompt);}return localAI(prompt);}
+async function callAI(prompt){
+  var ai=db.settings.ai||{};
+  var prov=ai.provider||'claude';
+  if(prov==='local') return localAI(prompt);
+  try{
+    if(prov==='claude'){
+      if(!ai.claudeKey){showToast('Clé API Claude manquante','error');return localAI(prompt);}
+      var r=await fetch((ai.proxyUrl||'https://api.anthropic.com')+'/v1/messages',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key':ai.claudeKey,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body:JSON.stringify({
+          model:ai.claudeModel||'claude-sonnet-4-20250514',
+          max_tokens:2000,
+          messages:[{role:'user',content:prompt}]
+        })
+      });
+      if(!r.ok){
+        var errBody=await r.text().catch(function(){return '';});
+        console.error('Claude API erreur',r.status,errBody.slice(0,200));
+        showToast('Erreur API Claude: '+r.status,'error');
+        return localAI(prompt);
+      }
+      var d=await r.json();
+      return d.content&&d.content[0]?d.content[0].text:'';
+    } else if(prov==='openai'){
+      if(!ai.openaiKey){showToast('Clé API OpenAI manquante','error');return localAI(prompt);}
+      var r2=await fetch((ai.proxyUrl||'https://api.openai.com')+'/v1/chat/completions',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+ai.openaiKey
+        },
+        body:JSON.stringify({
+          model:ai.openaiModel||'gpt-4o-mini',
+          max_tokens:2000,
+          messages:[{role:'user',content:prompt}]
+        })
+      });
+      if(!r2.ok){
+        var errBody2=await r2.text().catch(function(){return '';});
+        console.error('OpenAI API erreur',r2.status,errBody2.slice(0,200));
+        showToast('Erreur API OpenAI: '+r2.status,'error');
+        return localAI(prompt);
+      }
+      var d2=await r2.json();
+      return d2.choices&&d2.choices[0]?d2.choices[0].message.content:'';
+    }
+  } catch(e){
+    console.error('callAI exception:',e);
+    showToast('Erreur réseau API: '+e.message,'error');
+    return localAI(prompt);
+  }
+  return localAI(prompt);
+}
 function localAI(prompt,metrages){
   var lo=(prompt||'').toLowerCase();
   var lines=[];
