@@ -1081,6 +1081,21 @@ function collectCotes(){
   document.querySelectorAll('#c-murs-list [data-cmurid]').forEach(function(r){var m=cMurs.find(function(x){return x.id===r.dataset.cmurid;});if(!m)return;r.querySelectorAll('[data-cmf]').forEach(function(i){m[i.dataset.cmf]=i.value;});r.querySelectorAll('[data-couvid]').forEach(function(or){var oid=or.dataset.couvid;var o=(m.ouvertures||[]).find(function(x){return x.id===oid;});if(o)or.querySelectorAll('[data-cof]').forEach(function(i){o[i.dataset.cof]=i.value;});});});
   document.querySelectorAll('#c-volumes-list [data-cvid]').forEach(function(r){var v=cVolumes.find(function(x){return x.id===r.dataset.cvid;});if(v)r.querySelectorAll('[data-cvf]').forEach(function(i){v[i.dataset.cvf]=i.value;});});
   document.querySelectorAll('#c-lineaires-list [data-clid]').forEach(function(r){var l=cLineaires.find(function(x){return x.id===r.dataset.clid;});if(l)r.querySelectorAll('[data-clf]').forEach(function(i){l[i.dataset.clf]=i.value;});});
+  // Toiture
+  var ctType=document.getElementById('ct-type');
+  var ctL=document.getElementById('ct-longueur');
+  var ctLar=document.getElementById('ct-largeur');
+  var ctPente=document.getElementById('ct-pente');
+  var ctDebord=document.getElementById('ct-debord');
+  if(ctL&&ctLar){
+    window._toiture={
+      type:ctType?ctType.value:'2pentes',
+      l:pN(ctL.value),
+      lar:pN(ctLar.value),
+      pente:pN(ctPente?ctPente.value:35)||35,
+      debord:pN(ctDebord?ctDebord.value:0.5)||0
+    };
+  }
 }
 
 function calcCToiture(){
@@ -1096,6 +1111,16 @@ function buildAndShowPlan(){
   var rooms=[];
   cSurfaces.forEach(function(s){var l=pN(s.l)||0;var h=pN(s.h)||0;if(l>0&&h>0)rooms.push({nom:s.nom||'Surface',l:l,w:h,type:'rect'});});
   cMurs.forEach(function(m){var l=pN(m.l)||0;var hg=pN(m.hg)||0;var hd=pN(m.hd)||0;if(l>0&&(hg>0||hd>0))rooms.push({nom:m.nom||'Mur',l:l,w:(hg+hd)/2,hg:hg,hd:hd,type:'trapeze',ouvertures:m.ouvertures||[]});});
+  // Toiture
+  var t=window._toiture;
+  if(t&&t.l>0&&t.lar>0){
+    var penteRad=t.pente*Math.PI/180;
+    var ldebord=t.l+2*(t.debord||0);
+    var lardebord=t.lar+2*(t.debord||0);
+    var halfLar=lardebord/2/Math.cos(penteRad);
+    var nbPans={'1pan':1,'2pentes':2,'4pentes':4,'mansarde':4}[t.type]||2;
+    rooms.push({nom:'Toiture (vue dessus)',l:ldebord,w:lardebord,type:'toiture',nbPans:nbPans,halfLar:halfLar,pente:t.pente,type_toit:t.type});
+  }
   var mg=55,cH=88,gap=20;
   // Calcul de l'échelle automatique selon les dimensions réelles
   var maxRoomW=rooms.reduce(function(a,r){return Math.max(a,r.l);},0)||1;
@@ -1147,6 +1172,40 @@ function buildAndShowPlan(){
       sv.push('<text x="'+(x+w+12)+'" y="'+(y+h-hdP/2)+'" dominant-baseline="middle" font-family="JetBrains Mono,monospace" font-size="7" fill="#1a4a7a">'+r.hd+'m</text>');
       // Ouvertures
       (r.ouvertures||[]).forEach(function(o,oi){var ow=Math.min((pN(o.l)||0)*sc,w/Math.max(r.ouvertures.length,1)-4);var oh=Math.min((pN(o.h)||0)*sc,hgP-4);var ox=x+10+oi*((w-20)/Math.max(r.ouvertures.length,1));sv.push('<rect x="'+ox+'" y="'+(y+h-oh-2)+'" width="'+ow+'" height="'+oh+'" fill="#c8e0f0" stroke="#1a4a7a" stroke-width="1" stroke-dasharray="3,2"/>');sv.push('<line x1="'+ox+'" y1="'+(y+h-oh-2)+'" x2="'+(ox+ow)+'" y2="'+(y+h-2)+'" stroke="#1a4a7a" stroke-width="0.5" opacity="0.5"/>');sv.push('<line x1="'+(ox+ow)+'" y1="'+(y+h-oh-2)+'" x2="'+ox+'" y2="'+(y+h-2)+'" stroke="#1a4a7a" stroke-width="0.5" opacity="0.5"/>');});
+    } else if(r.type==='toiture'){
+      // Vue de dessus toiture : rectangle emprise + diagonales faîtière
+      sv.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="#e8f4e8" stroke="#1a4a7a" stroke-width="2"/>');
+      // Hachures toiture (diagonales)
+      sv.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="url(#h1)" opacity="0.4"/>');
+      // Faîtière centrale (ligne de crête)
+      if(r.nbPans>=2){
+        var cx=x+w/2;
+        if(r.type_toit==='2pentes'||r.type_toit==='mansarde'){
+          // Faîtière horizontale
+          sv.push('<line x1="'+cx+'" y1="'+(y+8)+'" x2="'+cx+'" y2="'+(y+h-8)+'" stroke="#1a4a7a" stroke-width="1.5" stroke-dasharray="4,3"/>');
+          // Lignes de pentes (coins vers faîtière)
+          sv.push('<line x1="'+x+'" y1="'+y+'" x2="'+cx+'" y2="'+(y+8)+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
+          sv.push('<line x1="'+(x+w)+'" y1="'+y+'" x2="'+cx+'" y2="'+(y+8)+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
+          sv.push('<line x1="'+x+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+(y+h-8)+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
+          sv.push('<line x1="'+(x+w)+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+(y+h-8)+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
+        } else if(r.type_toit==='4pentes'){
+          // 4 pentes : diagonales vers le centre
+          var cy2=y+h/2;
+          sv.push('<line x1="'+x+'" y1="'+y+'" x2="'+cx+'" y2="'+cy2+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
+          sv.push('<line x1="'+(x+w)+'" y1="'+y+'" x2="'+cx+'" y2="'+cy2+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
+          sv.push('<line x1="'+x+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+cy2+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
+          sv.push('<line x1="'+(x+w)+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+cy2+'" stroke="#4a7aaa" stroke-width="1" opacity="0.6"/>');
+        }
+      }
+      // Label
+      sv.push('<text x="'+(x+w/2)+'" y="'+(y+h/2-8)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#1a4a7a" font-weight="500">'+esc(r.nom)+'</text>');
+      sv.push('<text x="'+(x+w/2)+'" y="'+(y+h/2+6)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#4a7aaa">'+r.l.toFixed(2)+' m²</text>');
+      if(r.pente)sv.push('<text x="'+(x+w/2)+'" y="'+(y+h/2+18)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="#7a9aaa">Pente '+r.pente+'°</text>');
+      // Cotations L et l
+      sv.push('<line x1="'+x+'" y1="'+(y+h+10)+'" x2="'+(x+w)+'" y2="'+(y+h+10)+'" stroke="#1a4a7a" stroke-width="0.8" marker-start="url(#arrl)" marker-end="url(#arrr)"/>');
+      sv.push('<text x="'+(x+w/2)+'" y="'+(y+h+22)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#1a4a7a">'+r.l.toFixed(2)+' m</text>');
+      sv.push('<line x1="'+(x-10)+'" y1="'+y+'" x2="'+(x-10)+'" y2="'+(y+h)+'" stroke="#1a4a7a" stroke-width="0.8" marker-start="url(#arrl)" marker-end="url(#arrr)"/>');
+      sv.push('<text x="'+(x-22)+'" y="'+(y+h/2)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#1a4a7a" transform="rotate(-90,'+(x-22)+','+(y+h/2)+')">'+r.w.toFixed(2)+' m</text>');
     } else {
       sv.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="url(#h1)" stroke="#2a1f0f" stroke-width="2"/>');
       sv.push('<rect x="'+(x+4)+'" y="'+(y+4)+'" width="'+(w-8)+'" height="'+(h-8)+'" fill="#faf7f0"/>');
