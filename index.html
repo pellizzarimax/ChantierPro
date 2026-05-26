@@ -726,8 +726,8 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <div class="form-group"><label class="form-label">Fournisseur IA</label>
         <select class="form-input" id="s-ia-provider"><option value="claude">Claude (Anthropic)</option><option value="openai">ChatGPT (OpenAI)</option><option value="local">Mode local</option></select>
       </div>
-      <div id="claude-cfg"><div class="form-group"><label class="form-label">Clé API Claude</label><input type="password" class="form-input" id="s-claude-key" placeholder="sk-ant-..."/></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-claude-model"><option value="claude-sonnet-4-20250514">Claude Sonnet 4</option><option value="claude-opus-4-5">Claude Opus 4.5</option><option value="claude-haiku-4-5">Claude Haiku 4.5</option></select></div></div>
-      <div id="openai-cfg" style="display:none;"><div class="form-group"><label class="form-label">Clé API OpenAI</label><input type="password" class="form-input" id="s-openai-key" placeholder="sk-..."/></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-openai-model"><option value="gpt-4o-mini">GPT-4o mini</option><option value="gpt-4o">GPT-4o</option></select></div></div>
+      <div id="claude-cfg"><div class="form-group"><label class="form-label">Clé API Claude</label><div style="position:relative;"><input type="password" class="form-input" id="s-claude-key" placeholder="sk-ant-..." style="padding-right:44px;"/><button type="button" onclick="toggleKeyVis('s-claude-key',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;padding:4px;">👁</button></div></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-claude-model"><option value="claude-sonnet-4-20250514">Claude Sonnet 4</option><option value="claude-opus-4-5">Claude Opus 4.5</option><option value="claude-haiku-4-5">Claude Haiku 4.5</option></select></div></div>
+      <div id="openai-cfg" style="display:none;"><div class="form-group"><label class="form-label">Clé API OpenAI</label><div style="position:relative;"><input type="password" class="form-input" id="s-openai-key" placeholder="sk-..." style="padding-right:44px;"/><button type="button" onclick="toggleKeyVis('s-openai-key',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;padding:4px;">👁</button></div></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-openai-model"><option value="gpt-4o-mini">GPT-4o mini</option><option value="gpt-4o">GPT-4o</option></select></div></div>
       <div class="form-group"><label class="form-label">URL proxy (optionnel)</label><input type="url" class="form-input" id="s-proxy-url" placeholder="https://..."/></div>
     </div>
     <button class="btn btn-primary btn-full" id="btn-save-settings" style="margin-top:16px;">💾 Enregistrer</button>
@@ -2040,6 +2040,13 @@ function injectPlanIntoDevis(){
   setTimeout(function(){document.getElementById('modal-devis').classList.add('open');},200);
   showToast(lines.length+' lignes injectees','success');
 }
+
+function toggleKeyVis(id, btn){
+  var inp=document.getElementById(id);
+  if(!inp)return;
+  if(inp.type==='password'){inp.type='text';btn.textContent='🙈';}
+  else{inp.type='password';btn.textContent='👁';}
+}
 document.addEventListener('DOMContentLoaded',function(){
   initFB();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
@@ -2810,8 +2817,8 @@ function validerSignature(){
       <div class="form-group"><label class="form-label">Fournisseur IA</label>
         <select class="form-input" id="s-ia-provider"><option value="claude">Claude (Anthropic)</option><option value="openai">ChatGPT (OpenAI)</option><option value="local">Mode local</option></select>
       </div>
-      <div id="claude-cfg"><div class="form-group"><label class="form-label">Clé API Claude</label><input type="password" class="form-input" id="s-claude-key" placeholder="sk-ant-..."/></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-claude-model"><option value="claude-sonnet-4-20250514">Claude Sonnet 4</option><option value="claude-opus-4-5">Claude Opus 4.5</option><option value="claude-haiku-4-5">Claude Haiku 4.5</option></select></div></div>
-      <div id="openai-cfg" style="display:none;"><div class="form-group"><label class="form-label">Clé API OpenAI</label><input type="password" class="form-input" id="s-openai-key" placeholder="sk-..."/></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-openai-model"><option value="gpt-4o-mini">GPT-4o mini</option><option value="gpt-4o">GPT-4o</option></select></div></div>
+      <div id="claude-cfg"><div class="form-group"><label class="form-label">Clé API Claude</label><div style="position:relative;"><input type="password" class="form-input" id="s-claude-key" placeholder="sk-ant-..." style="padding-right:44px;"/><button type="button" onclick="toggleKeyVis('s-claude-key',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;padding:4px;">👁</button></div></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-claude-model"><option value="claude-sonnet-4-20250514">Claude Sonnet 4</option><option value="claude-opus-4-5">Claude Opus 4.5</option><option value="claude-haiku-4-5">Claude Haiku 4.5</option></select></div></div>
+      <div id="openai-cfg" style="display:none;"><div class="form-group"><label class="form-label">Clé API OpenAI</label><div style="position:relative;"><input type="password" class="form-input" id="s-openai-key" placeholder="sk-..." style="padding-right:44px;"/><button type="button" onclick="toggleKeyVis('s-openai-key',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;padding:4px;">👁</button></div></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-openai-model"><option value="gpt-4o-mini">GPT-4o mini</option><option value="gpt-4o">GPT-4o</option></select></div></div>
       <div class="form-group"><label class="form-label">URL proxy (optionnel)</label><input type="url" class="form-input" id="s-proxy-url" placeholder="https://..."/></div>
     </div>
     <button class="btn btn-primary btn-full" id="btn-save-settings" style="margin-top:16px;">💾 Enregistrer</button>
