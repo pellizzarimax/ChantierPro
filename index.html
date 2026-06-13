@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="theme-color" content="#080d18"/>
+<meta name="theme-color" content="#0a1428"/>
 <title>ChantiersPro Max</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -13,14 +13,15 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 :root{
-  --c-bg:#080d18;--c-surface:#0d1525;--c-surface2:#111e33;--c-border:#1a2d4a;
-  --c-accent:#2d8cf0;--c-accent2:#1a6fd4;--c-text:#dde8f8;--c-muted:#4a6a90;
+  --c-bg:#0a1428;--c-surface:#0f1c38;--c-surface2:#16294a;--c-border:#1f3358;
+  --c-accent:#2d8cf0;--c-accent2:#1a6fd4;--c-text:#eaf2ff;--c-muted:#5d7ba8;
   --c-success:#22c55e;--c-danger:#ef4444;--c-info:#60a5fa;--r:12px;
   --font-display:'Instrument Sans',sans-serif;--font-mono:'JetBrains Mono',monospace;--font-body:'Manrope',sans-serif;
   --safe-bottom:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{overflow-x:hidden!important;touch-action:pan-y;height:100%;background:var(--c-bg);color:var(--c-text);font-family:var(--font-body);}
+html{overflow-x:hidden;max-width:100%;width:100%;}
 input,textarea,select,button{font-family:var(--font-body);outline:none;}
 #app{display:flex;flex-direction:column;min-height:100vh;}
 #header{position:sticky;top:0;z-index:100;background:var(--c-surface);border-bottom:1px solid var(--c-border);padding:12px 16px;display:flex;align-items:center;gap:10px;}
@@ -68,7 +69,7 @@ input,textarea,select,button{font-family:var(--font-body);outline:none;}
 textarea.form-input{resize:vertical;min-height:80px;}
 select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a6a90' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:16px;}
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
-.badge-brouillon{background:#1a2d4a;color:var(--c-muted);}
+.badge-brouillon{background:#1f3358;color:var(--c-muted);}
 .badge-envoyé{background:rgba(96,165,250,.15);color:var(--c-info);}
 .badge-signé{background:rgba(34,197,94,.15);color:var(--c-success);}
 .badge-refusé{background:rgba(239,68,68,.15);color:var(--c-danger);}
@@ -112,7 +113,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 /* MISC */
 #offline-banner{display:none;background:var(--c-danger);color:#fff;text-align:center;font-size:12px;font-weight:600;padding:6px;position:fixed;top:0;left:0;right:0;z-index:150;}
 #offline-banner.show{display:block;}
-#toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--c-surface);border:1px solid var(--c-border);border-radius:10px;padding:12px 20px;font-size:13px;z-index:400;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;}
+#toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--c-surface);border:1px solid var(--c-border);border-radius:10px;padding:12px 20px;font-size:13px;z-index:400;opacity:0;transition:all .3s;pointer-events:none;max-width:calc(100vw - 32px);white-space:normal;text-align:center;box-sizing:border-box;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 #toast.success{border-color:var(--c-success);color:var(--c-success);}
 #toast.error{border-color:var(--c-danger);color:var(--c-danger);}
@@ -149,6 +150,58 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 #plan-preview{background:#f5f0e8;border-radius:10px;overflow:hidden;}
 #plan-preview svg{width:100%;height:auto;display:block;}
 @media(max-width:360px){.action-grid{grid-template-columns:1fr;}}
+
+/* ── MENU LATÉRAL ── */
+#side-menu{position:fixed;inset:0;z-index:1500;display:none;}
+#side-menu.open{display:block;}
+.sm-scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);animation:smFade .2s ease;}
+@keyframes smFade{from{opacity:0;}to{opacity:1;}}
+.sm-panel{position:absolute;top:0;left:0;bottom:0;width:80%;max-width:320px;background:var(--c-surface);border-right:1px solid var(--c-border);padding:calc(env(safe-area-inset-top,0px) + 18px) 0 calc(var(--safe-bottom) + 18px);overflow-y:auto;-webkit-overflow-scrolling:touch;animation:smSlide .24s cubic-bezier(.2,.7,.3,1);box-shadow:4px 0 30px rgba(0,0,0,.4);}
+@keyframes smSlide{from{transform:translateX(-100%);}to{transform:translateX(0);}}
+.sm-head{padding:8px 20px 16px;border-bottom:1px solid var(--c-border);margin-bottom:8px;}
+.sm-avatar{width:48px;height:48px;border-radius:14px;background:rgba(45,140,240,.16);color:var(--c-accent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;margin-bottom:10px;font-family:var(--font-display);}
+.sm-name{font-weight:700;font-size:15px;color:var(--c-text);font-family:var(--font-display);}
+.sm-mail{font-size:11px;color:var(--c-muted);margin-top:2px;}
+.sm-cat{font-size:10px;font-family:var(--font-mono);color:var(--c-muted);letter-spacing:1px;padding:14px 20px 6px;}
+.sm-item{display:flex;align-items:center;gap:13px;padding:13px 20px;font-size:14px;font-weight:600;cursor:pointer;color:var(--c-text);background:none;border:none;width:100%;text-align:left;font-family:var(--font-display);}
+.sm-item svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;}
+.sm-item:active{background:rgba(45,140,240,.1);}
+.sm-item.active{color:var(--c-accent);background:rgba(45,140,240,.08);}
+.sm-item .sm-badge{margin-left:auto;font-size:9px;background:rgba(45,140,240,.2);color:var(--c-info);padding:2px 7px;border-radius:5px;font-family:var(--font-mono);}
+.sm-divider{height:1px;background:var(--c-border);margin:8px 20px;}
+
+/* Bouton hamburger top + Plus dans nav */
+.nav-btn.nav-more.lit{color:var(--c-accent);}
+.topbar-burger{background:none;border:none;color:var(--c-muted);cursor:pointer;padding:6px;display:flex;align-items:center;}
+.topbar-burger svg{width:22px;height:22px;}
+
+/* Vues placeholder (Banque, Plans) */
+.placeholder-view{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 28px;text-align:center;min-height:50vh;}
+.placeholder-ic{width:72px;height:72px;border-radius:20px;background:rgba(45,140,240,.12);display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:18px;}
+.placeholder-title{font-family:var(--font-display);font-size:20px;font-weight:700;margin-bottom:8px;}
+.placeholder-desc{font-size:14px;color:var(--c-muted);line-height:1.6;max-width:300px;margin-bottom:20px;}
+.placeholder-soon{font-size:11px;font-family:var(--font-mono);color:var(--c-info);background:rgba(45,140,240,.1);padding:6px 14px;border-radius:99px;}
+
+/* ── CADRAN TACTILE éditeur de plans ── */
+.pl-seg-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;padding:6px;border-radius:10px;transition:background .15s;}
+.pl-seg-row.active{background:rgba(45,140,240,.1);border:1px solid rgba(45,140,240,.3);}
+.pl-seg-row .pl-num{font-family:var(--font-mono);font-size:11px;color:var(--c-muted);width:20px;text-align:center;}
+.pl-ang-btn{flex:1;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:8px;padding:8px;color:var(--c-text);font-family:var(--font-mono);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;}
+.pl-ang-btn.active{border-color:var(--c-accent);color:var(--c-accent);background:rgba(45,140,240,.08);}
+.pl-ang-btn .arrow{display:inline-block;transition:transform .1s;font-size:15px;}
+#pl-dial-modal{position:fixed;inset:0;z-index:1600;display:none;align-items:flex-end;justify-content:center;}
+#pl-dial-modal.open{display:flex;}
+.pl-dial-scrim{position:absolute;inset:0;background:rgba(0,0,0,.6);}
+.pl-dial-sheet{position:relative;width:100%;max-width:420px;background:var(--c-surface);border-radius:20px 20px 0 0;border-top:1px solid var(--c-border);padding:20px 20px calc(var(--safe-bottom) + 24px);animation:plSheetUp .25s ease;}
+@keyframes plSheetUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.pl-dial-title{font-family:var(--font-display);font-weight:700;font-size:15px;text-align:center;margin-bottom:4px;}
+.pl-dial-sub{font-size:12px;color:var(--c-muted);text-align:center;margin-bottom:16px;}
+.pl-dial-wrap{width:220px;height:220px;margin:0 auto 16px;position:relative;touch-action:none;cursor:pointer;}
+.pl-dial-wrap svg{width:100%;height:100%;}
+.pl-dial-snaps{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.pl-snap{background:var(--c-surface2);border:1px solid var(--c-border);border-radius:8px;padding:7px 11px;color:var(--c-muted);font-size:12px;font-family:var(--font-mono);cursor:pointer;}
+.pl-snap:active{background:var(--c-accent);color:#fff;}
+.pl-dial-done{width:100%;}
 </style>
 </head>
 <body>
@@ -205,6 +258,14 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         <div id="greeting-name" class="section-title">Artisan</div>
         <div id="greeting-stats" class="section-sub">0 devis en cours</div>
       </div>
+
+      <!-- CHIFFRE D'AFFAIRES EXERCICE -->
+      <div id="ca-banner" style="margin-bottom:14px;padding:18px;border-radius:16px;background:linear-gradient(135deg,rgba(45,140,240,.18),rgba(26,111,212,.06));border:1px solid rgba(45,140,240,.28);position:relative;overflow:hidden;">
+        <div style="font-size:11px;color:#8fb4f0;font-family:var(--font-mono);letter-spacing:.5px;">CHIFFRE D'AFFAIRES · <span id="ca-exercice-label">EXERCICE</span></div>
+        <div id="ca-montant" style="font-family:var(--font-display);font-size:30px;font-weight:800;letter-spacing:-1px;margin-top:4px;color:var(--c-text);">0 €</div>
+        <div id="ca-detail" style="font-size:12px;color:#9fb8e0;margin-top:4px;">0 facture · HT facturé</div>
+      </div>
+
       <!-- PARCOURS PRINCIPAL -->
       <button class="big-action" id="btn-nouvelle-visite">
         <div class="big-action-icon">🏗️</div>
@@ -214,41 +275,21 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         </div>
         <div style="font-size:22px;">→</div>
       </button>
-      <!-- ÉTAPES VISUELLES -->
-      <div style="display:flex;align-items:center;margin-bottom:16px;padding:0 4px;">
-        <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
-          <div class="step-dot active">1</div>
-          <div style="font-size:9px;color:var(--c-muted);margin-top:4px;text-align:center;">RDV</div>
-        </div>
-        <div style="flex:1;height:2px;background:var(--c-border);"></div>
-        <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
-          <div class="step-dot todo">2</div>
-          <div style="font-size:9px;color:var(--c-muted);margin-top:4px;text-align:center;">Cotes</div>
-        </div>
-        <div style="flex:1;height:2px;background:var(--c-border);"></div>
-        <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
-          <div class="step-dot todo">3</div>
-          <div style="font-size:9px;color:var(--c-muted);margin-top:4px;text-align:center;">Plan</div>
-        </div>
-        <div style="flex:1;height:2px;background:var(--c-border);"></div>
-        <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
-          <div class="step-dot todo">4</div>
-          <div style="font-size:9px;color:var(--c-muted);margin-top:4px;text-align:center;">Devis IA</div>
-        </div>
-      </div>
+
       <!-- ACCÈS RAPIDE -->
-      <div class="action-grid">
+      <div class="sec-label" style="font-size:11px;font-family:var(--font-mono);color:var(--c-muted);letter-spacing:1px;margin:18px 4px 10px;">RACCOURCIS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <button class="action-card" id="btn-dicter"><div class="action-card-icon">🎤</div><div class="action-card-title">Dicter</div><div class="action-card-sub">Voix → Devis</div></button>
-        <button class="action-card" id="btn-scanner"><div class="action-card-icon">📷</div><div class="action-card-title">Scanner</div><div class="action-card-sub">Photo → Devis IA</div></button>
+        <button class="action-card" id="btn-scanner"><div class="action-card-icon">📷</div><div class="action-card-title">Scanner</div><div class="action-card-sub">Photo → Devis</div></button>
         <button class="action-card" id="btn-devis-rapide"><div class="action-card-icon">⚡</div><div class="action-card-title">Devis rapide</div><div class="action-card-sub">Saisie directe</div></button>
-        <button class="action-card" id="btn-metrer"><div class="action-card-icon">📐</div><div class="action-card-title">Mesures & Plans</div><div class="action-card-sub">Cotes → Plan → Devis</div></button>
+        <button class="action-card" id="btn-home-depenses"><div class="action-card-icon">🧾</div><div class="action-card-title">Dépenses</div><div class="action-card-sub">Scanner un ticket</div></button>
       </div>
-      <div class="card"><div class="card-title">📊 Activite recente</div><div id="recent-activity"><div class="empty-state" style="padding:20px;"><div class="empty-state-icon">📋</div><div style="font-size:14px;">Aucune activite</div></div></div></div>
-      <button id="btn-home-docs" style="width:100%;display:flex;align-items:center;gap:14px;text-align:left;padding:16px;border-radius:14px;background:var(--c-surface);border:1px solid var(--c-border);margin-bottom:8px;cursor:pointer;">
-        <span style="font-size:26px;">📁</span>
-        <div><div style="font-size:14px;font-weight:600;color:var(--c-text);">Mes documents</div><div style="font-size:11px;color:var(--c-muted);">Devis · Plans · PDF · Batappli</div></div>
-        <span style="margin-left:auto;color:var(--c-accent);">→</span>
-      </button>
+
+      <!-- ACTIVITÉ -->
+      <div class="sec-label" style="font-size:11px;font-family:var(--font-mono);color:var(--c-muted);letter-spacing:1px;margin:18px 4px 10px;">ACTIVITÉ RÉCENTE</div>
+      <div class="action-card" style="text-align:left;cursor:default;padding:14px;">
+        <div id="recent-activity"><div class="empty-state" style="padding:14px 4px;"><div class="empty-state-icon">📋</div><div style="font-size:13px;">Aucune activité</div></div></div>
+      </div>
     </div>
 
     <!-- VISITES -->
@@ -300,16 +341,174 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <button class="btn btn-primary btn-full" id="btn-add-planning">+ Nouvel evenement</button>
       <div id="planning-list"><div class="empty-state"><div class="empty-state-icon">📅</div><div style="font-size:14px;">Aucun evenement</div></div></div>
     </div>
+
+    <div class="view" id="view-banque">
+      <div class="placeholder-view">
+        <div class="placeholder-ic">🏦</div>
+        <div class="placeholder-title">Connexion bancaire</div>
+        <div class="placeholder-desc">Reliez votre compte pro pour rapprocher automatiquement vos factures et vos paiements reçus.</div>
+        <div class="placeholder-soon">⏳ Module en préparation</div>
+      </div>
+    </div>
+
+    <div class="view" id="view-plans">
+      <div class="section-title">Édition de plans</div>
+      <div class="section-sub">Tracez une surface complexe segment par segment</div>
+
+      <div style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--r);padding:14px;margin-bottom:14px;">
+        <div style="font-size:12px;color:var(--c-muted);margin-bottom:10px;line-height:1.5;">Saisissez chaque côté : sa <b style="color:var(--c-text);">longueur</b> et son <b style="color:var(--c-text);">angle</b> (0°=droite, 90°=haut, 180°=gauche, 270°=bas). L'app calcule la surface.</div>
+        <div id="pl-segments"></div>
+        <button class="btn btn-secondary" id="pl-add-seg" style="width:100%;margin-top:8px;">+ Ajouter un côté</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+        <div style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--r);padding:12px;text-align:center;">
+          <div style="font-size:10px;color:var(--c-muted);font-family:var(--font-mono);">SURFACE</div>
+          <div id="pl-surface" style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--c-accent);margin-top:4px;">0,00</div>
+          <div style="font-size:10px;color:var(--c-muted);">m²</div>
+        </div>
+        <div style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--r);padding:12px;text-align:center;">
+          <div style="font-size:10px;color:var(--c-muted);font-family:var(--font-mono);">PÉRIMÈTRE</div>
+          <div id="pl-perimetre" style="font-family:var(--font-display);font-size:18px;font-weight:700;margin-top:4px;">0,00</div>
+          <div style="font-size:10px;color:var(--c-muted);">m</div>
+        </div>
+        <div style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--r);padding:12px;text-align:center;">
+          <div style="font-size:10px;color:var(--c-muted);font-family:var(--font-mono);">FERMETURE</div>
+          <div id="pl-fermeture" style="font-family:var(--font-display);font-size:18px;font-weight:700;margin-top:4px;">—</div>
+          <div style="font-size:10px;color:var(--c-muted);">écart</div>
+        </div>
+      </div>
+
+      <div style="background:#f5f0e8;border-radius:var(--r);padding:10px;margin-bottom:14px;">
+        <div id="pl-svg-container" style="width:100%;min-height:240px;display:flex;align-items:center;justify-content:center;"></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="btn btn-secondary" id="pl-reset">🗑 Réinitialiser</button>
+        <button class="btn btn-primary" id="pl-export">📄 Exporter PDF</button>
+      </div>
+    </div>
+
+    <div class="view" id="view-depenses">
+      <div class="section-title">Dépenses</div>
+      <div class="section-sub">Suivez vos achats et la rentabilité par chantier</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+        <div style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--r);padding:14px;text-align:center;">
+          <div style="font-size:10px;color:var(--c-muted);font-family:var(--font-mono);">DÉPENSES · EXERCICE</div>
+          <div id="dep-total" style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--c-danger);margin-top:4px;">0 €</div>
+        </div>
+        <div style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--r);padding:14px;text-align:center;">
+          <div style="font-size:10px;color:var(--c-muted);font-family:var(--font-mono);">MARGE BRUTE</div>
+          <div id="dep-marge" style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--c-success);margin-top:4px;">0 €</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="dep-add" style="width:100%;margin-bottom:14px;">+ Nouvelle dépense</button>
+
+      <div id="dep-list"></div>
+    </div>
+
+    <div id="pl-dial-modal">
+      <div class="pl-dial-scrim" id="pl-dial-scrim"></div>
+      <div class="pl-dial-sheet">
+        <div class="pl-dial-title" id="pl-dial-title">Direction du côté 1</div>
+        <div class="pl-dial-sub">Faites glisser le doigt autour du cadran</div>
+        <div class="pl-dial-wrap" id="pl-dial-wrap">
+          <svg viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="90" fill="#16294a" stroke="#1f3358" stroke-width="2"/>
+            <circle cx="100" cy="100" r="90" fill="none" stroke="#1f3358" stroke-width="1" stroke-dasharray="2 6"/>
+            <text x="186" y="104" font-family="JetBrains Mono,monospace" font-size="9" fill="#5d7ba8">0°</text>
+            <text x="92" y="20" font-family="JetBrains Mono,monospace" font-size="9" fill="#5d7ba8">90°</text>
+            <text x="6" y="104" font-family="JetBrains Mono,monospace" font-size="9" fill="#5d7ba8">180°</text>
+            <text x="88" y="194" font-family="JetBrains Mono,monospace" font-size="9" fill="#5d7ba8">270°</text>
+            <line id="pl-needle" x1="100" y1="100" x2="190" y2="100" stroke="#2d8cf0" stroke-width="3" stroke-linecap="round"/>
+            <circle id="pl-handle" cx="190" cy="100" r="10" fill="#2d8cf0"/>
+            <circle cx="100" cy="100" r="5" fill="#2d8cf0"/>
+            <text x="100" y="96" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="26" font-weight="700" fill="#2d8cf0" id="pl-dial-ang">0°</text>
+          </svg>
+        </div>
+        <div class="pl-dial-snaps">
+          <button class="pl-snap" data-snap="0">→ 0°</button>
+          <button class="pl-snap" data-snap="90">↑ 90°</button>
+          <button class="pl-snap" data-snap="180">← 180°</button>
+          <button class="pl-snap" data-snap="270">↓ 270°</button>
+        </div>
+        <button class="btn btn-primary pl-dial-done" id="pl-dial-done">Valider</button>
+      </div>
+    </div>
+
+    <div id="modal-depense" class="modal-overlay">
+      <div class="modal modal-full">
+        <div class="modal-handle"></div>
+        <div class="modal-hdr">
+          <div class="modal-title" id="dep-modal-title">Nouvelle dépense</div>
+          <button class="btn btn-secondary" style="padding:8px 12px;" id="dep-close">✕</button>
+        </div>
+        <div class="modal-body" style="-webkit-overflow-scrolling:touch;padding-bottom:36px;">
+          <button class="btn btn-secondary" id="dep-scan" style="width:100%;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px;">📷 Scanner le ticket / la facture</button>
+          <input type="file" id="dep-scan-input" accept="image/*" capture="environment" style="display:none;"/>
+          <div id="dep-scan-status" style="display:none;font-size:12px;text-align:center;padding:10px;border-radius:8px;background:rgba(45,140,240,.1);color:var(--c-info);margin-bottom:14px;"></div>
+          <div class="form-group"><label class="form-label">Libellé *</label><input type="text" class="form-input" id="dep-libelle" placeholder="Ex: Carrelage Point P"/></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Montant TTC *</label><input type="number" inputmode="decimal" class="form-input" id="dep-montant" placeholder="0,00" step="0.01"/></div>
+            <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="dep-date"/></div>
+          </div>
+          <div class="form-group"><label class="form-label">Catégorie</label>
+            <select class="form-input" id="dep-categorie">
+              <option value="materiaux">Matériaux</option>
+              <option value="outillage">Outillage</option>
+              <option value="carburant">Carburant / Déplacement</option>
+              <option value="sous-traitance">Sous-traitance</option>
+              <option value="location">Location matériel</option>
+              <option value="assurance">Assurance / Cotisation</option>
+              <option value="administratif">Administratif</option>
+              <option value="autre">Autre</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Fournisseur</label><input type="text" class="form-input" id="dep-fournisseur" placeholder="Ex: Point P, Leroy Merlin..."/></div>
+          <div class="form-group"><label class="form-label">Chantier / Client lié (optionnel)</label>
+            <select class="form-input" id="dep-chantier"><option value="">— Aucun (frais général) —</option></select>
+            <div style="font-size:11px;color:var(--c-muted);margin-top:4px;">Lier à un chantier permet de calculer sa rentabilité réelle.</div>
+          </div>
+          <div class="form-group"><label class="form-label">TVA déductible (%)</label><input type="number" inputmode="decimal" class="form-input" id="dep-tva" placeholder="20" step="0.1" value="20"/></div>
+          <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="dep-notes" rows="2" placeholder="Référence facture, détails..."></textarea></div>
+          <button class="btn btn-primary" id="dep-save" style="width:100%;margin-top:8px;">Enregistrer</button>
+          <button class="btn btn-secondary" id="dep-delete" style="width:100%;margin-top:8px;display:none;">🗑 Supprimer cette dépense</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <nav id="nav-bar">
     <button class="nav-btn active" data-view="accueil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
     <button class="nav-btn" data-view="visites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>Visites</button>
     <button class="nav-btn" data-view="devis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Devis</button>
-    <button class="nav-btn" data-view="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Clients</button>
     <button class="nav-btn" data-view="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Docs</button>
-    <button class="nav-btn" data-view="planning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Planning</button>
+    <button class="nav-btn nav-more" id="nav-more-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>Plus</button>
   </nav>
+
+  <div id="side-menu">
+    <div class="sm-scrim" id="sm-scrim"></div>
+    <div class="sm-panel">
+      <div class="sm-head">
+        <div class="sm-avatar" id="sm-avatar">M</div>
+        <div class="sm-name" id="sm-name">Mon Entreprise</div>
+        <div class="sm-mail" id="sm-mail">EURL · BTP</div>
+      </div>
+      <div class="sm-cat">OUTILS</div>
+      <button class="sm-item" data-menu="banque"><svg viewBox="0 0 24 24"><line x1="3" y1="22" x2="21" y2="22"/><path d="M3 10h18M5 10v12M19 10v12M12 2L3 10h18z"/></svg>Banque <span class="sm-badge">NOUVEAU</span></button>
+      <button class="sm-item" data-menu="depenses"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Dépenses <span class="sm-badge">NOUVEAU</span></button>
+      <button class="sm-item" data-menu="plans"><svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>Édition de plans</button>
+      <button class="sm-item" data-menu="clients"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Clients</button>
+      <button class="sm-item" data-menu="planning"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Planning</button>
+      <div class="sm-divider"></div>
+      <div class="sm-cat">COMPTE</div>
+      <button class="sm-item" data-menu="parametres"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Paramètres</button>
+      <button class="sm-item" data-menu="logout"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Déconnexion</button>
+    </div>
+  </div>
+
 </div>
 <!-- ============================================================
      MODAL PARCOURS CHANTIER (4 étapes)
@@ -577,171 +776,27 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 </div>
 
 <!-- MODAL FACTURE -->
-<div class="modal-overlay" id="modal-facture">
-  <div class="modal modal-full">
-    <div class="modal-handle"></div>
-    <div class="modal-hdr">
-      <div class="modal-title" id="modal-facture-title">🧾 Nouvelle facture</div>
-      <button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-facture">✕</button>
-    </div>
-    <!-- Bandeau statut paiement -->
-    <div id="facture-statut-bar" style="margin:0 0 14px;padding:10px 14px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);">
-      <div style="font-size:13px;font-weight:600;" id="facture-statut-txt">En attente de paiement</div>
-      <select class="form-input" id="f-paiement-statut" style="width:auto;padding:6px 10px;font-size:12px;">
-        <option value="attente">En attente</option>
-        <option value="partiel">Acompte versé</option>
-        <option value="payee">Payée ✓</option>
-        <option value="retard">En retard ⚠</option>
-      </select>
-    </div>
-    <div class="form-group"><label class="form-label">Client *</label><input type="text" class="form-input" id="f-client" placeholder="Nom du client"/></div>
-    <div class="form-group"><label class="form-label">Adresse chantier</label><input type="text" class="form-input" id="f-adresse" placeholder="Adresse"/></div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Date émission</label><input type="date" class="form-input" id="f-date-emission"/></div>
-      <div class="form-group"><label class="form-label">Date échéance</label><input type="date" class="form-input" id="f-date-echeance"/></div>
-    </div>
-    <div class="form-group"><label class="form-label">Objet</label><input type="text" class="form-input" id="f-objet" placeholder="Travaux de rénovation..."/></div>
-    <hr class="divider"/>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <div class="card-title" style="margin:0;">Lignes</div>
-      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" id="btn-add-fl">+ Ligne</button>
-    </div>
-    <div style="display:grid;grid-template-columns:3fr 1fr 1fr 1fr 24px;gap:6px;margin-bottom:4px;padding:0 4px;">
-      <span style="font-size:10px;color:var(--c-muted);">DÉSIGNATION</span>
-      <span style="font-size:10px;color:var(--c-muted);">U.</span>
-      <span style="font-size:10px;color:var(--c-muted);">QTÉ</span>
-      <span style="font-size:10px;color:var(--c-muted);">PU HT</span>
-      <span></span>
-    </div>
-    <div id="facture-lines"></div>
-    <!-- Acompte -->
-    <div class="form-group" style="margin-top:12px;">
-      <label class="form-label">Acompte déjà versé (€)</label>
-      <input type="number" class="form-input" id="f-acompte" value="0" min="0" inputmode="decimal" placeholder="0"/>
-    </div>
-    <div class="form-group">
-      <label class="form-label">TVA (%)</label>
-      <input type="number" class="form-input" id="f-tva" value="10" min="0" max="20" inputmode="decimal"/>
-    </div>
-    <!-- Totaux -->
-    <div class="totaux-box" id="f-totaux">
-      <div class="totaux-row"><label>Total HT</label><span id="f-total-ht">0,00 €</span></div>
-      <div class="totaux-row"><label>TVA</label><span id="f-total-tva">0,00 €</span></div>
-      <div class="totaux-row" id="f-acompte-row" style="display:none;"><label>Acompte versé</label><span id="f-total-acompte" style="color:var(--c-success);">0,00 €</span></div>
-      <div class="totaux-row total-ttc"><label>SOLDE À PAYER</label><span id="f-total-solde">0,00 €</span></div>
-    </div>
-    <div class="form-group" style="margin-top:12px;"><label class="form-label">Notes / Conditions</label><textarea class="form-input" id="f-notes" rows="2" placeholder="Paiement sous 30 jours..."></textarea></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-      <button class="btn btn-secondary" id="btn-save-facture">💾 Enregistrer</button>
-      <button class="btn btn-primary" id="btn-pdf-facture">📄 PDF</button>
-    </div>
-  </div>
-</div>
+
 
 <!-- MODAL PLANNING -->
-<div class="modal-overlay" id="modal-planning">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-hdr"><div class="modal-title">📅 Événement</div><button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-planning">✕</button></div>
-    <div class="form-group"><label class="form-label">Titre *</label><input type="text" class="form-input" id="p-titre" placeholder="Chantier Martin"/></div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Début</label><input type="date" class="form-input" id="p-date-debut"/></div>
-      <div class="form-group"><label class="form-label">Fin</label><input type="date" class="form-input" id="p-date-fin"/></div>
-    </div>
-    <div class="form-group"><label class="form-label">Client</label><input type="text" class="form-input" id="p-client" placeholder="Nom client"/></div>
-    <div class="form-group"><label class="form-label">Corps de métier</label>
-      <select class="form-input" id="p-metier"><option>Peinture</option><option>Carrelage</option><option>Plomberie</option><option>Électricité</option><option>Menuiserie</option><option>Maçonnerie</option><option>Autre</option></select>
-    </div>
-    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="p-notes" rows="2"></textarea></div>
-    <button class="btn btn-primary btn-full" id="btn-save-planning" style="margin-top:8px;">💾 Enregistrer</button>
-  </div>
-</div>
+
 
 <!-- MODAL VOIX STANDALONE -->
-<div class="modal-overlay" id="modal-voice">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-hdr"><div class="modal-title">🎤 Dictée vocale</div><button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-voice">✕</button></div>
-    <p style="color:var(--c-muted);font-size:13px;margin-bottom:20px;">Dictez vos travaux — l'IA générera un devis.</p>
-    <button class="voice-btn" id="voice-standalone-btn">🎤</button>
-    <div style="text-align:center;margin:16px 0;font-size:13px;color:var(--c-muted);" id="voice-standalone-status">Appuyez pour commencer</div>
-    <div class="form-input" id="voice-standalone-transcript" style="min-height:80px;margin-bottom:12px;"></div>
-    <button class="btn btn-primary btn-full" id="btn-voice-to-devis" style="display:none;">🤖 Générer le devis</button>
-  </div>
-</div>
+
 
 <!-- MODAL SCANNER -->
-<div class="modal-overlay" id="modal-scanner">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-hdr"><div class="modal-title">📷 Scanner notes</div><button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-scanner">✕</button></div>
-    <p style="color:var(--c-muted);font-size:13px;margin-bottom:16px;">Photographiez vos notes manuscrites.</p>
-    <input type="file" accept="image/*" capture="environment" id="scanner-input" style="display:none;"/>
-    <button class="btn btn-primary btn-full" id="btn-open-scanner">📸 Prendre une photo</button>
-    <div id="scanner-preview" style="margin:12px 0;"></div>
-    <div id="scanner-ai-output" style="display:none;">
-      <div style="display:none;padding:12px;background:rgba(45,140,240,.05);border-radius:8px;margin-bottom:8px;" id="scanner-loading"><div style="display:flex;align-items:center;gap:8px;"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span style="font-size:13px;color:var(--c-muted);">Analyse...</span></div></div>
-      <div class="form-group"><label class="form-label">Texte extrait</label><textarea class="form-input" id="scanner-text" rows="4"></textarea></div>
-      <button class="btn btn-primary btn-full" id="btn-scanner-to-devis">🤖 Générer le devis</button>
-    </div>
-  </div>
-</div>
+
 
 <!-- MODAL PARAMÈTRES -->
-<div class="modal-overlay" id="modal-settings">
-  <div class="modal modal-full">
-    <div class="modal-handle"></div>
-    <div class="modal-hdr"><div class="modal-title">⚙️ Paramètres</div><button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-settings">✕</button></div>
-    <div class="settings-tabs">
-      <button class="stab active" data-stab="entreprise">Entreprise</button>
-      <button class="stab" data-stab="tarifs">Tarifs</button>
-      <button class="stab" data-stab="devis-cfg">Devis</button>
-      <button class="stab" data-stab="ia">IA</button>
-    </div>
-    <div class="settings-panel active" id="stab-entreprise">
-      <div class="form-group"><label class="form-label">Logo</label><input type="file" accept="image/*" id="logo-input" style="display:none;"/>
-        <div style="display:flex;align-items:center;gap:12px;"><div id="logo-preview" style="width:64px;height:64px;background:var(--c-surface2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;border:1px solid var(--c-border);">🏢</div><button class="btn btn-secondary" id="btn-upload-logo">📷 Changer</button></div>
-      </div>
-      <div class="form-group"><label class="form-label">Nom entreprise</label><input type="text" class="form-input" id="s-entreprise" placeholder="Dupont Renovation SARL"/></div>
-      <div class="form-group"><label class="form-label">SIRET</label><input type="text" class="form-input" id="s-siret" placeholder="12345678901234"/></div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Tel</label><input type="tel" class="form-input" id="s-tel" placeholder="06 12 34 56 78"/></div>
-        <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="s-email" placeholder="pro@dupont.fr"/></div>
-      </div>
-      <div class="form-group"><label class="form-label">Adresse</label><input type="text" class="form-input" id="s-adresse" placeholder="12 rue des Artisans"/></div>
-    </div>
-    <div class="settings-panel" id="stab-tarifs">
-      <div class="card-title">Main d'oeuvre (€/h)</div>
-      <div class="form-row"><div class="form-group"><label class="form-label">Carreleur</label><input type="number" class="form-input" id="t-carreleur" value="42"/></div><div class="form-group"><label class="form-label">Peintre</label><input type="number" class="form-input" id="t-peintre" value="38"/></div></div>
-      <div class="form-row"><div class="form-group"><label class="form-label">Plombier</label><input type="number" class="form-input" id="t-plombier" value="62"/></div><div class="form-group"><label class="form-label">Electricien</label><input type="number" class="form-input" id="t-electricien" value="60"/></div></div>
-      <div class="form-row"><div class="form-group"><label class="form-label">Menuisier</label><input type="number" class="form-input" id="t-menuisier" value="50"/></div><div class="form-group"><label class="form-label">Macon</label><input type="number" class="form-input" id="t-macon" value="45"/></div></div>
-      <div class="form-row"><div class="form-group"><label class="form-label">Marge (%)</label><input type="number" class="form-input" id="t-marge" value="0"/></div><div class="form-group"><label class="form-label">TVA defaut</label><input type="number" class="form-input" id="t-tva" value="10"/></div></div>
-      <div class="form-group"><label class="form-label">Notes tarifaires</label><textarea class="form-input" id="t-notes" rows="2"></textarea></div>
-    </div>
-    <div class="settings-panel" id="stab-devis-cfg">
-      <div class="form-row"><div class="form-group"><label class="form-label">Préfixe</label><input type="text" class="form-input" id="s-prefix"/></div><div class="form-group"><label class="form-label">N° suivant</label><input type="number" class="form-input" id="s-nextnum" value="1"/></div></div>
-      <div style="background:var(--c-surface2);padding:12px;border-radius:8px;font-family:var(--font-mono);font-size:13px;color:var(--c-accent);">Prochain : <span id="next-num-preview"></span></div>
-    </div>
-    <div class="settings-panel" id="stab-ia">
-      <div class="form-group"><label class="form-label">Fournisseur IA</label>
-        <select class="form-input" id="s-ia-provider"><option value="claude">Claude (Anthropic)</option><option value="openai">ChatGPT (OpenAI)</option><option value="local">Mode local</option></select>
-      </div>
-      <div id="claude-cfg"><div class="form-group"><label class="form-label">Clé API Claude</label><div style="position:relative;"><input type="password" class="form-input" id="s-claude-key" placeholder="sk-ant-..." style="padding-right:44px;"/><button type="button" onclick="toggleKeyVis('s-claude-key',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;padding:4px;">👁</button></div></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-claude-model"><option value="claude-sonnet-4-20250514">Claude Sonnet 4</option><option value="claude-opus-4-5">Claude Opus 4.5</option><option value="claude-haiku-4-5">Claude Haiku 4.5</option></select></div></div>
-      <div id="openai-cfg" style="display:none;"><div class="form-group"><label class="form-label">Clé API OpenAI</label><div style="position:relative;"><input type="password" class="form-input" id="s-openai-key" placeholder="sk-..." style="padding-right:44px;"/><button type="button" onclick="toggleKeyVis('s-openai-key',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;padding:4px;">👁</button></div></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-openai-model"><option value="gpt-4o-mini">GPT-4o mini</option><option value="gpt-4o">GPT-4o</option></select></div></div>
-      <div class="form-group"><label class="form-label">URL proxy (optionnel)</label><input type="url" class="form-input" id="s-proxy-url" placeholder="https://..."/></div>
-    </div>
-    <button class="btn btn-primary btn-full" id="btn-save-settings" style="margin-top:16px;">💾 Enregistrer</button>
-    <button class="btn btn-danger btn-full" id="btn-logout" style="margin-top:8px;">🚪 Déconnexion</button>
-  </div>
-</div>
+
 <script>
 (function(){
 'use strict';
 var SK='chantierspro_max_v1';
 var yr=new Date().getFullYear();
-var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
+var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],depenses:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
 var db=JSON.parse(JSON.stringify(DFLT));
-function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;}}catch(e){db=JSON.parse(JSON.stringify(DFLT));}}
+function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;if(!db.depenses)db.depenses=[];}}catch(e){db=JSON.parse(JSON.stringify(DFLT));}}
 function saveDB(){
   try{localStorage.setItem(SK,JSON.stringify(db));}catch(e){}
   // Sauvegarder la clé API dans Firebase si disponible
@@ -927,6 +982,322 @@ function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');r
 
 // NAV/TOAST/UTILS
 function showView(n){document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});var el=document.getElementById('view-'+n);if(el)el.classList.add('active');document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===n);});}
+function openSideMenu(){var sm=document.getElementById('side-menu');if(!sm)return;
+  // Renseigner identité depuis settings
+  var ent=(db.settings&&db.settings.entreprise)||'Mon Entreprise';
+  var nm=document.getElementById('sm-name');if(nm)nm.textContent=ent;
+  var av=document.getElementById('sm-avatar');if(av)av.textContent=(ent.trim()[0]||'M').toUpperCase();
+  var ml=document.getElementById('sm-mail');if(ml&&db.settings&&db.settings.email)ml.textContent=db.settings.email;
+  sm.classList.add('open');
+}
+function closeSideMenu(){var sm=document.getElementById('side-menu');if(sm)sm.classList.remove('open');}
+function handleMenuNav(action){
+  closeSideMenu();
+  switch(action){
+    case 'banque': showView('banque'); break;
+    case 'depenses': showView('depenses'); renderDepenses(); break;
+    case 'plans': showView('plans'); plRender(); break;
+    case 'clients': showView('clients'); if(typeof renderClients==='function')renderClients(); break;
+    case 'planning': showView('planning'); if(typeof renderPlanningList==='function')renderPlanningList(); break;
+    case 'parametres':
+      if(typeof openSettings==='function'){openSettings();}
+      else{var ms=document.getElementById('modal-settings');if(ms){if(typeof populateSettings==='function')populateSettings();ms.classList.add('open');}}
+      break;
+    case 'logout':
+      if(typeof fbAuth!=='undefined'&&fbAuth&&fbAuth.signOut){fbAuth.signOut().catch(function(){});}
+      if(typeof saveDB==='function')saveDB();
+      if(typeof hideApp==='function')hideApp();
+      break;
+  }
+}
+
+// ============================================================
+// ÉDITION DE PLANS — Polygone par cheminement
+// ============================================================
+var plSegments=[{len:'',ang:''}];
+function plRender(){
+  var cont=document.getElementById('pl-segments');
+  if(!cont)return;
+  cont.innerHTML=plSegments.map(function(s,i){
+    var ang=s.ang===''?0:pN(s.ang);
+    return '<div class="pl-seg-row" data-plseg="'+i+'">'
+      +'<span class="pl-num">'+(i+1)+'</span>'
+      +'<input type="number" inputmode="decimal" class="form-input" data-plf="len" value="'+s.len+'" placeholder="Longueur" step="0.01" style="flex:1;padding:8px;"/>'
+      +'<span style="font-size:11px;color:var(--c-muted);">m</span>'
+      +'<button class="pl-ang-btn" data-pldial="'+i+'"><span class="arrow" style="transform:rotate(-'+ang+'deg);">→</span> '+(s.ang===''?'0':ang)+'°</button>'
+      +'<button class="btn btn-secondary" data-plremove="'+i+'" style="padding:6px 10px;min-width:auto;">✕</button>'
+      +'</div>';
+  }).join('');
+  plCompute();
+}
+function plCollect(){
+  document.querySelectorAll('#pl-segments [data-plseg]').forEach(function(row){
+    var i=parseInt(row.dataset.plseg);
+    row.querySelectorAll('[data-plf]').forEach(function(inp){
+      plSegments[i][inp.dataset.plf]=inp.value;
+    });
+  });
+}
+
+// ── Cadran tactile de direction ──
+var plDialSeg=-1;
+function plOpenDial(i){
+  plCollect();
+  plDialSeg=i;
+  var modal=document.getElementById('pl-dial-modal');if(!modal)return;
+  document.getElementById('pl-dial-title').textContent='Direction du côté '+(i+1);
+  plSetDialAngle(plSegments[i].ang===''?0:pN(plSegments[i].ang),false);
+  modal.classList.add('open');
+}
+function plCloseDial(){var m=document.getElementById('pl-dial-modal');if(m)m.classList.remove('open');plDialSeg=-1;}
+function plSetDialAngle(ang,save){
+  ang=Math.round(ang);if(ang<0)ang+=360;if(ang>=360)ang-=360;
+  var r=90,rad=ang*Math.PI/180;
+  var hx=100+r*Math.cos(rad),hy=100-r*Math.sin(rad);
+  var nd=document.getElementById('pl-needle'),hd=document.getElementById('pl-handle'),tx=document.getElementById('pl-dial-ang');
+  if(nd){nd.setAttribute('x2',hx.toFixed(1));nd.setAttribute('y2',hy.toFixed(1));}
+  if(hd){hd.setAttribute('cx',hx.toFixed(1));hd.setAttribute('cy',hy.toFixed(1));}
+  if(tx)tx.textContent=ang+'°';
+  if(save!==false&&plDialSeg>=0){plSegments[plDialSeg].ang=String(ang);plCompute();}
+}
+function plDialFromXY(clientX,clientY){
+  var wrap=document.getElementById('pl-dial-wrap');if(!wrap)return;
+  var rect=wrap.getBoundingClientRect();
+  var cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+  var ang=Math.atan2(-(clientY-cy),clientX-cx)*180/Math.PI;
+  if(ang<0)ang+=360;
+  plSetDialAngle(ang,true);
+}
+function plBuildPoints(){
+  var pts=[{x:0,y:0}];var x=0,y=0;
+  plSegments.forEach(function(s){
+    var len=pN(s.len)||0;var ang=pN(s.ang)||0;
+    var r=ang*Math.PI/180;
+    x+=len*Math.cos(r);y+=len*Math.sin(r);
+    pts.push({x:x,y:y});
+  });
+  return pts;
+}
+function plCompute(){
+  var pts=plBuildPoints();
+  // Surface (shoelace) sur les points fermés
+  var p=pts.slice();var n=p.length;
+  var closed=n>1&&Math.abs(p[0].x-p[n-1].x)<1e-9&&Math.abs(p[0].y-p[n-1].y)<1e-9;
+  var poly=closed?p.slice(0,-1):p.slice();
+  var m=poly.length,a=0;
+  for(var i=0;i<m;i++){var j=(i+1)%m;a+=poly[i].x*poly[j].y-poly[j].x*poly[i].y;}
+  var surf=Math.abs(a)/2;
+  // Périmètre
+  var per=0;for(i=1;i<pts.length;i++)per+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
+  // Écart de fermeture
+  var last=pts[pts.length-1];var ecart=Math.hypot(last.x,last.y);
+  var sEl=document.getElementById('pl-surface');if(sEl)sEl.textContent=surf.toFixed(2).replace('.',',');
+  var pEl=document.getElementById('pl-perimetre');if(pEl)pEl.textContent=per.toFixed(2).replace('.',',');
+  var fEl=document.getElementById('pl-fermeture');
+  if(fEl){
+    if(plSegments.length<2){fEl.textContent='—';fEl.style.color='var(--c-text)';}
+    else{fEl.textContent=ecart<0.05?'✓':ecart.toFixed(2).replace('.',',')+'m';fEl.style.color=ecart<0.05?'var(--c-success)':'var(--c-danger)';}
+  }
+  plDrawSVG(pts,surf,per);
+}
+function plDrawSVG(pts,surf,per){
+  var cont=document.getElementById('pl-svg-container');if(!cont)return;
+  if(pts.length<2){cont.innerHTML='<div style="color:#8b7355;font-family:var(--font-mono);font-size:12px;padding:40px;">Ajoutez des côtés pour voir le plan</div>';return;}
+  // Bornes
+  var xs=pts.map(function(p){return p.x;}),ys=pts.map(function(p){return p.y;});
+  var minX=Math.min.apply(null,xs),maxX=Math.max.apply(null,xs);
+  var minY=Math.min.apply(null,ys),maxY=Math.max.apply(null,ys);
+  var w=maxX-minX||1,hh=maxY-minY||1;
+  var pad=30,vw=320,vh=240;
+  var sc=Math.min((vw-2*pad)/w,(vh-2*pad)/hh);
+  function tx(x){return pad+(x-minX)*sc;}
+  function ty(y){return vh-pad-(y-minY)*sc;} // inverser Y (SVG haut=0)
+  var svg=['<svg viewBox="0 0 '+vw+' '+vh+'" style="width:100%;max-width:340px;">'];
+  // Polygone
+  var path=pts.map(function(p,i){return (i===0?'M':'L')+tx(p.x).toFixed(1)+' '+ty(p.y).toFixed(1);}).join(' ');
+  svg.push('<path d="'+path+'" fill="rgba(45,140,240,0.12)" stroke="#1a6fd4" stroke-width="2" stroke-linejoin="round"/>');
+  // Cotes par segment
+  for(var i=1;i<pts.length;i++){
+    var mx=(tx(pts[i-1].x)+tx(pts[i].x))/2,my=(ty(pts[i-1].y)+ty(pts[i].y))/2;
+    var len=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
+    if(len<0.01)continue;
+    svg.push('<text x="'+mx.toFixed(1)+'" y="'+(my-3).toFixed(1)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#1a4a7a" font-weight="600">'+len.toFixed(2)+'</text>');
+  }
+  // Sommets
+  pts.forEach(function(p,i){
+    if(i===pts.length-1&&pts.length>2)return;
+    svg.push('<circle cx="'+tx(p.x).toFixed(1)+'" cy="'+ty(p.y).toFixed(1)+'" r="3" fill="#1a6fd4"/>');
+  });
+  // Surface au centre
+  var cx=pts.reduce(function(a,p){return a+tx(p.x);},0)/pts.length;
+  var cy=pts.reduce(function(a,p){return a+ty(p.y);},0)/pts.length;
+  if(surf>0)svg.push('<text x="'+cx.toFixed(1)+'" y="'+cy.toFixed(1)+'" text-anchor="middle" font-family="Instrument Sans,sans-serif" font-size="13" fill="#1a4a7a" font-weight="700">'+surf.toFixed(2).replace('.',',')+' m²</text>');
+  svg.push('</svg>');
+  cont.innerHTML=svg.join('');
+}
+function plExportPDF(){
+  plCollect();
+  var pts=plBuildPoints();
+  if(pts.length<3){showToast('Ajoutez au moins 3 côtés','error');return;}
+  plCompute();
+  var surfTxt=document.getElementById('pl-surface').textContent;
+  var perTxt=document.getElementById('pl-perimetre').textContent;
+  var svgEl=document.getElementById('pl-svg-container').innerHTML;
+  var ent=(db.settings&&db.settings.entreprise)||'ChantiersPro';
+  var win=window.open('','_blank');
+  if(!win){showToast('Autorisez les pop-ups','error');return;}
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Plan</title>'
+    +'<style>body{font-family:Arial,sans-serif;padding:20px;}h1{color:#1a6fd4;font-size:20px;}'
+    +'.meta{display:flex;gap:30px;margin:16px 0;}.meta div{font-size:14px;}.meta b{color:#1a6fd4;}'
+    +'.plan{border:1px solid #ddd;border-radius:8px;padding:16px;background:#f5f0e8;text-align:center;margin:16px 0;}'
+    +'table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px;}th,td{border:1px solid #ddd;padding:6px 10px;text-align:left;}th{background:#1a6fd4;color:#fff;}</style>'
+    +'</head><body>'
+    +'<h1>'+ent+' — Plan de surface</h1>'
+    +'<div class="meta"><div>Surface : <b>'+surfTxt+' m²</b></div><div>Périmètre : <b>'+perTxt+' m</b></div><div>Date : '+new Date().toLocaleDateString('fr-FR')+'</div></div>'
+    +'<div class="plan">'+svgEl+'</div>'
+    +'<table><tr><th>Côté</th><th>Longueur (m)</th><th>Angle (°)</th></tr>'
+    +plSegments.map(function(s,i){return '<tr><td>'+(i+1)+'</td><td>'+(pN(s.len)||0).toFixed(2)+'</td><td>'+(pN(s.ang)||0)+'</td></tr>';}).join('')
+    +'</table>'
+    +'<script>setTimeout(function(){window.print();},300);<\/script>'
+    +'</body></html>';
+  win.document.write(html);win.document.close();
+}
+
+// ============================================================
+// DÉPENSES & RENTABILITÉ
+// ============================================================
+var editDepId=null;
+function depExerciceBounds(){
+  var moisDebut=(db.settings&&db.settings.exerciceDebut)||1;
+  var now=new Date();var y=now.getFullYear();
+  var debut=new Date(y,moisDebut-1,1);
+  if(now<debut)debut=new Date(y-1,moisDebut-1,1);
+  var fin=new Date(debut.getFullYear()+1,debut.getMonth(),1);
+  return {debut:debut,fin:fin};
+}
+function depCAExercice(){
+  var b=depExerciceBounds();var total=0;
+  (db.factures||[]).forEach(function(f){
+    var d=f.date?new Date(f.date):(f.createdAt?new Date(f.createdAt):null);
+    if(!d||isNaN(d))return;
+    if(d>=b.debut&&d<b.fin)total+=(f.lignes||[]).reduce(function(a,l){return a+(pN(l.qte))*(pN(l.pu));},0);
+  });
+  return total;
+}
+var DEP_CATS={materiaux:'🧱 Matériaux',outillage:'🔧 Outillage',carburant:'⛽ Carburant',['sous-traitance']:'👷 Sous-traitance',location:'🚜 Location',assurance:'🛡 Assurance',administratif:'📋 Administratif',autre:'📦 Autre'};
+function renderDepenses(){
+  // Remplir le select chantier depuis devis/factures
+  var sel=document.getElementById('dep-chantier');
+  if(sel){
+    var opts='<option value="">— Aucun (frais général) —</option>';
+    var seen={};
+    (db.devis||[]).concat(db.factures||[]).forEach(function(d){
+      var key=(d.client||'')+' · '+(d.objet||'');
+      if(d.client&&!seen[key]){seen[key]=1;opts+='<option value="'+esc(key)+'">'+esc(key)+'</option>';}
+    });
+    sel.innerHTML=opts;
+  }
+  // Totaux
+  var b=depExerciceBounds();
+  var totalDep=0;
+  (db.depenses||[]).forEach(function(dp){
+    var d=dp.date?new Date(dp.date):null;
+    if(d&&!isNaN(d)&&d>=b.debut&&d<b.fin)totalDep+=pN(dp.montant);
+  });
+  var ca=depCAExercice();
+  var marge=ca-totalDep;
+  var tEl=document.getElementById('dep-total');if(tEl)tEl.textContent=fmtMoney(totalDep);
+  var mEl=document.getElementById('dep-marge');if(mEl){mEl.textContent=fmtMoney(marge);mEl.style.color=marge>=0?'var(--c-success)':'var(--c-danger)';}
+  // Liste triée par date desc
+  var list=document.getElementById('dep-list');if(!list)return;
+  var deps=(db.depenses||[]).slice().sort(function(a,c){return (c.date||'').localeCompare(a.date||'');});
+  if(!deps.length){list.innerHTML='<div class="empty-state" style="padding:30px;"><div class="empty-state-icon">🧾</div><div style="font-size:14px;">Aucune dépense enregistrée</div></div>';return;}
+  list.innerHTML=deps.map(function(dp){
+    var cat=DEP_CATS[dp.categorie]||'📦 Autre';
+    return '<div class="card" style="margin-bottom:8px;cursor:pointer;" data-depedit="'+dp.id+'">'
+      +'<div style="display:flex;align-items:center;gap:12px;">'
+      +'<div style="font-size:22px;">'+cat.split(' ')[0]+'</div>'
+      +'<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;">'+esc(dp.libelle||'Dépense')+'</div>'
+      +'<div style="font-size:11px;color:var(--c-muted);">'+(dp.fournisseur?esc(dp.fournisseur)+' · ':'')+fmtDate(dp.date)+(dp.chantier?' · '+esc(dp.chantier):'')+'</div></div>'
+      +'<div style="font-family:var(--font-mono);font-weight:700;color:var(--c-danger);">−'+fmtMoney(pN(dp.montant))+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+function openDepense(id){
+  editDepId=id||null;
+  renderDepenses(); // pour peupler le select
+  var dp=id?(db.depenses||[]).find(function(x){return x.id===id;}):null;
+  document.getElementById('dep-modal-title').textContent=dp?'Modifier la dépense':'Nouvelle dépense';
+  document.getElementById('dep-libelle').value=dp?dp.libelle||'':'';
+  document.getElementById('dep-montant').value=dp?dp.montant||'':'';
+  document.getElementById('dep-date').value=dp?dp.date||'':new Date().toISOString().split('T')[0];
+  document.getElementById('dep-categorie').value=dp?dp.categorie||'materiaux':'materiaux';
+  document.getElementById('dep-fournisseur').value=dp?dp.fournisseur||'':'';
+  document.getElementById('dep-chantier').value=dp?dp.chantier||'':'';
+  document.getElementById('dep-tva').value=dp?(dp.tva!=null?dp.tva:20):20;
+  document.getElementById('dep-notes').value=dp?dp.notes||'':'';
+  document.getElementById('dep-delete').style.display=dp?'block':'none';
+  var ss=document.getElementById('dep-scan-status');if(ss){ss.style.display='none';ss.style.color='var(--c-info)';}
+  document.getElementById('modal-depense').classList.add('open');
+}
+function saveDepense(){
+  var lib=document.getElementById('dep-libelle').value.trim();
+  var montant=pN(document.getElementById('dep-montant').value);
+  if(!lib){showToast('Libellé requis','error');return;}
+  if(montant<=0){showToast('Montant invalide','error');return;}
+  var dp={
+    id:editDepId||genId(),
+    libelle:lib,
+    montant:String(montant),
+    date:document.getElementById('dep-date').value||new Date().toISOString().split('T')[0],
+    categorie:document.getElementById('dep-categorie').value,
+    fournisseur:document.getElementById('dep-fournisseur').value.trim(),
+    chantier:document.getElementById('dep-chantier').value,
+    tva:pN(document.getElementById('dep-tva').value),
+    notes:document.getElementById('dep-notes').value.trim(),
+    createdAt:editDepId?(db.depenses.find(function(x){return x.id===editDepId;})||{}).createdAt:new Date().toISOString()
+  };
+  if(editDepId){var i=db.depenses.findIndex(function(x){return x.id===editDepId;});if(i>=0)db.depenses[i]=dp;}
+  else db.depenses.push(dp);
+  saveDB();renderDepenses();renderGreeting();
+  document.getElementById('modal-depense').classList.remove('open');
+  showToast('Dépense enregistrée','success');
+}
+function deleteDepense(){
+  if(!editDepId)return;
+  db.depenses=db.depenses.filter(function(x){return x.id!==editDepId;});
+  saveDB();renderDepenses();renderGreeting();
+  document.getElementById('modal-depense').classList.remove('open');
+  showToast('Dépense supprimée','success');
+}
+function depScanTicket(file){
+  var status=document.getElementById('dep-scan-status');
+  if(status){status.style.display='block';status.textContent='📷 Analyse du ticket en cours...';}
+  compressPhoto(file,function(dataUrl){
+    var base64=dataUrl.split(',')[1];
+    var prompt='Tu analyses la photo d\'un ticket de caisse ou d\'une facture d\'achat (BTP/artisan français). '
+      +'Extrais les informations et réponds UNIQUEMENT en JSON valide, sans texte autour, au format exact:\n'
+      +'{"libelle":"description courte de l\'achat","montant":nombre_TTC_en_euros,"date":"AAAA-MM-JJ","fournisseur":"nom enseigne","tva":taux_tva_principal_en_pourcentage}\n'
+      +'Règles: montant = total TTC payé (nombre seul, point décimal). date au format ISO. Si une info manque, mets null. Ne devine pas la catégorie.';
+    callAIVision(base64,'image/jpeg',prompt).then(function(result){
+      if(!result){if(status)status.textContent='❌ Échec de l\'analyse. Saisie manuelle possible.';return;}
+      var data=null;
+      try{
+        var clean=result.replace(/```json|```/g,'').trim();
+        var ib=clean.indexOf('{'),ie=clean.lastIndexOf('}');
+        if(ib>=0&&ie>ib)clean=clean.slice(ib,ie+1);
+        data=JSON.parse(clean);
+      }catch(e){console.warn('Parse scan échoué',e,result);if(status)status.textContent='❌ Lecture impossible. Saisie manuelle.';return;}
+      // Pré-remplir le formulaire
+      if(data.libelle)document.getElementById('dep-libelle').value=data.libelle;
+      if(data.montant!=null)document.getElementById('dep-montant').value=String(data.montant).replace('.',',');
+      if(data.date)document.getElementById('dep-date').value=data.date;
+      if(data.fournisseur)document.getElementById('dep-fournisseur').value=data.fournisseur;
+      if(data.tva!=null)document.getElementById('dep-tva').value=data.tva;
+      if(status){status.textContent='✓ Ticket lu — vérifiez et choisissez la catégorie';status.style.color='var(--c-success)';}
+    });
+  });
+}
 function showToast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.className='show '+(type||'');clearTimeout(t._t);t._t=setTimeout(function(){t.className='';},2800);}
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -934,7 +1305,36 @@ function fmtMoney(n){return Number(n||0).toFixed(2).replace('.',',').replace(/\B
 function fmtDate(d){if(!d)return '';try{var p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}catch(e){return d;}}
 function genNum(){return (db.settings.prefix||'DEV-'+yr+'-')+String(db.settings.nextNum||1).padStart(3,'0');}
 function calcTTC(d){var ht=(d.lignes||[]).reduce(function(a,l){return a+(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);},0);return ht+ht*(parseFloat(d.tva)||10)/100;}
-function renderGreeting(){document.getElementById('greeting-name').textContent=db.settings.entreprise||'Artisan';var nd=db.devis.filter(function(d){return d.statut==='brouillon'||d.statut==='envoyé';}).length;var nv=db.visites.length;document.getElementById('greeting-stats').textContent=nd+' devis en cours · '+nv+' visite'+(nv>1?'s':'');}
+function renderGreeting(){document.getElementById('greeting-name').textContent=db.settings.entreprise||'Artisan';var nd=db.devis.filter(function(d){return d.statut==='brouillon'||d.statut==='envoyé';}).length;var nv=db.visites.length;document.getElementById('greeting-stats').textContent=nd+' devis en cours · '+nv+' visite'+(nv>1?'s':'');renderCA();}
+function renderCA(){
+  var caEl=document.getElementById('ca-montant');if(!caEl)return;
+  // Exercice comptable : par défaut année civile. settings.exerciceDebut = mois de début (1=janvier)
+  var moisDebut=(db.settings&&db.settings.exerciceDebut)||1; // 1..12
+  var now=new Date();
+  var y=now.getFullYear();
+  // Début de l'exercice courant
+  var debut=new Date(y,moisDebut-1,1);
+  if(now<debut)debut=new Date(y-1,moisDebut-1,1);
+  var fin=new Date(debut.getFullYear()+1,debut.getMonth(),1);
+  // Somme HT des factures dont la date tombe dans l'exercice
+  var total=0,nbFact=0;
+  (db.factures||[]).forEach(function(f){
+    var d=f.date?new Date(f.date):(f.createdAt?new Date(f.createdAt):null);
+    if(!d||isNaN(d))return;
+    if(d>=debut&&d<fin){
+      var ht=(f.lignes||[]).reduce(function(a,l){return a+(pN(l.qte))*(pN(l.pu));},0);
+      total+=ht;nbFact++;
+    }
+  });
+  caEl.textContent=fmtMoney(total);
+  var detail=document.getElementById('ca-detail');
+  if(detail)detail.textContent=nbFact+' facture'+(nbFact>1?'s':'')+' · HT facturé';
+  var lbl=document.getElementById('ca-exercice-label');
+  if(lbl){
+    if(moisDebut===1){lbl.textContent=String(debut.getFullYear());}
+    else{lbl.textContent=debut.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'})+' → '+new Date(fin-1).toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});}
+  }
+}
 function renderRecentActivity(){var cont=document.getElementById('recent-activity');var items=[];db.devis.slice(-3).reverse().forEach(function(d){items.push({icon:'📄',text:d.client+' — '+fmtMoney(calcTTC(d)),sub:d.statut,date:d.date});});db.visites.slice(-2).reverse().forEach(function(v){items.push({icon:'🏠',text:v.client,sub:v.nature||'Visite',date:v.date});});if(!items.length){cont.innerHTML='<div class="empty-state" style="padding:20px;"><div class="empty-state-icon">📋</div><div style="font-size:14px;">Aucune activite</div></div>';return;}cont.innerHTML=items.slice(0,5).map(function(it){return '<div class="kv"><div style="display:flex;align-items:center;gap:8px;"><span>'+it.icon+'</span><div><div style="font-size:13px;font-weight:600;">'+esc(it.text)+'</div><div style="font-size:11px;color:var(--c-muted);">'+esc(it.sub)+'</div></div></div><span style="font-size:11px;color:var(--c-muted);">'+esc(it.date||'')+'</span></div>';}).join('');}
 
 // ============================================================
@@ -1485,13 +1885,10 @@ async function doGenerateDevisFromParcours(){
   var result;
   try{
     result=await callAI(fullPrompt);
-    // DEBUG temporaire - voir réponse brute
     if(result&&!result.startsWith('LOCAL:')){
-      var preview=result.slice(0,80).replace(/\n/g,' ');
-      console.log('=== REPONSE CLAUDE BRUTE ===',result.slice(0,300));
-      showToast('Claude: '+preview,'success');
+      console.log('Réponse IA:',result.slice(0,300));
     } else if(!result){
-      showToast('Claude: réponse vide','error');
+      showToast('Réponse IA vide — vérifiez la clé/le proxy','error');
     }
   }
   catch(e){
@@ -1642,214 +2039,6 @@ function renderClientsList(){var cont=document.getElementById('clients-list');if
 var editPlanId=null;
 function openNewPlanning(){editPlanId=null;['p-titre','p-client','p-notes'].forEach(function(id){document.getElementById(id).value='';});var t=new Date().toISOString().split('T')[0];document.getElementById('p-date-debut').value=t;document.getElementById('p-date-fin').value=t;document.getElementById('modal-planning').classList.add('open');}
 function savePlanning(){var titre=document.getElementById('p-titre').value.trim();if(!titre){showToast('Titre requis','error');return;}var e={id:editPlanId||genId(),titre:titre,dateDebut:document.getElementById('p-date-debut').value,dateFin:document.getElementById('p-date-fin').value,client:document.getElementById('p-client').value,metier:document.getElementById('p-metier').value,notes:document.getElementById('p-notes').value};if(editPlanId){var i=db.planning.findIndex(function(x){return x.id===editPlanId;});if(i>=0)db.planning[i]=e;}else{db.planning.push(e);}saveDB();renderPlanningList();document.getElementById('modal-planning').classList.remove('open');showToast('Événement enregistré','success');}
-/* ============================================================
-   FACTURATION
-   ============================================================ */
-var factureLines=[], editFactureId=null;
-
-function genFactureNum(){
-  var s=db.settings;
-  var pfx=(s.factu&&s.factu.factPrefix)||('FA-'+yr+'-');
-  var num=(s.factu&&s.factu.factNextNum)||1;
-  return pfx+String(num).padStart(3,'0');
-}
-
-function calcEcheance(dateEmission, condPaiement){
-  var d=new Date(dateEmission||new Date());
-  var cond=(condPaiement||'30j');
-  if(cond==='30j'){d.setDate(d.getDate()+30);}
-  else if(cond==='45j'){d.setDate(d.getDate()+45);}
-  else if(cond==='60j'){d.setDate(d.getDate()+60);}
-  else if(cond==='reception'){d.setDate(d.getDate()+7);}
-  else if(cond==='avance'){d.setDate(d.getDate()+30);}
-  return d.toISOString().split('T')[0];
-}
-
-function newFactureLine(){return {id:genId(),designation:'',unite:'',qte:'',pu:''};}
-
-function renderFactureLines(){
-  var cont=document.getElementById('facture-lines');if(!cont)return;
-  cont.innerHTML=factureLines.map(function(l){
-    var tot=(pN(l.qte))*(pN(l.pu));
-    return '<div class="devis-line" data-flid="'+l.id+'">'
-      +'<div class="dl-grid">'
-      +'<input type="text" placeholder="Désignation" value="'+esc(l.designation||'')+'" data-ff="designation"/>'
-      +'<input type="text" placeholder="m²" value="'+esc(l.unite||'')+'" data-ff="unite"/>'
-      +'<input type="number" placeholder="Qté" value="'+esc(l.qte||'')+'" data-ff="qte" step="0.01" inputmode="decimal"/>'
-      +'<input type="number" placeholder="PU HT" value="'+esc(l.pu||'')+'" data-ff="pu" step="0.01" inputmode="decimal"/>'
-      +'<button class="devis-remove" data-flrem="'+l.id+'">✕</button>'
-      +'</div><div class="devis-line-total">= '+fmtMoney(tot)+'</div></div>';
-  }).join('');
-  updateFactureTotaux();
-}
-
-function updateFactureTotaux(){
-  var tvaR=pN(document.getElementById('f-tva').value)||10;
-  var acompte=pN(document.getElementById('f-acompte').value)||0;
-  var ht=factureLines.reduce(function(a,l){return a+pN(l.qte)*pN(l.pu);},0);
-  var tva=ht*tvaR/100;
-  var ttc=ht+tva;
-  var solde=Math.max(0,ttc-acompte);
-  document.getElementById('f-total-ht').textContent=fmtMoney(ht);
-  document.getElementById('f-total-tva').textContent=fmtMoney(tva)+' ('+tvaR+'%)';
-  document.getElementById('f-total-solde').textContent=fmtMoney(solde);
-  var ar=document.getElementById('f-acompte-row');
-  if(ar){ar.style.display=acompte>0?'flex':'none';}
-  document.getElementById('f-total-acompte').textContent='− '+fmtMoney(acompte);
-  // Couleur statut bar
-  var statut=document.getElementById('f-paiement-statut').value;
-  var colors={attente:'rgba(96,165,250,.1)',partiel:'rgba(251,191,36,.1)',payee:'rgba(34,197,94,.1)',retard:'rgba(239,68,68,.1)'};
-  var borders={attente:'rgba(96,165,250,.3)',partiel:'rgba(251,191,36,.3)',payee:'rgba(34,197,94,.3)',retard:'rgba(239,68,68,.3)'};
-  var labels={attente:'En attente de paiement',partiel:'Acompte versé — solde à régler',payee:'Payée ✓',retard:'Paiement en retard ⚠'};
-  var bar=document.getElementById('facture-statut-bar');
-  if(bar){bar.style.background=colors[statut];bar.style.borderColor=borders[statut];}
-  var txt=document.getElementById('facture-statut-txt');
-  if(txt)txt.textContent=labels[statut]||'';
-}
-
-function collectFactureLines(){
-  document.querySelectorAll('#facture-lines .devis-line').forEach(function(row){
-    var l=factureLines.find(function(x){return x.id===row.dataset.flid;});
-    if(!l)return;
-    row.querySelectorAll('input[data-ff]').forEach(function(inp){l[inp.dataset.ff]=inp.value;});
-  });
-}
-
-// Ouvrir facture depuis un devis
-function genFactureFromDevis(devisId){
-  var d=db.devis.find(function(x){return x.id===devisId;});if(!d)return;
-  editFactureId=null;
-  factureLines=(d.lignes||[]).map(function(l){return {id:genId(),designation:l.designation||l.desig||'',unite:l.unite||l.u||'',qte:l.qte||l.q||'',pu:l.pu||l.p||''};});
-  if(!factureLines.length)factureLines=[newFactureLine()];
-  document.getElementById('f-client').value=d.client||'';
-  document.getElementById('f-adresse').value=d.adresse||'';
-  document.getElementById('f-objet').value=d.objet||'';
-  var today=new Date().toISOString().split('T')[0];
-  document.getElementById('f-date-emission').value=today;
-  document.getElementById('f-date-echeance').value=calcEcheance(today,db.settings.factu&&db.settings.factu.paiementCond);
-  document.getElementById('f-tva').value=d.tva||10;
-  document.getElementById('f-acompte').value=0;
-  document.getElementById('f-paiement-statut').value='attente';
-  document.getElementById('f-notes').value=(db.settings.factu&&db.settings.factu.penalites)||'';
-  document.getElementById('modal-facture-title').textContent='🧾 Facture — '+d.client;
-  // Stocker ref devis
-  window._pendingDevisRef=devisId;
-  renderFactureLines();
-  document.getElementById('modal-facture').classList.add('open');
-}
-
-// Ouvrir facture existante
-function openFacture(id){
-  var f=db.factures.find(function(x){return x.id===id;});if(!f)return;
-  editFactureId=id;
-  factureLines=(f.lignes||[]).map(function(l){return Object.assign({},l);});
-  document.getElementById('f-client').value=f.client||'';
-  document.getElementById('f-adresse').value=f.adresse||'';
-  document.getElementById('f-objet').value=f.objet||'';
-  document.getElementById('f-date-emission').value=f.dateEmission||'';
-  document.getElementById('f-date-echeance').value=f.dateEcheance||'';
-  document.getElementById('f-tva').value=f.tva||10;
-  document.getElementById('f-acompte').value=f.acompte||0;
-  document.getElementById('f-paiement-statut').value=f.paiementStatut||'attente';
-  document.getElementById('f-notes').value=f.notes||'';
-  document.getElementById('modal-facture-title').textContent='🧾 '+f.numero;
-  renderFactureLines();
-  document.getElementById('modal-facture').classList.add('open');
-}
-
-function saveFacture(){
-  var client=document.getElementById('f-client').value.trim();
-  if(!client){showToast('Nom client requis','error');return;}
-  collectFactureLines();
-  var prev=editFactureId?db.factures.find(function(f){return f.id===editFactureId;}):null;
-  var num=prev?prev.numero:genFactureNum();
-  if(!prev&&db.settings.factu){db.settings.factu.factNextNum=(db.settings.factu.factNextNum||1)+1;saveDB();}
-  var fac={
-    id:editFactureId||genId(),numero:num,
-    client:client,adresse:document.getElementById('f-adresse').value,
-    objet:document.getElementById('f-objet').value,
-    dateEmission:document.getElementById('f-date-emission').value,
-    dateEcheance:document.getElementById('f-date-echeance').value,
-    tva:pN(document.getElementById('f-tva').value)||10,
-    acompte:pN(document.getElementById('f-acompte').value)||0,
-    paiementStatut:document.getElementById('f-paiement-statut').value,
-    notes:document.getElementById('f-notes').value,
-    lignes:factureLines.slice(),
-    devisRef:window._pendingDevisRef||null,
-    createdAt:prev?prev.createdAt:new Date().toISOString()
-  };
-  window._pendingDevisRef=null;
-  if(editFactureId){var i=db.factures.findIndex(function(f){return f.id===editFactureId;});if(i>=0)db.factures[i]=fac;}
-  else{db.factures.push(fac);}
-  saveDB();renderDocs();
-  document.getElementById('modal-facture').classList.remove('open');
-  showToast('Facture '+num+' enregistrée ✓','success');
-}
-
-function exportFacturePDF(id){
-  var f=db.factures.find(function(x){return x.id===id;});
-  if(!f&&editFactureId){collectFactureLines();saveFacture();f=db.factures.find(function(x){return x.id===editFactureId;});}
-  if(!f){showToast('Introuvable','error');return;}
-  var s=db.settings; var sf=s.factu||{};
-  var ht=f.lignes.reduce(function(a,l){return a+pN(l.qte)*pN(l.pu);},0);
-  var tva=ht*(f.tva||10)/100; var ttc=ht+tva; var solde=Math.max(0,ttc-(f.acompte||0));
-  var tvaMention=sf.tvaMention==='franchise'?'TVA non applicable — art. 293 B du CGI':sf.tvaMention==='autoliq'?'TVA auto-liquidée — art. 283-2 CGI':'';
-  var statutColors={attente:'#1e40af',partiel:'#92400e',payee:'#14532d',retard:'#7f1d1d'};
-  var statutLabels={attente:'EN ATTENTE',partiel:'ACOMPTE VERSÉ',payee:'PAYÉE',retard:'EN RETARD'};
-  var rows=f.lignes.map(function(l){var tot=pN(l.qte)*pN(l.pu);return '<tr><td>'+esc(l.designation||'')+'</td><td style="text-align:center;">'+esc(l.unite||'')+'</td><td style="text-align:right;">'+esc(l.qte||'')+'</td><td style="text-align:right;font-family:monospace;">'+fmtMoney(l.pu||0)+'</td><td style="text-align:right;font-weight:600;font-family:monospace;">'+fmtMoney(tot)+'</td></tr>';}).join('');
-  var htm='<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>'+esc(f.numero)+'</title>'
-    +'<style>body{font-family:Arial,sans-serif;padding:18mm;color:#111;font-size:10pt;}'
-    +'h1{font-size:20pt;color:#1a1a1a;font-weight:800;margin-bottom:3px;}'
-    +'.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;}'
-    +'.fact-num{font-size:26pt;font-weight:800;color:#111;letter-spacing:-1px;}'
-    +'.statut-badge{display:inline-block;padding:4px 12px;border-radius:4px;font-size:9pt;font-weight:700;color:#fff;background:'+(statutColors[f.paiementStatut]||'#1e40af')+';margin-top:6px;}'
-    +'table{width:100%;border-collapse:collapse;margin-bottom:16px;}'
-    +'th{background:#111;color:#fff;padding:8px 10px;text-align:left;font-size:8.5pt;}'
-    +'td{padding:7px 10px;border-bottom:1px solid #eee;font-size:9pt;}'
-    +'tr:nth-child(even) td{background:#f9f9f9;}'
-    +'.tot{margin-left:auto;width:240px;}'
-    +'.tr{display:flex;justify-content:space-between;padding:6px 0;font-size:9.5pt;border-bottom:1px solid #eee;}'
-    +'.solde{display:flex;justify-content:space-between;padding:10px 0;font-size:13pt;font-weight:800;border-top:2px solid #111;margin-top:4px;}'
-    +'.legal{font-size:7.5pt;color:#888;border-top:1px solid #ddd;padding-top:10px;margin-top:20px;line-height:1.6;}'
-    +'@media print{@page{size:A4;margin:0;}body{padding:10mm;}-webkit-print-color-adjust:exact;print-color-adjust:exact;}</style></head><body>'
-    +'<div class="hdr"><div>'
-    +(s.logo?'<img src="'+s.logo+'" style="height:54px;margin-bottom:8px;display:block;"/>':'')
-    +'<h1>'+esc(s.entreprise||'Mon Entreprise')+'</h1>'
-    +(sf.forme?'<div style="font-size:9pt;color:#666;">'+esc(sf.forme)+(sf.rcs?' — '+esc(sf.rcs):'')+'</div>':'')
-    +'<div style="font-size:9pt;color:#555;margin-top:3px;">'+(s.siret?'SIRET : '+esc(s.siret)+'<br/>':'')+esc(s.tel||'')+' · '+esc(s.email||'')+'<br/>'+esc(s.adresse||'')+'</div>'
-    +'</div><div style="text-align:right;">'
-    +'<div class="fact-num">FACTURE</div>'
-    +'<div style="font-size:14pt;font-weight:600;font-family:monospace;">'+esc(f.numero)+'</div>'
-    +'<div style="font-size:9pt;color:#555;margin-top:3px;">Émission : '+fmtDate(f.dateEmission)+'<br/>Échéance : '+fmtDate(f.dateEcheance)+'</div>'
-    +'<div class="statut-badge">'+(statutLabels[f.paiementStatut]||'EN ATTENTE')+'</div>'
-    +'</div></div>'
-    +'<div style="background:#f8f8f8;padding:12px 15px;border-radius:6px;margin-bottom:20px;border-left:3px solid #111;">'
-    +'<strong>Client :</strong> '+esc(f.client)+'<br/>'+(f.adresse?esc(f.adresse)+'<br/>':'')+'<strong>Objet :</strong> '+esc(f.objet||'')+'</div>'
-    +'<table><thead><tr><th style="width:46%">Désignation</th><th style="width:8%">Unité</th><th style="width:10%">Qté</th><th style="width:15%">PU HT</th><th style="width:21%">Total HT</th></tr></thead><tbody>'+rows+'</tbody></table>'
-    +'<div style="display:flex;justify-content:flex-end;margin-bottom:20px;"><div class="tot">'
-    +'<div class="tr"><span>Total HT</span><span style="font-family:monospace;">'+fmtMoney(ht)+'</span></div>'
-    +'<div class="tr"><span>TVA '+f.tva+'%</span><span style="font-family:monospace;">'+fmtMoney(tva)+'</span></div>'
-    +'<div class="tr"><span>Total TTC</span><span style="font-family:monospace;">'+fmtMoney(ttc)+'</span></div>'
-    +(f.acompte>0?'<div class="tr" style="color:#166534;"><span>Acompte versé</span><span style="font-family:monospace;">− '+fmtMoney(f.acompte)+'</span></div>':'')
-    +'<div class="solde"><span>SOLDE À PAYER</span><span style="font-family:monospace;">'+fmtMoney(solde)+'</span></div>'
-    +'</div></div>'
-    +(f.notes?'<div style="font-size:9pt;color:#555;background:#fafafa;border:1px solid #eee;border-radius:6px;padding:10px 13px;margin-bottom:16px;">'+esc(f.notes)+'</div>':'')
-    +'<div style="margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">'
-    +'<div style="border:1px solid #ddd;border-radius:6px;padding:12px;min-height:60px;"><div style="font-size:9pt;color:#888;">Signature entreprise</div></div>'
-    +'<div style="border:1px solid #ddd;border-radius:6px;padding:12px;min-height:60px;"><div style="font-size:9pt;color:#888;">Acquitté le : ___________</div></div>'
-    +'</div>'
-    +'<div class="legal">'
-    +(sf.assur?'Assurance décennale : '+esc(sf.assur)+' — ':'')
-    +(sf.qualibat?esc(sf.qualibat)+' — ':'')
-    +(sf.tvaNum?'N° TVA : '+esc(sf.tvaNum)+' — ':'')
-    +(tvaMention?tvaMention+' — ':'')
-    +(sf.penalites?'Pénalités de retard : '+esc(sf.penalites):'')
-    +'</div></body></html>';
-  var w=window.open('','_blank');
-  if(w){w.document.write(htm);w.document.close();setTimeout(function(){w.print();},600);}
-  else showToast('Autorisez les popups','error');
-}
-
 function renderPlanningList(){var cont=document.getElementById('planning-list');if(!db.planning.length){cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📅</div><div style="font-size:14px;">Aucun événement</div></div>';return;}cont.innerHTML=db.planning.slice().sort(function(a,b){return (a.dateDebut||'').localeCompare(b.dateDebut||'');}).map(function(p){return '<div style="background:var(--c-surface);border-left:3px solid var(--c-accent);border-radius:0 10px 10px 0;padding:12px;margin-bottom:8px;"><div style="font-family:var(--font-mono);font-size:11px;color:var(--c-muted);margin-bottom:4px;">'+fmtDate(p.dateDebut)+(p.dateFin&&p.dateFin!==p.dateDebut?' → '+fmtDate(p.dateFin):'')+'</div><div style="display:flex;justify-content:space-between;align-items:center;"><div><strong style="font-size:13px;">'+esc(p.titre)+'</strong>'+(p.client?' — '+esc(p.client):'')+'<br/><span style="font-size:11px;color:var(--c-muted);">'+esc(p.metier||'')+'</span></div><button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" data-pdel="'+p.id+'">🗑</button></div></div>';}).join('');}
 
 // ============================================================
@@ -1861,15 +2050,19 @@ async function callAI(prompt){
   if(prov==='local') return localAI(prompt);
   try{
     if(prov==='claude'){
-      if(!ai.claudeKey){showToast('Clé API Claude manquante','error');return localAI(prompt);}
-      var r=await fetch((ai.proxyUrl||'https://api.anthropic.com')+'/v1/messages',{
+      var proxy=(ai.proxyUrl||'').trim().replace(/\/+$/,'');
+      // Avec proxy : la clé est côté serveur (Worker), pas besoin de clé locale
+      if(!proxy&&!ai.claudeKey){showToast('Clé API Claude manquante (ou configurez un proxy)','error');return localAI(prompt);}
+      var url=proxy?proxy:'https://api.anthropic.com/v1/messages';
+      var headers={'Content-Type':'application/json'};
+      if(!proxy){
+        headers['x-api-key']=ai.claudeKey.replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uff0d]/g,'-').trim();
+        headers['anthropic-version']='2023-06-01';
+        headers['anthropic-dangerous-direct-browser-access']='true';
+      }
+      var r=await fetch(url,{
         method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'x-api-key':ai.claudeKey.replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uff0d]/g,'-').trim(),
-          'anthropic-version':'2023-06-01',
-          'anthropic-dangerous-direct-browser-access':'true'
-        },
+        headers:headers,
         body:JSON.stringify({
           model:ai.claudeModel||'claude-sonnet-4-20250514',
           max_tokens:2000,
@@ -1913,6 +2106,36 @@ async function callAI(prompt){
     return localAI(prompt);
   }
   return localAI(prompt);
+}
+async function callAIVision(base64Data, mediaType, prompt){
+  var ai=db.settings.ai||{};
+  var prov=ai.provider||'claude';
+  if(prov!=='claude'){showToast('Le scan nécessite Claude (vision)','error');return null;}
+  var proxy=(ai.proxyUrl||'').trim().replace(/\/+$/,'');
+  if(!proxy&&!ai.claudeKey){showToast('Clé API Claude manquante','error');return null;}
+  var url=proxy?proxy:'https://api.anthropic.com/v1/messages';
+  var headers={'Content-Type':'application/json'};
+  if(!proxy){
+    headers['x-api-key']=ai.claudeKey.replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uff0d]/g,'-').trim();
+    headers['anthropic-version']='2023-06-01';
+    headers['anthropic-dangerous-direct-browser-access']='true';
+  }
+  try{
+    var r=await fetch(url,{
+      method:'POST',headers:headers,
+      body:JSON.stringify({
+        model:ai.claudeModel||'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:mediaType||'image/jpeg',data:base64Data}},
+          {type:'text',text:prompt}
+        ]}]
+      })
+    });
+    if(!r.ok){var et=await r.text().catch(function(){return '';});console.error('Vision API',r.status,et.slice(0,200));showToast('Erreur scan: '+r.status,'error');return null;}
+    var d=await r.json();
+    return d.content&&d.content[0]?d.content[0].text:'';
+  }catch(e){console.error('callAIVision',e);showToast('Erreur réseau scan','error');return null;}
 }
 function localAI(prompt,metrages){
   var lo=(prompt||'').toLowerCase();
@@ -2084,15 +2307,81 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('header-sync-btn').addEventListener('click',function(){syncToFS();});
 
   // NAV
-  document.querySelectorAll('.nav-btn').forEach(function(b){b.addEventListener('click',function(){showView(b.dataset.view);});});
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.addEventListener('click',function(){if(b.dataset.view)showView(b.dataset.view);});});
+  // Menu latéral
+  var moreBtn=document.getElementById('nav-more-btn');
+  if(moreBtn)moreBtn.addEventListener('click',openSideMenu);
+  var smScrim=document.getElementById('sm-scrim');
+  if(smScrim)smScrim.addEventListener('click',closeSideMenu);
+  document.querySelectorAll('.sm-item').forEach(function(it){
+    it.addEventListener('click',function(){handleMenuNav(it.dataset.menu);});
+  });
+  // Éditeur de plans
+  var plAdd=document.getElementById('pl-add-seg');
+  if(plAdd)plAdd.addEventListener('click',function(){plCollect();plSegments.push({len:'',ang:''});plRender();});
+  var plSegCont=document.getElementById('pl-segments');
+  if(plSegCont){
+    plSegCont.addEventListener('input',function(e){if(e.target.dataset.plf){plCollect();plCompute();}});
+    plSegCont.addEventListener('click',function(e){
+      var dial=e.target.closest('[data-pldial]');
+      if(dial){plOpenDial(parseInt(dial.dataset.pldial));return;}
+      var rm=e.target.closest('[data-plremove]');
+      if(rm){var i=parseInt(rm.dataset.plremove);plCollect();plSegments.splice(i,1);if(!plSegments.length)plSegments.push({len:'',ang:''});plRender();}
+    });
+  }
+  // Cadran tactile
+  var plWrap=document.getElementById('pl-dial-wrap');
+  if(plWrap){
+    var plDrag=false;
+    plWrap.addEventListener('mousedown',function(e){plDrag=true;plDialFromXY(e.clientX,e.clientY);});
+    window.addEventListener('mousemove',function(e){if(plDrag)plDialFromXY(e.clientX,e.clientY);});
+    window.addEventListener('mouseup',function(){plDrag=false;});
+    plWrap.addEventListener('touchstart',function(e){plDrag=true;var t=e.touches[0];plDialFromXY(t.clientX,t.clientY);e.preventDefault();},{passive:false});
+    plWrap.addEventListener('touchmove',function(e){if(plDrag){var t=e.touches[0];plDialFromXY(t.clientX,t.clientY);e.preventDefault();}},{passive:false});
+    plWrap.addEventListener('touchend',function(){plDrag=false;});
+  }
+  document.querySelectorAll('.pl-snap').forEach(function(b){
+    b.addEventListener('click',function(){plSetDialAngle(parseInt(b.dataset.snap),true);});
+  });
+  var plDialDone=document.getElementById('pl-dial-done');
+  if(plDialDone)plDialDone.addEventListener('click',function(){plRender();plCloseDial();});
+  var plDialScrim=document.getElementById('pl-dial-scrim');
+  if(plDialScrim)plDialScrim.addEventListener('click',function(){plRender();plCloseDial();});
+  var plReset=document.getElementById('pl-reset');
+  if(plReset)plReset.addEventListener('click',function(){plSegments=[{len:'',ang:''}];plRender();});
+  var plExport=document.getElementById('pl-export');
+  if(plExport)plExport.addEventListener('click',plExportPDF);
+  // Dépenses
+  var depAdd=document.getElementById('dep-add');
+  if(depAdd)depAdd.addEventListener('click',function(){openDepense(null);});
+  var _bhdep=document.getElementById('btn-home-depenses');
+  if(_bhdep)_bhdep.addEventListener('click',function(){showView('depenses');renderDepenses();});
+  var depClose=document.getElementById('dep-close');
+  if(depClose)depClose.addEventListener('click',function(){document.getElementById('modal-depense').classList.remove('open');});
+  var depSave=document.getElementById('dep-save');
+  if(depSave)depSave.addEventListener('click',saveDepense);
+  var depDelete=document.getElementById('dep-delete');
+  if(depDelete)depDelete.addEventListener('click',deleteDepense);
+  var depList=document.getElementById('dep-list');
+  if(depList)depList.addEventListener('click',function(e){
+    var row=e.target.closest('[data-depedit]');
+    if(row)openDepense(row.dataset.depedit);
+  });
+  var depScan=document.getElementById('dep-scan');  var depScanInput=document.getElementById('dep-scan-input');
+  if(depScan&&depScanInput){
+    depScan.addEventListener('click',function(){depScanInput.click();});
+    depScanInput.addEventListener('change',function(){
+      if(depScanInput.files&&depScanInput.files[0]){depScanTicket(depScanInput.files[0]);depScanInput.value='';}
+    });
+  }
 
   // ACCUEIL
   document.getElementById('btn-nouvelle-visite').addEventListener('click',function(){openParcours();});
-  document.getElementById('btn-home-docs').addEventListener('click',function(){showView('docs');renderDocs();});
+  var _bhd=document.getElementById('btn-home-docs');if(_bhd)_bhd.addEventListener('click',function(){showView('docs');renderDocs();});
   document.getElementById('btn-dicter').addEventListener('click',function(){document.getElementById('voice-standalone-transcript').textContent='';document.getElementById('btn-voice-to-devis').style.display='none';document.getElementById('modal-voice').classList.add('open');});
   document.getElementById('btn-scanner').addEventListener('click',function(){document.getElementById('scanner-preview').innerHTML='';document.getElementById('scanner-ai-output').style.display='none';document.getElementById('modal-scanner').classList.add('open');});
   document.getElementById('btn-devis-rapide').addEventListener('click',function(){openNewDevis();});
-  document.getElementById('btn-metrer').addEventListener('click',function(){openParcours();setTimeout(function(){goToStep(2);},100);});
+  var _bm=document.getElementById('btn-metrer');if(_bm)_bm.addEventListener('click',function(){openParcours();setTimeout(function(){goToStep(2);},100);});
 
   // PARCOURS 4 ÉTAPES
   document.getElementById('close-modal-parcours').addEventListener('click',function(){document.getElementById('modal-parcours').classList.remove('open');});
@@ -2193,32 +2482,8 @@ document.addEventListener('DOMContentLoaded',function(){
     var plan=e.target.closest('[data-dplan]');if(plan){showPlanFromDevis(plan.dataset.dplan);return;}
     var pdf=e.target.closest('[data-dpdf]');if(pdf){exportDevisPDF(pdf.dataset.dpdf);return;}
     var bat=e.target.closest('[data-dbat]');if(bat){exportBatappli(bat.dataset.dbat);return;}
-    var fact=e.target.closest('[data-dfact]');if(fact){genFactureFromDevis(fact.dataset.dfact);return;}
+    var fact=e.target.closest('[data-dfact]');if(fact){createFactureFromDevis(fact.dataset.dfact);return;}
     var del=e.target.closest('[data-ddel]');if(del){db.devis=db.devis.filter(function(d){return d.id!==del.dataset.ddel;});saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();}
-  });
-
-  // FACTURE
-  document.getElementById('close-modal-facture').addEventListener('click',function(){document.getElementById('modal-facture').classList.remove('open');});
-  document.getElementById('btn-add-fl').addEventListener('click',function(){collectFactureLines();factureLines.push(newFactureLine());renderFactureLines();});
-  document.getElementById('facture-lines').addEventListener('input',function(e){
-    var row=e.target.closest('.devis-line');if(!row)return;
-    var l=factureLines.find(function(x){return x.id===row.dataset.flid;});if(!l)return;
-    var f=e.target.dataset.ff;if(f)l[f]=e.target.value;
-    var tot=pN(l.qte)*pN(l.pu);var t=row.querySelector('.devis-line-total');if(t)t.textContent='= '+fmtMoney(tot);
-    updateFactureTotaux();
-  });
-  document.getElementById('facture-lines').addEventListener('click',function(e){
-    var r=e.target.closest('[data-flrem]');if(r){factureLines=factureLines.filter(function(l){return l.id!==r.dataset.flrem;});renderFactureLines();}
-  });
-  document.getElementById('f-tva').addEventListener('input',updateFactureTotaux);
-  document.getElementById('f-acompte').addEventListener('input',updateFactureTotaux);
-  document.getElementById('f-paiement-statut').addEventListener('change',updateFactureTotaux);
-  document.getElementById('btn-save-facture').addEventListener('click',function(){collectFactureLines();saveFacture();});
-  document.getElementById('btn-pdf-facture').addEventListener('click',function(){collectFactureLines();saveFacture();if(editFactureId)exportFacturePDF(editFactureId);else if(db.factures.length)exportFacturePDF(db.factures[db.factures.length-1].id);});
-  // Docs — actions factures
-  document.getElementById('docs-list').addEventListener('click',function(e){
-    var fe=e.target.closest('[data-fedit]');if(fe){openFacture(fe.dataset.fedit);return;}
-    var fp=e.target.closest('[data-fpdf]');if(fp){exportFacturePDF(fp.dataset.fpdf);return;}
   });
 
   // VISITES
@@ -2819,7 +3084,7 @@ function validerSignature(){
       </div>
       <div id="claude-cfg"><div class="form-group"><label class="form-label">Clé API Claude</label><div style="position:relative;"><input type="password" class="form-input" id="s-claude-key" placeholder="sk-ant-..." style="padding-right:44px;"/><button type="button" onclick="toggleKeyVis('s-claude-key',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;padding:4px;">👁</button></div></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-claude-model"><option value="claude-sonnet-4-20250514">Claude Sonnet 4</option><option value="claude-opus-4-5">Claude Opus 4.5</option><option value="claude-haiku-4-5">Claude Haiku 4.5</option></select></div></div>
       <div id="openai-cfg" style="display:none;"><div class="form-group"><label class="form-label">Clé API OpenAI</label><div style="position:relative;"><input type="password" class="form-input" id="s-openai-key" placeholder="sk-..." style="padding-right:44px;"/><button type="button" onclick="toggleKeyVis('s-openai-key',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;padding:4px;">👁</button></div></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-openai-model"><option value="gpt-4o-mini">GPT-4o mini</option><option value="gpt-4o">GPT-4o</option></select></div></div>
-      <div class="form-group"><label class="form-label">URL proxy (optionnel)</label><input type="url" class="form-input" id="s-proxy-url" placeholder="https://..."/></div>
+      <div class="form-group"><label class="form-label">URL proxy (recommandé — clé sécurisée côté serveur)</label><input type="url" class="form-input" id="s-proxy-url" placeholder="https://chantierspro-ai.maximecoulon.workers.dev"/><div style="font-size:11px;color:var(--c-muted);margin-top:4px;">Si renseigné, la clé API ci-dessus devient inutile : elle est stockée dans le Worker Cloudflare.</div></div>
     </div>
     <button class="btn btn-primary btn-full" id="btn-save-settings" style="margin-top:16px;">💾 Enregistrer</button>
     <button class="btn btn-danger btn-full" id="btn-logout" style="margin-top:8px;">🚪 Déconnexion</button>

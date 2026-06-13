@@ -1,8 +1,6 @@
-const CACHE_NAME = 'chantierspro-v1';
+const CACHE_NAME = 'chantierspro-v2';
 const ASSETS = [
-  './',
-  './chantierspro.html',
-  'https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap'
+  'https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@600;700;800&display=swap'
 ];
 
 self.addEventListener('install', e => {
@@ -24,14 +22,32 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // Network first pour Firebase et APIs
-  if (url.hostname.includes('firebase') || url.hostname.includes('anthropic') || url.hostname.includes('openai')) {
+
+  // Network-first pour les APIs (Firebase, Anthropic, OpenAI, Worker proxy)
+  if (url.hostname.includes('firebase') || url.hostname.includes('anthropic') ||
+      url.hostname.includes('openai') || url.hostname.includes('workers.dev')) {
     e.respondWith(
       fetch(e.request).catch(() => new Response(JSON.stringify({error:'offline'}), {headers:{'Content-Type':'application/json'}}))
     );
     return;
   }
-  // Cache first pour assets
+
+  // NETWORK-FIRST pour le HTML — évite les versions périmées de l'app
+  if (e.request.mode === 'navigate' || e.request.destination === 'document' ||
+      url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
+    e.respondWith(
+      fetch(e.request).then(resp => {
+        if (resp && resp.status === 200) {
+          const clone = resp.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+        }
+        return resp;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Cache-first pour les assets statiques (polices, etc.)
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
