@@ -651,6 +651,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
           <div class="totaux-box" style="margin-top:8px;">
             <div class="totaux-row total-ttc"><label>Surface toiture</label><span id="ct-surface">—</span></div>
             <div class="totaux-row"><label>Faîtage</label><span id="ct-faitag">—</span></div>
+            <div class="totaux-row" id="ct-arretiers-row" style="display:none;"><label>Arêtiers (×4)</label><span id="ct-arretiers">—</span></div>
           </div>
         </div>
       </div>
@@ -1353,6 +1354,14 @@ var planSVG='';
 function openParcours(){
   parcoursStep=1;parcoursVisite=null;planSVG='';
   cSurfaces=[];cDeductions=[];cVolumes=[];cLineaires=[];cMurs=[];
+  // Reset toiture (sinon la toiture du chantier précédent réapparaît)
+  window._toiture=null;
+  window._toitureActive=false;
+  ['ct-longueur','ct-largeur','ct-pente','ct-debord'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  var ctType=document.getElementById('ct-type');if(ctType)ctType.value='2pentes';
+  var cs=document.getElementById('ct-surface');if(cs)cs.textContent='—';
+  var cf=document.getElementById('ct-faitag');if(cf)cf.textContent='—';
+  var car=document.getElementById('ct-arretiers-row');if(car)car.style.display='none';
   // Reset form step 1
   ['v-client','v-tel','v-email','v-adresse','v-description','v-budget','v-delai'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('v-nature').value='';
@@ -1526,7 +1535,7 @@ function collectCotes(){
   var ctLar=document.getElementById('ct-largeur');
   var ctPente=document.getElementById('ct-pente');
   var ctDebord=document.getElementById('ct-debord');
-  if(ctL&&ctLar){
+  if(ctL&&ctLar&&window._toitureActive&&pN(ctL.value)>0&&pN(ctLar.value)>0){
     window._toiture={
       type:ctType?ctType.value:'2pentes',
       l:pN(ctL.value),
@@ -1534,13 +1543,27 @@ function collectCotes(){
       pente:pN(ctPente?ctPente.value:35)||35,
       debord:pN(ctDebord?ctDebord.value:0.5)||0
     };
+  } else {
+    window._toiture=null;
   }
 }
 
 function calcCToiture(){
+  window._toitureActive=true;
   var type=document.getElementById('ct-type').value;var L=parseFloat(document.getElementById('ct-longueur').value)||0;var l=parseFloat(document.getElementById('ct-largeur').value)||0;var deg=parseFloat(document.getElementById('ct-pente').value)||35;var deb=parseFloat(document.getElementById('ct-debord').value)||0;var rad=deg*Math.PI/180;var slope=1/Math.cos(rad);var surf=0,faitag=0;
   if(type==='1pan'){surf=(L+2*deb)*(l/2+deb)*slope;faitag=L+2*deb;}else if(type==='2pentes'){surf=2*(L+2*deb)*(l/2+deb)*slope;faitag=L+2*deb;}else if(type==='4pentes'){surf=(L+2*deb)*(l+2*deb)*slope;faitag=Math.max(0,L-l);}else{surf=2*(L+2*deb)*(l/2*slope+l*0.3);faitag=L;}
   document.getElementById('ct-surface').textContent=surf.toFixed(2)+' m²';document.getElementById('ct-faitag').textContent=faitag.toFixed(2)+' ml';
+  // Arêtiers (4 pentes uniquement) : 4 segments à 45° depuis les coins
+  var arrRow=document.getElementById('ct-arretiers-row');
+  var arrEl=document.getElementById('ct-arretiers');
+  if(type==='4pentes'&&L>0&&l>0){
+    var hArr=(l/2)/Math.cos(rad);
+    var arrUn=Math.sqrt(Math.pow(l/2,2)+Math.pow(hArr,2));
+    if(arrEl)arrEl.textContent=(arrUn*4).toFixed(2)+' ml ('+arrUn.toFixed(2)+'×4)';
+    if(arrRow)arrRow.style.display='flex';
+  } else {
+    if(arrRow)arrRow.style.display='none';
+  }
 }
 // ============================================================
 // ÉTAPE 3 : PLAN COTÉ SVG
@@ -1905,6 +1928,8 @@ async function doGenerateDevisFromParcours(){
     result=await callAI(fullPrompt);
     if(result&&!result.startsWith('LOCAL:')){
       console.log('Réponse IA:',result.slice(0,300));
+    } else if(result&&result.startsWith('LOCAL:')){
+      showToast('⚠️ Devis généré en mode LOCAL (IA non appelée). Vérifiez clé API / proxy dans Paramètres.','error');
     } else if(!result){
       showToast('Réponse IA vide — vérifiez la clé/le proxy','error');
     }
@@ -2202,10 +2227,37 @@ function localAI(prompt,metrages){
     lines.push({designation:"Main d'œuvre menuiserie",unite:'h',qte:'8',pu:String(t.menuisier_mo||50)});
     lines.push({designation:'Fournitures menuiserie',unite:'forfait',qte:'1',pu:'400'});
   }
-  if(lo.includes('isolat')||lo.includes('isolation')){
+  if(lo.includes('toiture')||lo.includes('couvertur')||lo.includes('tuile')||lo.includes('liteau')||lo.includes('faitage')||lo.includes('faîtage')||lo.includes('aretier')||lo.includes('arêtier')){
+    var mt=(metrages&&metrages.toiture)||window._toiture||{};
+    var tsurf=(metrages&&metrages.tsurfVal)||0;
+    if(!tsurf&&mt.l>0&&mt.lar>0){
+      var prT=(mt.pente||35)*Math.PI/180,slT=1/Math.cos(prT);
+      var ldT=mt.l+2*(mt.debord||0),llT=mt.lar+2*(mt.debord||0);
+      tsurf=mt.type==='4pentes'?ldT*llT*slT:mt.type==='1pan'?ldT*(llT/2)*slT:2*ldT*(llT/2)*slT;
+    }
+    tsurf=tsurf||50;
+    var tsurfMat=+(tsurf*1.10).toFixed(2);
+    // Faîtage et arêtiers
+    var fml=0,arr=0;
+    if(mt.l>0&&mt.lar>0){
+      var prA=(mt.pente||35)*Math.PI/180;
+      if(mt.type==='4pentes'){fml=Math.max(0,mt.l-mt.lar);var hA=(mt.lar/2)/Math.cos(prA);arr=Math.sqrt(Math.pow(mt.lar/2,2)+Math.pow(hA,2))*4;}
+      else if(mt.type==='2pentes'||mt.type==='1pan'){fml=mt.l+2*(mt.debord||0);}
+    }
+    var bioT=lo.includes('biosourc');
+    lines.push({designation:'Dépose couverture existante + évacuation',unite:'m²',qte:String(tsurf.toFixed(2)),pu:'12'});
+    lines.push({designation:'Écran sous-toiture HPV',unite:'m²',qte:String(tsurfMat),pu:'4.50'});
+    lines.push({designation:'Liteaux sapin traité (pose + fourniture)',unite:'m²',qte:String(tsurf.toFixed(2)),pu:'9'});
+    lines.push({designation:bioT?'Tuiles terre cuite (matériau naturel)':'Tuiles terre cuite DC12',unite:'m²',qte:String(tsurfMat),pu:'32'});
+    if(fml>0)lines.push({designation:'Faîtage ventilé (closoir + fixation)',unite:'ml',qte:String(fml.toFixed(2)),pu:'38'});
+    if(arr>0)lines.push({designation:'Arêtiers (closoir + tuiles arêtières)',unite:'ml',qte:String(arr.toFixed(2)),pu:'42'});
+    lines.push({designation:"Main d'œuvre couverture",unite:'m²',qte:String(tsurf.toFixed(2)),pu:'35'});
+  } else if(lo.includes('isolat')||lo.includes('isolation')){
     var si=qSurf||qMur||20;
+    var bioI=lo.includes('biosourc')||lo.includes('chanvre')||lo.includes('ouate')||lo.includes('fibre de bois');
     lines.push({designation:"Main d'œuvre pose isolation",unite:'m²',qte:String(si),pu:'18'});
-    lines.push({designation:'Laine de verre 100mm',unite:'m²',qte:String(si),pu:'12'});
+    if(bioI)lines.push({designation:'Isolation fibre de bois / ouate de cellulose (ATec)',unite:'m²',qte:String(si),pu:'28'});
+    else lines.push({designation:'Laine de verre 100mm',unite:'m²',qte:String(si),pu:'12'});
   }
   if(!lines.length){
     var sq=qSurf||qMur||10;
@@ -2213,7 +2265,7 @@ function localAI(prompt,metrages){
     lines.push({designation:"Main d'œuvre",unite:'h',qte:String(+(sq*1.5).toFixed(0)),pu:'45'});
     lines.push({designation:'Fournitures et matériaux',unite:'forfait',qte:'1',pu:String(+(sq*20).toFixed(0))});
   }
-  if(lo.includes('biosourc')||lo.includes('chanvre')||lo.includes('ouate')){
+  if((lo.includes('biosourc')||lo.includes('chanvre')||lo.includes('ouate'))&&(lo.includes('isolat')||lo.includes('isolation'))&&!lo.includes('toiture')&&!lo.includes('couvertur')){
     var sb=qSurf||qMur||20;
     lines.push({designation:'Isolation ouate de cellulose soufflée (ATec)',unite:'m²',qte:String(sb),pu:'45'});
     lines.push({designation:"Main d'œuvre pose isolation biosourcée",unite:'h',qte:String(+(sb*0.3).toFixed(0)),pu:'40'});
