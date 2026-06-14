@@ -66,6 +66,9 @@ input,textarea,select,button{font-family:var(--font-body);outline:none;}
 .form-input:focus{border-color:var(--c-accent);}
 .form-input::placeholder{color:var(--c-muted);}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.form-row>.form-group{min-width:0;}
+.form-row .form-input{min-width:0;width:100%;max-width:100%;box-sizing:border-box;}
+input[type="date"].form-input,input[type="time"].form-input,input[type="datetime-local"].form-input{min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;box-sizing:border-box;}
 textarea.form-input{resize:vertical;min-height:80px;}
 select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a6a90' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:16px;}
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
@@ -1800,8 +1803,21 @@ async function doGenerateDevisFromParcours(){
   var murNette=cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0);
   var vtot=cVolumes.reduce(function(a,v){return a+(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);},0);
   var ltot=cLineaires.reduce(function(a,l){return a+(pN(l.lg)||0);},0);
-  var tsurf=document.getElementById('ct-surface').textContent;
-  var tsurfVal=tsurf&&tsurf!=='—'?parseFloat(tsurf):0;
+  // Surface toiture : calcul direct depuis les cotes saisies (source fiable, pas le DOM)
+  var tsurfVal=0;
+  var _t=window._toiture;
+  if(_t&&_t.l>0&&_t.lar>0){
+    var _pr=(_t.pente||35)*Math.PI/180;
+    var _sl=1/Math.cos(_pr);
+    var _ld=_t.l+2*(_t.debord||0),_ll=_t.lar+2*(_t.debord||0);
+    if(_t.type==='1pan')tsurfVal=_ld*(_ll/2)*_sl;
+    else if(_t.type==='4pentes')tsurfVal=_ld*_ll*_sl;
+    else if(_t.type==='mansarde')tsurfVal=2*_ld*(_ll/2*_sl+_ll*0.3);
+    else tsurfVal=2*_ld*(_ll/2)*_sl;
+  } else {
+    var tsurf=document.getElementById('ct-surface')?document.getElementById('ct-surface').textContent:'';
+    tsurfVal=tsurf&&tsurf!=='—'?parseFloat(tsurf):0;
+  }
   var metrages={sNette:sNette,murNette:murNette,vtot:vtot,ltot:ltot,tsurfVal:tsurfVal};
 
   // Description détaillée des surfaces pour Claude
@@ -1857,9 +1873,10 @@ async function doGenerateDevisFromParcours(){
     +'=== TRAVAUX DEMANDÉS ===\n'
     +'Nature: '+(parcoursVisite?parcoursVisite.nature:'')+'\n'
     +'Description: '+(parcoursVisite?parcoursVisite.description:'')+'\n'
+    +'\n⚠️ COHÉRENCE : Le devis doit correspondre EXACTEMENT aux travaux décrits ci-dessus. Ne PAS ajouter de prestations non demandées (ex: ne pas ajouter d\'isolation si seule la couverture est demandée). Si la description parle de couverture (tuiles, liteaux, faîtage, arêtiers), le devis porte sur la COUVERTURE, pas l\'isolation.\n'
     +(dictee?'Observations artisan (dictée): '+dictee+'\n':'')
     +(notes?'Notes complémentaires: '+notes+'\n':'')
-    +(bio?'\n⚠️ IMPÉRATIF : Utiliser UNIQUEMENT des matériaux biosourcés certifiés (chanvre, ouate de cellulose, ATec homologués).\n':'')
+    +(bio?'\n========================================\n⚠️⚠️ DEVIS 100% BIOSOURCÉ — RÈGLE ABSOLUE ⚠️⚠️\nINTERDIT FORMELLEMENT : laine de verre, laine de roche, polystyrène (PSE/XPS), polyuréthane, isolants synthétiques ou minéraux.\nUTILISER UNIQUEMENT : ouate de cellulose, fibre de bois, laine de bois, chanvre, lin, liège, paille, laine de mouton — avec ATec/certification.\nSi une ligne contient un matériau non-biosourcé, le devis est INVALIDE. Vérifie CHAQUE ligne avant de répondre.\n========================================\n':'')
     +'\n=== RÈGLES ABSOLUES ===\n'
     +'1. Utilise UNIQUEMENT les métrés ci-dessus. Aucune valeur inventée.\n'
     +(sNette>0?'2. Surfaces: pose='+sNette.toFixed(2)+' m², matériaux='+(sNette*1.1).toFixed(2)+' m² (+10% chutes).\n':'')
@@ -1874,7 +1891,8 @@ async function doGenerateDevisFromParcours(){
         +'   → OBLIGATOIRE: inclure lignes séparées pour couverture (m²), faîtage (ml), arêtiers si 4 pentes (ml), main-d\'œuvre (m²).\n';
     })():'')
     +'7. PU réalistes marché BTP français 2025.\n'
-    +'8. Réponds UNIQUEMENT en JSON valide, sans texte ni markdown:\n'
+    +'8. QUANTITÉS EXACTES : utilise les m²/ml/m³ donnés ci-dessus au centième près. N\'arrondis JAMAIS à un chiffre rond (ex: si surface=104.70 m², écris 104.70, surtout PAS 20 ou 100). Une quantité inventée rend le devis FAUX.\n'
+    +'9. Réponds UNIQUEMENT en JSON valide, sans texte ni markdown:\n'
     +'[{"designation":"...","unite":"m²|m³|ml|h|forfait|u","qte":"VALEUR_REELLE","pu":"PRIX"}]';
 
   // Ajouter instruction système stricte en tête du prompt
