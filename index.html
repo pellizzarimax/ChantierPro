@@ -716,6 +716,10 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
   <div class="modal modal-full">
     <div class="modal-handle"></div>
     <div class="modal-hdr"><div class="modal-title" id="modal-devis-title">📄 Nouveau devis</div><button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-devis">✕</button></div>
+    <div id="d-regen-banner" style="display:none;margin:0 0 14px;padding:12px 14px;border-radius:10px;background:rgba(45,140,240,.1);border:1px solid rgba(45,140,240,.3);">
+      <div style="font-size:12px;color:var(--c-info);margin-bottom:8px;line-height:1.5;">Une erreur dans les cotes ou la config IA ? Revenez au parcours pour corriger et régénérer.</div>
+      <button class="btn btn-secondary" id="d-regen-btn" style="width:100%;font-size:13px;">⟲ Modifier les cotes / Régénérer le devis</button>
+    </div>
     <div class="form-group"><label class="form-label">Client *</label><input type="text" class="form-input" id="d-client" placeholder="Nom du client"/></div>
     <div class="form-group"><label class="form-label">Objet</label><input type="text" class="form-input" id="d-objet" placeholder="Renovation salle de bain..."/></div>
     <div class="form-group"><label class="form-label">Adresse</label><input type="text" class="form-input" id="d-adresse" placeholder="Adresse chantier"/></div>
@@ -1400,11 +1404,17 @@ function stepNext(){
   if(parcoursStep===1){
     var client=document.getElementById('v-client').value.trim();
     if(!client){showToast('Nom client requis','error');return;}
-    // Sauvegarder la visite
-    parcoursVisite={id:genId(),client:client,tel:document.getElementById('v-tel').value,email:document.getElementById('v-email').value,adresse:document.getElementById('v-adresse').value,date:document.getElementById('v-date').value,heure:document.getElementById('v-heure').value,nature:document.getElementById('v-nature').value,description:document.getElementById('v-description').value,budget:document.getElementById('v-budget').value,delai:document.getElementById('v-delai').value,biosource:document.getElementById('v-biosource').checked,photos:visitPhotos.slice(),createdAt:new Date().toISOString()};
-    db.visites.push(parcoursVisite);saveDB();renderVisitesList();renderGreeting();
+    // Si on reprend une visite existante, mettre à jour au lieu de recréer
+    var existing=parcoursVisite&&parcoursVisite.id?db.visites.find(function(x){return x.id===parcoursVisite.id;}):null;
+    var vData={client:client,tel:document.getElementById('v-tel').value,email:document.getElementById('v-email').value,adresse:document.getElementById('v-adresse').value,date:document.getElementById('v-date').value,heure:document.getElementById('v-heure').value,nature:document.getElementById('v-nature').value,description:document.getElementById('v-description').value,budget:document.getElementById('v-budget').value,delai:document.getElementById('v-delai').value,biosource:document.getElementById('v-biosource').checked,photos:visitPhotos.slice()};
+    if(existing){
+      Object.assign(existing,vData);parcoursVisite=existing;
+    } else {
+      parcoursVisite=Object.assign({id:genId(),createdAt:new Date().toISOString()},vData);
+      db.visites.push(parcoursVisite);
+    }
+    saveDB();renderVisitesList();renderGreeting();
     goToStep(2);
-    // Adapter les onglets de cotes à la nature des travaux
     applyNatureTabs(parcoursVisite.nature);
   } else if(parcoursStep===2){
     collectCotes();goToStep(3);
@@ -1419,6 +1429,29 @@ function stepNext(){
 
 function stepPrev(){
   if(parcoursStep>1)goToStep(parcoursStep-1);
+}
+function reopenParcoursFromVisite(visiteId){
+  var v=db.visites.find(function(x){return x.id===visiteId;});
+  if(!v){showToast('Visite introuvable','error');return;}
+  // Fermer l'éditeur de devis
+  document.getElementById('modal-devis').classList.remove('open');
+  // Réinitialiser le parcours puis repeupler depuis la visite
+  openParcours();
+  parcoursVisite=v;
+  document.getElementById('v-client').value=v.client||'';
+  document.getElementById('v-tel').value=v.tel||'';
+  document.getElementById('v-email').value=v.email||'';
+  document.getElementById('v-adresse').value=v.adresse||'';
+  document.getElementById('v-nature').value=v.nature||'';
+  document.getElementById('v-description').value=v.description||'';
+  document.getElementById('v-budget').value=v.budget||'';
+  document.getElementById('v-delai').value=v.delai||'';
+  document.getElementById('v-date').value=v.date||new Date().toISOString().split('T')[0];
+  document.getElementById('v-heure').value=v.heure||'09:00';
+  document.getElementById('v-biosource').checked=!!v.biosource;
+  if(v.photos){visitPhotos=v.photos.slice();var pp=document.getElementById('photos-preview');if(pp){pp.innerHTML='';visitPhotos.forEach(function(b){addPhotoPreview(b);});}}
+  applyNatureTabs(v.nature);
+  showToast('Parcours rouvert — corrigez puis régénérez','success');
 }
 
 // ============================================================
@@ -1815,6 +1848,9 @@ function stopVoiceInParcours(){isRecording=false;if(recognition)try{recognition.
 function updateBioToggle4(){var c=document.getElementById('devis-biosource').checked;var t=document.getElementById('bio-toggle-4');if(t){t.style.borderColor=c?'var(--c-success)':'var(--c-border)';t.style.background=c?'rgba(34,197,94,0.06)':'var(--c-surface2)';}}
 
 async function doGenerateDevisFromParcours(){
+  // Garde-fou : resynchroniser les cotes du chantier courant (évite les données résiduelles d'un autre devis)
+  collectCotes();
+  if(!window._toitureActive)window._toiture=null;
   var bio=document.getElementById('devis-biosource').checked;
   var dictee=document.getElementById('voice-transcript').textContent.trim();
   var notes=document.getElementById('devis-notes-extra').value.trim();
@@ -1936,8 +1972,8 @@ async function doGenerateDevisFromParcours(){
   }
   catch(e){
     console.warn('Erreur API:',e);
-    // Enrichir metrages avec toiture pour localAI
-    var mt=window._toiture||{};
+    // Enrichir metrages avec toiture pour localAI (seulement si toiture active ce chantier)
+    var mt=(window._toitureActive&&window._toiture)?window._toiture:{};
     if(mt.l>0)metrages.toiture={type:mt.type,surf:tsurfVal,l:mt.l,lar:mt.lar,pente:mt.pente};
     result=localAI((parcoursVisite?parcoursVisite.nature+' '+(parcoursVisite.description||''):'')+' '+dictee, metrages);
   }
@@ -1971,7 +2007,7 @@ async function doGenerateDevisFromParcours(){
   document.getElementById('ai-loading').style.display='none';
   document.getElementById('btn-step-next').disabled=false;
   var newId=genId();var newNum=genNum();db.settings.nextNum=(db.settings.nextNum||1)+1;
-  var newDevis={id:newId,numero:newNum,client:parcoursVisite?parcoursVisite.client:'',objet:parcoursVisite?parcoursVisite.nature:'',adresse:parcoursVisite?parcoursVisite.adresse:'',date:new Date().toISOString().split('T')[0],statut:'brouillon',tva:db.settings.tarifs.tva_defaut||10,biosource:bio,notes:notes,lignes:lines,planSVG:planSVG,createdAt:new Date().toISOString()};
+  var newDevis={id:newId,numero:newNum,visiteId:parcoursVisite?parcoursVisite.id:null,client:parcoursVisite?parcoursVisite.client:'',objet:parcoursVisite?parcoursVisite.nature:'',adresse:parcoursVisite?parcoursVisite.adresse:'',date:new Date().toISOString().split('T')[0],statut:'brouillon',tva:db.settings.tarifs.tva_defaut||10,biosource:bio,notes:notes,lignes:lines,planSVG:planSVG,createdAt:new Date().toISOString()};
   db.devis.push(newDevis);saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();
   document.getElementById('modal-parcours').classList.remove('open');
   setTimeout(function(){openEditDevis(newId);},300);
@@ -1982,7 +2018,10 @@ async function doGenerateDevisFromParcours(){
 // ============================================================
 var devisLines=[],editDevisId=null,devisFilter='all';
 function openNewDevis(fv){editDevisId=null;devisLines=[{id:genId(),designation:'',unite:'',qte:'',pu:''}];document.getElementById('d-client').value=fv?fv.client:'';document.getElementById('d-objet').value=fv?fv.nature:'';document.getElementById('d-adresse').value=fv?fv.adresse:'';document.getElementById('d-date').value=new Date().toISOString().split('T')[0];document.getElementById('d-statut').value='brouillon';document.getElementById('d-tva').value=db.settings.tarifs.tva_defaut||10;document.getElementById('d-biosource').checked=false;document.getElementById('d-notes').value='';document.getElementById('modal-devis-title').textContent='📄 Nouveau devis';updateBiosourceUI();renderDevisLines();document.getElementById('modal-devis').classList.add('open');}
-function openEditDevis(id){var d=db.devis.find(function(x){return x.id===id;});if(!d)return;editDevisId=id;devisLines=(d.lignes||[]).map(function(l){return Object.assign({},l);});if(!devisLines.length)devisLines=[{id:genId(),designation:'',unite:'',qte:'',pu:''}];document.getElementById('d-client').value=d.client||'';document.getElementById('d-objet').value=d.objet||'';document.getElementById('d-adresse').value=d.adresse||'';document.getElementById('d-date').value=d.date||'';document.getElementById('d-statut').value=d.statut||'brouillon';document.getElementById('d-tva').value=d.tva||10;document.getElementById('d-biosource').checked=!!(d.biosource);document.getElementById('d-notes').value=d.notes||'';document.getElementById('modal-devis-title').textContent='📄 '+d.numero;updateBiosourceUI();renderDevisLines();document.getElementById('modal-devis').classList.add('open');}
+function openEditDevis(id){var d=db.devis.find(function(x){return x.id===id;});if(!d)return;editDevisId=id;devisLines=(d.lignes||[]).map(function(l){return Object.assign({},l);});if(!devisLines.length)devisLines=[{id:genId(),designation:'',unite:'',qte:'',pu:''}];document.getElementById('d-client').value=d.client||'';document.getElementById('d-objet').value=d.objet||'';document.getElementById('d-adresse').value=d.adresse||'';document.getElementById('d-date').value=d.date||'';document.getElementById('d-statut').value=d.statut||'brouillon';document.getElementById('d-tva').value=d.tva||10;document.getElementById('d-biosource').checked=!!(d.biosource);document.getElementById('d-notes').value=d.notes||'';document.getElementById('modal-devis-title').textContent='📄 '+d.numero;updateBiosourceUI();renderDevisLines();
+var regenB=document.getElementById('d-regen-banner');if(regenB)regenB.style.display=d.visiteId?'block':'none';
+window._regenVisiteId=d.visiteId||null;
+document.getElementById('modal-devis').classList.add('open');}
 function updateBiosourceUI(){var c=document.getElementById('d-biosource').checked;var t=document.getElementById('biosource-toggle');if(t){t.style.borderColor=c?'var(--c-success)':'var(--c-border)';t.style.background=c?'rgba(34,197,94,0.06)':'var(--c-surface2)';}}
 function addDevisLine(){devisLines.push({id:genId(),designation:'',unite:'u',qte:'1',pu:'0'});renderDevisLines();}
 function removeDevisLine(id){devisLines=devisLines.filter(function(l){return l.id!==id;});renderDevisLines();}
@@ -2424,6 +2463,8 @@ document.addEventListener('DOMContentLoaded',function(){
   // Dépenses
   var depAdd=document.getElementById('dep-add');
   if(depAdd)depAdd.addEventListener('click',function(){openDepense(null);});
+  var dRegen=document.getElementById('d-regen-btn');
+  if(dRegen)dRegen.addEventListener('click',function(){if(window._regenVisiteId)reopenParcoursFromVisite(window._regenVisiteId);});
   var _bhdep=document.getElementById('btn-home-depenses');
   if(_bhdep)_bhdep.addEventListener('click',function(){showView('depenses');renderDepenses();});
   var depClose=document.getElementById('dep-close');
