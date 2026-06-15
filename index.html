@@ -1989,7 +1989,8 @@ async function doGenerateDevisFromParcours(){
     +'7. PU réalistes marché BTP français 2025.\n'
     +'8. QUANTITÉS EXACTES : utilise les m²/ml/m³ donnés ci-dessus au centième près. N\'arrondis JAMAIS à un chiffre rond (ex: si surface=104.70 m², écris 104.70, surtout PAS 20 ou 100). Une quantité inventée rend le devis FAUX.\n'
     +'9. Réponds UNIQUEMENT en JSON valide, sans texte ni markdown:\n'
-    +'[{"designation":"...","unite":"m²|m³|ml|h|forfait|u","qte":"VALEUR_REELLE","pu":"PRIX"}]';
+    +'[{"lot":"Partie (ex: Fondations, Vide sanitaire, Plancher hourdis, Couverture, Isolation)","designation":"...","unite":"m²|m³|ml|h|forfait|u","qte":"VALEUR_REELLE","pu":"PRIX"}]\n'
+    +'10. Regroupe les lignes par "lot" cohérent : chaque ligne porte le nom de sa partie. Ordonne les lots dans l\'ordre logique du chantier. Ligne sans partie évidente: lot="Divers".';
 
   // Ajouter instruction système stricte en tête du prompt
   var fullPrompt='INSTRUCTION CRITIQUE: Tu dois répondre UNIQUEMENT avec un tableau JSON valide.\n'
@@ -2040,7 +2041,7 @@ async function doGenerateDevisFromParcours(){
     try{lines=JSON.parse(localAI((parcoursVisite?parcoursVisite.description:'')||'travaux',metrages).slice(6));}
     catch(e){lines=[{designation:'Travaux',unite:'forfait',qte:'1',pu:'0'}];}
   }
-  lines=lines.map(function(l){return {id:genId(),designation:l.designation||'',unite:l.unite||'u',qte:String(l.qte||1),pu:String(l.pu||0)};});
+  lines=lines.map(function(l){return {id:genId(),lot:(l.lot||guessLot(l.designation||'')),designation:l.designation||'',unite:l.unite||'u',qte:String(l.qte||1),pu:String(l.pu||0)};});
   document.getElementById('ai-loading').style.display='none';
   document.getElementById('btn-step-next').disabled=false;
   var newId=genId();var newNum=genNum();db.settings.nextNum=(db.settings.nextNum||1)+1;
@@ -2097,13 +2098,44 @@ function renderDevisList(){
 }
 
 // EXPORT PDF DEVIS
+function buildDevisLotsHTML(d){
+  var lignes=d.lignes||[];
+  // Grouper par lot en préservant l'ordre d'apparition
+  var order=[],groups={};
+  lignes.forEach(function(l){
+    var lot=l.lot||guessLot(l.designation||'');
+    if(!groups[lot]){groups[lot]=[];order.push(lot);}
+    groups[lot].push(l);
+  });
+  var html='';var lotNum=0;
+  order.forEach(function(lot){
+    lotNum++;
+    var items=groups[lot];
+    var lotTot=items.reduce(function(a,l){return a+(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);},0);
+    html+='<div class="lot-sec">'
+      +'<div class="lot-head"><span>'+esc(lot)+'</span><span class="lot-badge">LOT '+lotNum+' · '+fmtMoney(lotTot)+'</span></div>'
+      +'<table class="lot-table">';
+    items.forEach(function(l){
+      var tot=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);
+      html+='<tr><td class="ld">'+esc(l.designation||'')+'</td>'
+        +'<td class="ln">'+esc(l.qte||'')+' '+esc(l.unite||'')+' × '+fmtMoney(l.pu)+'</td>'
+        +'<td class="lt">'+fmtMoney(tot)+'</td></tr>';
+    });
+    html+='</table></div>';
+  });
+  return html;
+}
 function exportDevisPDF(id){var d=db.devis.find(function(x){return x.id===id;});if(!d){showToast('Introuvable','error');return;}var s=db.settings;var ht=(d.lignes||[]).reduce(function(a,l){return a+(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);},0);var tva=ht*(d.tva||10)/100;var ttc=ht+tva;
 var planSection=d.planSVG?'<div style="page-break-before:always;padding:10mm;background:#f5f0e8;">'+d.planSVG+'</div>':'';
-var html='<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Devis '+d.numero+'</title><style>body{font-family:Arial,sans-serif;padding:20mm;color:#1a1a1a;font-size:10pt;}h1{font-size:20pt;color:#2d8cf0;margin-bottom:4px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th{background:#2d8cf0;color:#fff;padding:8px;text-align:left;font-size:9pt;}td{padding:6px 8px;border-bottom:1px solid #eee;font-size:9pt;}.tot{margin-left:auto;width:220px;}.tr{display:flex;justify-content:space-between;padding:4px 0;}.ttc{font-size:13pt;font-weight:bold;color:#2d8cf0;border-top:2px solid #2d8cf0;padding-top:8px;margin-top:6px;}.bio{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:8px;font-size:9pt;color:#166534;margin-bottom:16px;}@media print{body{padding:10mm;}.noprint{display:none;}}</style></head><body>';
+var html='<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Devis '+d.numero+'</title><style>body{font-family:Arial,sans-serif;padding:20mm;color:#1a1a1a;font-size:10pt;}h1{font-size:20pt;color:#15347a;margin-bottom:4px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;}.lot-sec{margin-bottom:18px;page-break-inside:avoid;}.lot-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #15347a;padding-bottom:5px;margin-bottom:2px;font-weight:bold;font-size:12pt;color:#15347a;}.lot-badge{font-size:8.5pt;font-family:Courier New,monospace;color:#15347a;background:#e6eaf4;padding:2px 8px;border-radius:4px;font-weight:bold;}.lot-table{width:100%;border-collapse:collapse;margin-bottom:0;}.lot-table td{padding:6px 2px;border-bottom:1px dotted #ccc;font-size:9.5pt;vertical-align:top;}.lot-table .ld{color:#222;}.lot-table .ln{text-align:right;font-family:Courier New,monospace;color:#666;white-space:nowrap;font-size:8.5pt;padding-left:10px;}.lot-table .lt{text-align:right;font-family:Courier New,monospace;color:#1a1a1a;font-weight:bold;white-space:nowrap;padding-left:12px;}.tot{margin-left:auto;width:240px;margin-top:14px;}.tr{display:flex;justify-content:space-between;padding:4px 0;}.ttc{font-size:13pt;font-weight:bold;color:#15347a;border-top:2px solid #15347a;padding-top:8px;margin-top:6px;}.bio{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:8px;font-size:9pt;color:#166534;margin-bottom:16px;}@media print{body{padding:10mm;}.noprint{display:none;}}</style></head><body>';
+html+='<div class="noprint" style="position:sticky;top:0;display:flex;gap:10px;justify-content:space-between;align-items:center;background:#0f1c38;padding:12px 16px;margin:-20mm -20mm 20px;border-bottom:1px solid #1f3358;">'
+  +'<button onclick="try{window.close();}catch(e){}; setTimeout(function(){history.length>1?history.back():(location.href=document.referrer||\'about:blank\');},100);" style="background:#16294a;color:#eaf2ff;border:1px solid #1f3358;border-radius:8px;padding:10px 18px;font-size:15px;font-family:Arial;cursor:pointer;">← Fermer</button>'
+  +'<button onclick="window.print()" style="background:#2d8cf0;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:15px;font-family:Arial;cursor:pointer;">🖨 Imprimer / PDF</button>'
+  +'</div>';
 html+='<div class="hdr"><div>'+(s.logo?'<img src="'+s.logo+'" style="height:60px;margin-bottom:8px;display:block;"/>':'')+'<h1>'+esc(s.entreprise||'Mon Entreprise')+'</h1><div style="font-size:9pt;color:#555;">SIRET: '+esc(s.siret||'')+'<br/>'+esc(s.tel||'')+' · '+esc(s.email||'')+'<br/>'+esc(s.adresse||'')+'</div></div><div style="text-align:right;"><div style="font-size:24pt;font-weight:bold;color:#2d8cf0;">DEVIS</div><div style="font-size:14pt;">'+esc(d.numero)+'</div><div style="font-size:9pt;color:#555;">'+fmtDate(d.date)+'</div></div></div>';
 if(d.biosource)html+='<div class="bio">🌿 <strong>Devis biosourcé</strong> — Matériaux biosourcés certifiés : chanvre, ouate de cellulose, ATec homologués.</div>';
 html+='<div style="background:#f9f9f9;padding:12px;border-radius:6px;margin-bottom:20px;"><strong>Client :</strong> '+esc(d.client)+'<br/>'+(d.adresse?esc(d.adresse)+'<br/>':'')+'<strong>Objet :</strong> '+esc(d.objet||'')+'</div>';
-html+='<table><thead><tr><th style="width:50%">Désignation</th><th>Unité</th><th>Qté</th><th>PU HT</th><th>Total HT</th></tr></thead><tbody>'+(d.lignes||[]).map(function(l){var tot=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);return '<tr><td>'+esc(l.designation||'')+'</td><td>'+esc(l.unite||'')+'</td><td>'+esc(l.qte||'')+'</td><td>'+fmtMoney(l.pu)+'</td><td>'+fmtMoney(tot)+'</td></tr>';}).join('')+'</tbody></table>';
+html+=buildDevisLotsHTML(d);
 html+='<div style="display:flex;justify-content:flex-end;"><div class="tot"><div class="tr"><span>Total HT</span><span>'+fmtMoney(ht)+'</span></div><div class="tr"><span>TVA '+d.tva+'%</span><span>'+fmtMoney(tva)+'</span></div><div class="ttc"><div class="tr"><span>TOTAL TTC</span><span>'+fmtMoney(ttc)+'</span></div></div></div></div>';
 if(d.notes)html+='<div style="margin-top:20px;font-size:9pt;color:#555;border-top:1px solid #eee;padding-top:12px;">'+esc(d.notes)+'</div>';
 html+='<div style="margin-top:40px;font-size:9pt;"><strong>Bon pour accord :</strong><br/><br/>Signature client :<br/>'+(d.signature?'<img src="'+d.signature+'" style="max-height:70px;max-width:200px;display:block;margin-top:6px;"/>':'<br/>_______________________________')+(d.signedAt?'<br/><span style="font-size:8pt;color:#888;">Signé le '+new Date(d.signedAt).toLocaleDateString('fr-FR')+'</span>':'')+'</div>';
@@ -2185,6 +2217,7 @@ async function callAI(prompt){
         body:JSON.stringify({
           model:ai.claudeModel||'claude-sonnet-4-20250514',
           max_tokens:2000,
+          temperature:0,
           messages:[{role:'user',content:prompt}]
         })
       });
@@ -2255,6 +2288,24 @@ async function callAIVision(base64Data, mediaType, prompt){
     var d=await r.json();
     return d.content&&d.content[0]?d.content[0].text:'';
   }catch(e){console.error('callAIVision',e);showToast('Erreur réseau scan','error');return null;}
+}
+function guessLot(desig){
+  var d=(desig||'').toLowerCase();
+  if(/fondation|terrassement|fouille|semelle|béton de propreté|b.ton de propret/.test(d))return 'Fondations';
+  if(/vide sanitaire|soubassement|hérisson|h.risson/.test(d))return 'Vide sanitaire';
+  if(/hourdis|poutrelle|plancher|dalle|compression|treillis/.test(d))return 'Plancher';
+  if(/mur|parpaing|aggloméré|agglom.r.|élévation|.l.vation|chaînage|cha.nage|linteau/.test(d))return 'Élévation / Maçonnerie';
+  if(/charpente|fermette|panne|chevron/.test(d))return 'Charpente';
+  if(/couverture|tuile|liteau|faîtage|fa.tage|arêtier|ar.tier|zinguerie|gouttière|goutti.re|écran|.cran sous-toiture|noue/.test(d))return 'Couverture';
+  if(/isolation|isolant|laine|ouate|fibre de bois|chanvre|liège|li.ge|pare-vapeur|pare vapeur/.test(d))return 'Isolation';
+  if(/placo|plâtre|pl.tre|cloison|doublage|ba13|enduit|bande/.test(d))return 'Plâtrerie / Cloisons';
+  if(/carrelage|faïence|fa.ence|chape|ragréage|ragr.age|plinthe|joint/.test(d))return 'Carrelage / Sols';
+  if(/peinture|lasure|vernis|sous-couche|enduit de lissage/.test(d))return 'Peinture';
+  if(/plomberie|sanitaire|tuyau|évacuation|.vacuation|alimentation|robinet|douche|wc|lavabo|chauffe-eau/.test(d))return 'Plomberie';
+  if(/électr|.lectr|câble|c.ble|tableau|prise|interrupteur|disjoncteur|luminaire/.test(d))return 'Électricité';
+  if(/menuiserie|fenêtre|fen.tre|porte|volet|baie|vitrage/.test(d))return 'Menuiserie';
+  if(/main.d.œuvre|main d.oeuvre|pose|dépose|d.pose/.test(d))return 'Main d\'œuvre';
+  return 'Travaux divers';
 }
 function localAI(prompt,metrages){
   var lo=(prompt||'').toLowerCase();
