@@ -807,17 +807,23 @@ var db=JSON.parse(JSON.stringify(DFLT));
 function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;if(!db.depenses)db.depenses=[];}}catch(e){db=JSON.parse(JSON.stringify(DFLT));}}
 function saveDB(){
   try{localStorage.setItem(SK,JSON.stringify(db));}catch(e){}
-  // Sauvegarder la clé API dans Firebase si disponible
-  if(typeof fbReady!=='undefined'&&fbReady&&typeof currentUser!=='undefined'&&currentUser){
-    var ai=db.settings&&db.settings.ai;
-    if(ai&&(ai.claudeKey||ai.openaiKey)){
-      try{
-        fbDb.collection('users').doc(currentUser.uid).collection('data').doc('_settings')
-          .set({data:db.settings,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
-          .catch(function(){});
-      }catch(e){}
-    }
-  }
+  pushToCloud();
+}
+var _cloudTimer=null;
+function pushToCloud(){
+  if(typeof fbReady==='undefined'||!fbReady||typeof currentUser==='undefined'||!currentUser)return;
+  // Débounce : éviter d'écrire à chaque frappe, regrouper les écritures
+  if(_cloudTimer)clearTimeout(_cloudTimer);
+  _cloudTimer=setTimeout(function(){
+    try{
+      var col=fbDb.collection('users').doc(currentUser.uid).collection('data');
+      var ts=firebase.firestore.FieldValue.serverTimestamp();
+      ['clients','devis','visites','planning','factures','depenses'].forEach(function(c){
+        col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(e){console.warn('Sync '+c,e);});
+      });
+      col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(e){console.warn('Sync settings',e);});
+    }catch(e){console.warn('pushToCloud',e);}
+  },1200);
 }
 loadDB();
 
@@ -874,6 +880,21 @@ function initFB(){
 function showApp(){document.getElementById('auth-screen').classList.add('hidden');document.getElementById('app').style.display='flex';}
 function hideApp(){document.getElementById('auth-screen').classList.remove('hidden');document.getElementById('app').style.display='none';}
 function afterLogin(){renderGreeting();renderRecentActivity();renderDevisList();renderVisitesList();renderClientsList();renderPlanningList();renderDocs();renderFactures();populateSettings();if(fbReady&&currentUser)syncFromFS();}
+// Sauvegarde immédiate quand l'app passe en arrière-plan (évite de perdre une écriture débouncée)
+function flushToCloudNow(){
+  if(typeof fbReady==='undefined'||!fbReady||typeof currentUser==='undefined'||!currentUser)return;
+  if(_cloudTimer){clearTimeout(_cloudTimer);_cloudTimer=null;}
+  try{
+    var col=fbDb.collection('users').doc(currentUser.uid).collection('data');
+    var ts=firebase.firestore.FieldValue.serverTimestamp();
+    ['clients','devis','visites','planning','factures','depenses'].forEach(function(c){
+      col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(){});
+    });
+    col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(){});
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')flushToCloudNow();});
+window.addEventListener('pagehide',flushToCloudNow);
 
 var docsFilter='all';
 function renderDocs(){
@@ -985,7 +1006,23 @@ function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;v
       }
     }
   }).catch(function(){});
-  ['clients','devis','visites','planning','factures'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){db[c]=x.items;saveDB();}}}).catch(function(){});});}
+  ['clients','devis','visites','planning','factures','depenses'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){
+    // Fusion sûre : union par id, sans perdre les données locales non encore synchronisées
+    var remote=x.items||[];var local=db[c]||[];
+    var byId={};
+    local.forEach(function(it){if(it&&it.id)byId[it.id]=it;});
+    remote.forEach(function(it){if(it&&it.id&&!byId[it.id])byId[it.id]=it;});
+    var merged=Object.keys(byId).map(function(k){return byId[k];});
+    // Si pas d'id (anciennes données), prendre le plus grand ensemble
+    db[c]=merged.length>=local.length?merged:local;
+    saveDB();
+    if(c==='devis'&&typeof renderDevisList==='function')renderDevisList();
+    if(c==='visites'&&typeof renderVisitesList==='function')renderVisitesList();
+    if(c==='clients'&&typeof renderClients==='function')renderClients();
+    if(c==='factures'&&typeof renderDocs==='function')renderDocs();
+    if(c==='depenses'&&typeof renderDepenses==='function')renderDepenses();
+    if(typeof renderGreeting==='function')renderGreeting();
+  }}}).catch(function(){});});}
 function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');Promise.all(['clients','devis','visites','planning','factures'].map(function(c){return col.doc(c).set({items:db[c],updatedAt:firebase.firestore.FieldValue.serverTimestamp()});})).then(function(){showToast('Synchronisé !','success');}).catch(function(){showToast('Erreur sync','error');});}
 
 // NAV/TOAST/UTILS
