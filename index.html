@@ -647,6 +647,13 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
             <div class="form-group"><label class="form-label">Pente (°)</label><input type="number" class="form-input" id="ct-pente" placeholder="35" min="1" max="89"/></div>
             <div class="form-group"><label class="form-label">Débord (m)</label><input type="number" class="form-input" id="ct-debord" placeholder="0.5" step="0.1"/></div>
           </div>
+          <div class="form-group" id="ct-sens-row"><label class="form-label">Sens du faîtage</label>
+            <select class="form-input" id="ct-sens">
+              <option value="long">Parallèle à la longueur</option>
+              <option value="larg">Parallèle à la largeur</option>
+            </select>
+            <div style="font-size:11px;color:var(--c-muted);margin-top:4px;">Définit dans quel sens court la ligne de faîte.</div>
+          </div>
           <button class="btn btn-primary btn-full" id="btn-calc-ctoiture">Calculer</button>
           <div class="totaux-box" style="margin-top:8px;">
             <div class="totaux-row total-ttc"><label>Surface toiture</label><span id="ct-surface">—</span></div>
@@ -763,6 +770,13 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
       <button class="btn btn-secondary" id="btn-export-batappli" style="border-color:rgba(34,197,94,.4);color:var(--c-success);">🟢 Batappli CSV</button>
       <button class="btn btn-secondary" id="btn-export-share">↗ Partager</button>
+    </div>
+    <div style="margin-top:8px;">
+      <button class="btn btn-secondary" id="btn-export-fournisseur" style="width:100%;border-color:rgba(45,140,240,.4);color:var(--c-accent);">📦 Liste matériaux → Demande de prix fournisseur</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+      <button class="btn btn-secondary" id="btn-email-client">✉️ Email client</button>
+      <button class="btn btn-secondary" id="btn-email-fournisseur">✉️ Email fournisseur</button>
     </div>
   </div>
 </div>
@@ -1611,7 +1625,8 @@ function collectCotes(){
       l:pN(ctL.value),
       lar:pN(ctLar.value),
       pente:pN(ctPente?ctPente.value:35)||35,
-      debord:pN(ctDebord?ctDebord.value:0.5)||0
+      debord:pN(ctDebord?ctDebord.value:0.5)||0,
+      sens:(document.getElementById('ct-sens')?document.getElementById('ct-sens').value:'long')
     };
   } else {
     window._toiture=null;
@@ -1622,6 +1637,13 @@ function calcCToiture(){
   window._toitureActive=true;
   var type=document.getElementById('ct-type').value;var L=parseFloat(document.getElementById('ct-longueur').value)||0;var l=parseFloat(document.getElementById('ct-largeur').value)||0;var deg=parseFloat(document.getElementById('ct-pente').value)||35;var deb=parseFloat(document.getElementById('ct-debord').value)||0;var rad=deg*Math.PI/180;var slope=1/Math.cos(rad);var surf=0,faitag=0;
   if(type==='1pan'){surf=(L+2*deb)*(l/2+deb)*slope;faitag=L+2*deb;}else if(type==='2pentes'){surf=2*(L+2*deb)*(l/2+deb)*slope;faitag=L+2*deb;}else if(type==='4pentes'){surf=(L+2*deb)*(l+2*deb)*slope;faitag=Math.max(0,L-l);}else{surf=2*(L+2*deb)*(l/2*slope+l*0.3);faitag=L;}
+  // Sens du faîtage : si "largeur", le faîte court selon la largeur (surface identique, faîtage = largeur)
+  var ctSensEl=document.getElementById('ct-sens');
+  var sens=ctSensEl?ctSensEl.value:'long';
+  if(sens==='larg'&&(type==='2pentes'||type==='1pan')){
+    if(type==='1pan'){surf=(l+2*deb)*(L/2+deb)*slope;faitag=l+2*deb;}
+    else{surf=2*(l+2*deb)*(L/2+deb)*slope;faitag=l+2*deb;}
+  }
   document.getElementById('ct-surface').textContent=surf.toFixed(2)+' m²';document.getElementById('ct-faitag').textContent=faitag.toFixed(2)+' ml';
   // Arêtiers (4 pentes uniquement) : 4 segments à 45° depuis les coins
   var arrRow=document.getElementById('ct-arretiers-row');
@@ -2127,7 +2149,7 @@ function buildDevisLotsHTML(d){
 }
 function exportDevisPDF(id){var d=db.devis.find(function(x){return x.id===id;});if(!d){showToast('Introuvable','error');return;}var s=db.settings;var ht=(d.lignes||[]).reduce(function(a,l){return a+(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);},0);var tva=ht*(d.tva||10)/100;var ttc=ht+tva;
 var planSection=d.planSVG?'<div style="page-break-before:always;padding:10mm;background:#f5f0e8;">'+d.planSVG+'</div>':'';
-var html='<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Devis '+d.numero+'</title><style>body{font-family:Arial,sans-serif;padding:20mm;color:#1a1a1a;font-size:10pt;}h1{font-size:20pt;color:#15347a;margin-bottom:4px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;}.lot-sec{margin-bottom:18px;page-break-inside:avoid;}.lot-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #15347a;padding-bottom:5px;margin-bottom:2px;font-weight:bold;font-size:12pt;color:#15347a;}.lot-badge{font-size:8.5pt;font-family:Courier New,monospace;color:#15347a;background:#e6eaf4;padding:2px 8px;border-radius:4px;font-weight:bold;}.lot-table{width:100%;border-collapse:collapse;margin-bottom:0;}.lot-table td{padding:6px 2px;border-bottom:1px dotted #ccc;font-size:9.5pt;vertical-align:top;}.lot-table .ld{color:#222;}.lot-table .ln{text-align:right;font-family:Courier New,monospace;color:#666;white-space:nowrap;font-size:8.5pt;padding-left:10px;}.lot-table .lt{text-align:right;font-family:Courier New,monospace;color:#1a1a1a;font-weight:bold;white-space:nowrap;padding-left:12px;}.tot{margin-left:auto;width:240px;margin-top:14px;}.tr{display:flex;justify-content:space-between;padding:4px 0;}.ttc{font-size:13pt;font-weight:bold;color:#15347a;border-top:2px solid #15347a;padding-top:8px;margin-top:6px;}.bio{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:8px;font-size:9pt;color:#166534;margin-bottom:16px;}@media print{body{padding:10mm;}.noprint{display:none;}}</style></head><body>';
+var html='<!DOCTYPE html><html><head><meta charset="UTF-8"/><meta name="color-scheme" content="light only"/><title>Devis '+d.numero+'</title><style>html,body{background:#fff !important;-webkit-text-fill-color:#1a1a1a;}body{font-family:Arial,sans-serif;padding:20mm;color:#1a1a1a;font-size:10pt;}h1{font-size:20pt;color:#15347a;margin-bottom:4px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;}.lot-sec{margin-bottom:18px;page-break-inside:avoid;}.lot-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #15347a;padding-bottom:5px;margin-bottom:2px;font-weight:bold;font-size:12pt;color:#15347a;}.lot-badge{font-size:8.5pt;font-family:Courier New,monospace;color:#15347a;background:#e6eaf4;padding:2px 8px;border-radius:4px;font-weight:bold;}.lot-table{width:100%;border-collapse:collapse;margin-bottom:0;}.lot-table td{padding:6px 2px;border-bottom:1px dotted #ccc;font-size:9.5pt;vertical-align:top;}.lot-table .ld{color:#222;}.lot-table .ln{text-align:right;font-family:Courier New,monospace;color:#666;white-space:nowrap;font-size:8.5pt;padding-left:10px;}.lot-table .lt{text-align:right;font-family:Courier New,monospace;color:#1a1a1a;font-weight:bold;white-space:nowrap;padding-left:12px;}.tot{margin-left:auto;width:240px;margin-top:14px;}.tr{display:flex;justify-content:space-between;padding:4px 0;}.ttc{font-size:13pt;font-weight:bold;color:#15347a;border-top:2px solid #15347a;padding-top:8px;margin-top:6px;}.bio{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:8px;font-size:9pt;color:#166534;margin-bottom:16px;}@media print{body{padding:10mm;}.noprint{display:none;}}</style></head><body>';
 html+='<div class="noprint" style="position:sticky;top:0;display:flex;gap:10px;justify-content:space-between;align-items:center;background:#0f1c38;padding:12px 16px;margin:-20mm -20mm 20px;border-bottom:1px solid #1f3358;">'
   +'<button onclick="try{window.close();}catch(e){}; setTimeout(function(){history.length>1?history.back():(location.href=document.referrer||\'about:blank\');},100);" style="background:#16294a;color:#eaf2ff;border:1px solid #1f3358;border-radius:8px;padding:10px 18px;font-size:15px;font-family:Arial;cursor:pointer;">← Fermer</button>'
   +'<button onclick="window.print()" style="background:#2d8cf0;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:15px;font-family:Arial;cursor:pointer;">🖨 Imprimer / PDF</button>'
@@ -2144,6 +2166,110 @@ var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();s
 }
 
 // EXPORT BATAPPLI CSV
+function isMateriau(desig){
+  var d=(desig||'').toLowerCase();
+  // Exclusions : main d'œuvre pure et services de chantier
+  if(/^main.d.œuvre|^main.d.oeuvre/.test(d))return false;
+  if(/^dépose|^depose|^brossage|^nettoyage|échafaudage|echafaudage|manutention|moyens de levage|^évacuation|^evacuation|location|déplacement|d.placement/.test(d))return false;
+  // Inclusions : fournitures et produits
+  if(/fourniture|tuile|écran|ecran|isolation|isolant|panneau|liteau|faîtière|faitiere|mortier|chaux|sarking|steico|laine|placo|plâtre|pl.tre|carrelage|faïence|fa.ence|peinture|enduit|béton|b.ton|parpaing|aggloméré|agglom.r.|poutrelle|hourdis|membrane|zinc|gouttière|goutti.re|vis|fixation|colle|joint|menuiserie|fenêtre|fen.tre|porte|bardage|lambris/.test(d))return true;
+  return false;
+}
+function exportFournisseurPDF(id){
+  var d=db.devis.find(function(x){return x.id===id;});
+  if(!d){showToast('Devis introuvable','error');return;}
+  var mats=(d.lignes||[]).filter(function(l){return isMateriau(l.designation);});
+  if(!mats.length){showToast('Aucun matériau identifié dans ce devis','error');return;}
+  var s=db.settings||{};
+  var ent=s.entreprise||'Mon Entreprise';
+  var ref='DP-'+(d.numero||'').replace(/^DEV-?/i,'')||'DP-'+new Date().getFullYear();
+  var dateStr=new Date().toLocaleDateString('fr-FR');
+  var rows=mats.map(function(l,i){
+    var qte=esc(l.qte||'')+' '+esc(l.unite||'');
+    return '<tr><td class="num">'+(i+1)+'</td><td>'+esc(l.designation||'')+'</td><td class="c">'+qte+'</td><td class="p"></td></tr>';
+  }).join('');
+  var html='<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/>'
+    +'<meta name="viewport" content="width=device-width, initial-scale=1.0"/>'
+    +'<meta name="color-scheme" content="light only"/><meta name="supported-color-schemes" content="light"/>'
+    +'<title>Demande de prix '+esc(ref)+'</title><style>'
+    +':root{color-scheme:light only;}html,body{background:#ffffff !important;color:#222222 !important;-webkit-text-fill-color:#222222;}'
+    +'body{font-family:Arial,sans-serif;padding:24px;font-size:11pt;max-width:800px;margin:0 auto;}'
+    +'.noprint{position:sticky;top:0;display:flex;gap:10px;justify-content:space-between;background:#fff;padding:12px 0;margin-bottom:10px;border-bottom:1px solid #ddd;}'
+    +'.noprint button{border:1px solid #15347a;border-radius:8px;padding:10px 18px;font-size:15px;cursor:pointer;font-family:Arial;}'
+    +'.noprint .b1{background:#fff;color:#15347a;}.noprint .b2{background:#15347a;color:#fff;border:none;}'
+    +'.hdr{display:flex;justify-content:space-between;border-bottom:2px solid #15347a;padding-bottom:14px;margin-bottom:8px;}'
+    +'.hdr .ent{font-size:17pt;font-weight:bold;color:#15347a;-webkit-text-fill-color:#15347a;}'
+    +'.hdr .sub{font-size:9pt;color:#666;-webkit-text-fill-color:#666;margin-top:2px;}'
+    +'.hdr .right{text-align:right;}.hdr .doc-type{font-size:15pt;font-weight:bold;color:#222;-webkit-text-fill-color:#222;letter-spacing:.5px;}'
+    +'.hdr .ref{font-size:9pt;color:#666;-webkit-text-fill-color:#666;margin-top:2px;}'
+    +'.intro{border-left:3px solid #15347a;padding:10px 14px;font-size:10pt;color:#333;-webkit-text-fill-color:#333;margin:18px 0;line-height:1.5;background:#f4f6f9;}'
+    +'.chantier{font-size:10pt;color:#333;-webkit-text-fill-color:#333;margin-bottom:16px;}.chantier b{color:#15347a;-webkit-text-fill-color:#15347a;}'
+    +'table{width:100%;border-collapse:collapse;margin-top:6px;background:#fff;}'
+    +'thead th{border-bottom:2px solid #15347a;color:#15347a;-webkit-text-fill-color:#15347a;padding:9px 10px;text-align:left;font-size:9.5pt;text-transform:uppercase;letter-spacing:.3px;background:#fff;}'
+    +'thead th.c{text-align:center;width:90px;}thead th.p{text-align:center;width:140px;}'
+    +'tbody td{padding:10px;border-bottom:1px solid #ddd;font-size:10pt;vertical-align:top;color:#222;-webkit-text-fill-color:#222;background:#fff;}'
+    +'tbody td.c{text-align:center;font-family:Courier New,monospace;font-weight:bold;color:#15347a;-webkit-text-fill-color:#15347a;white-space:nowrap;}'
+    +'tbody td.p{border-left:1px dashed #bbb;background:#f7f9fc;}'
+    +'.num{color:#999;-webkit-text-fill-color:#999;font-family:Courier New,monospace;width:24px;}'
+    +'.foot{margin-top:24px;border-top:1px solid #ddd;padding-top:14px;font-size:9pt;color:#555;-webkit-text-fill-color:#555;line-height:1.6;}.foot b{color:#15347a;-webkit-text-fill-color:#15347a;}'
+    +'.tot-line{margin-top:18px;text-align:right;font-size:10pt;color:#333;-webkit-text-fill-color:#333;padding-top:10px;border-top:1px solid #ddd;}'
+    +'@media print{body{padding:10mm;}.noprint{display:none;}}</style></head><body>'
+    +'<div class="noprint"><button class="b1" onclick="try{window.close();}catch(e){}; setTimeout(function(){history.length>1?history.back():(location.href=document.referrer||\'about:blank\');},100);">← Fermer</button><button class="b2" onclick="window.print()">🖨 Imprimer / PDF</button></div>'
+    +'<div class="hdr"><div><div class="ent">'+esc(ent)+'</div><div class="sub">'+(s.siret?'SIRET : '+esc(s.siret)+' · ':'')+'BTP</div></div>'
+    +'<div class="right"><div class="doc-type">DEMANDE DE PRIX</div><div class="ref">Réf. '+esc(ref)+' · '+dateStr+'</div></div></div>'
+    +'<div class="intro">📦 Merci de bien vouloir chiffrer les fournitures ci-dessous. Les quantités sont fermes (métré réalisé). Colonne de droite à compléter avec votre prix unitaire HT.</div>'
+    +'<div class="chantier"><b>Chantier :</b> '+esc(d.client||'')+(d.objet?' — '+esc(d.objet):'')+'</div>'
+    +'<table><thead><tr><th>#</th><th>Désignation matériau</th><th class="c">Quantité</th><th class="p">Votre PU HT (€)</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div class="tot-line">Total HT estimé : _______________ €</div>'
+    +'<div class="foot"><b>Note :</b> la main d\'œuvre, la dépose, l\'échafaudage et le nettoyage ne figurent pas dans cette demande.<br><b>Merci de retourner votre offre sous :</b> ______ jours &nbsp;·&nbsp; <b>Contact :</b> ____________________</div>'
+    +'</body></html>';
+  var w=window.open('','_blank');
+  if(w){w.document.write(html);w.document.close();}
+  else showToast('Autorisez les pop-ups','error');
+}
+function getClientEmail(nom){
+  if(!nom)return '';
+  var c=(db.clients||[]).find(function(x){return (x.nom||'').toLowerCase()===nom.toLowerCase();});
+  return c&&c.email?c.email:'';
+}
+function emailDevis(id){
+  var d=db.devis.find(function(x){return x.id===id;});
+  if(!d){showToast('Devis introuvable','error');return;}
+  var ent=(db.settings&&db.settings.entreprise)||'Mon entreprise';
+  var email=getClientEmail(d.client);
+  var ht=(d.lignes||[]).reduce(function(a,l){return a+(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);},0);
+  var ttc=ht*(1+(d.tva||10)/100);
+  var sujet=encodeURIComponent('Devis '+(d.numero||'')+' - '+ent);
+  var corps=encodeURIComponent(
+    'Bonjour'+(d.client?' '+d.client:'')+',\n\n'
+    +'Veuillez trouver ci-joint notre devis '+(d.numero||'')+(d.objet?' concernant : '+d.objet:'')+'.\n\n'
+    +'Montant total : '+fmtMoney(ttc)+' TTC.\n\n'
+    +'Ce devis est valable 3 mois. N\'hésitez pas à me contacter pour toute question.\n\n'
+    +'⚠️ Pensez à joindre le PDF du devis à cet email avant de l\'envoyer.\n\n'
+    +'Cordialement,\n'+ent
+    +((db.settings&&db.settings.tel)?'\nTél : '+db.settings.tel:'')
+  );
+  showToast('Génère d\'abord le PDF, puis joins-le à l\'email','info');
+  window.location.href='mailto:'+encodeURIComponent(email)+'?subject='+sujet+'&body='+corps;
+}
+function emailFournisseur(id){
+  var d=db.devis.find(function(x){return x.id===id;});
+  if(!d){showToast('Devis introuvable','error');return;}
+  var ent=(db.settings&&db.settings.entreprise)||'Mon entreprise';
+  var ref='DP-'+(d.numero||'').replace(/^DEV-?/i,'');
+  var sujet=encodeURIComponent('Demande de prix '+ref+' - '+ent);
+  var corps=encodeURIComponent(
+    'Bonjour,\n\n'
+    +'Je souhaite obtenir un chiffrage pour les fournitures détaillées dans la demande de prix ci-jointe ('+ref+')'
+    +(d.objet?', concernant : '+d.objet:'')+'.\n\n'
+    +'Les quantités sont fermes (métré réalisé). Merci de m\'indiquer vos prix unitaires HT ainsi que les délais de livraison.\n\n'
+    +'⚠️ Pensez à joindre le PDF de la demande de prix à cet email avant de l\'envoyer.\n\n'
+    +'Cordialement,\n'+ent
+    +((db.settings&&db.settings.tel)?'\nTél : '+db.settings.tel:'')
+  );
+  showToast('Génère d\'abord le PDF, puis joins-le à l\'email','info');
+  window.location.href='mailto:?subject='+sujet+'&body='+corps;
+}
 function exportBatappli(id){
   var d=db.devis.find(function(x){return x.id===id;});if(!d){showToast('Introuvable','error');return;}
   var s=db.settings;var ht=(d.lignes||[]).reduce(function(a,l){return a+(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);},0);
@@ -2650,6 +2776,11 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // Toiture
   document.getElementById('btn-calc-ctoiture').addEventListener('click',function(){calcCToiture();});
+  var ctTypeEl=document.getElementById('ct-type');
+  if(ctTypeEl)ctTypeEl.addEventListener('change',function(){
+    var sr=document.getElementById('ct-sens-row');
+    if(sr)sr.style.display=(ctTypeEl.value==='2pentes'||ctTypeEl.value==='1pan')?'block':'none';
+  });
 
   // Plan (étape 3)
   document.getElementById('btn-plan-pdf').addEventListener('click',function(){exportPlanPDF();});
@@ -2668,6 +2799,12 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('btn-add-line').addEventListener('click',function(){collectLines();addDevisLine();});
   document.getElementById('btn-save-devis').addEventListener('click',function(){collectLines();saveDevis();});
   document.getElementById('btn-export-devis').addEventListener('click',function(){collectLines();saveDevis();var lid=editDevisId||(db.devis.length?db.devis[db.devis.length-1].id:null);if(lid)exportDevisPDF(lid);});
+  var _bef=document.getElementById('btn-export-fournisseur');
+  if(_bef)_bef.addEventListener('click',function(){collectLines();saveDevis();var lid=editDevisId||(db.devis.length?db.devis[db.devis.length-1].id:null);if(lid)exportFournisseurPDF(lid);});
+  var _bec=document.getElementById('btn-email-client');
+  if(_bec)_bec.addEventListener('click',function(){collectLines();saveDevis();var lid=editDevisId||(db.devis.length?db.devis[db.devis.length-1].id:null);if(lid)emailDevis(lid);});
+  var _bef2=document.getElementById('btn-email-fournisseur');
+  if(_bef2)_bef2.addEventListener('click',function(){collectLines();saveDevis();var lid=editDevisId||(db.devis.length?db.devis[db.devis.length-1].id:null);if(lid)emailFournisseur(lid);});
   document.getElementById('btn-export-batappli').addEventListener('click',function(){collectLines();saveDevis();var lid=editDevisId||(db.devis.length?db.devis[db.devis.length-1].id:null);if(lid)exportBatappli(lid);});
   document.getElementById('btn-export-share').addEventListener('click',function(){collectLines();saveDevis();var lid=editDevisId||(db.devis.length?db.devis[db.devis.length-1].id:null);if(lid)shareDevis(lid);});
   document.getElementById('d-tva').addEventListener('input',function(){updateTotaux();});
