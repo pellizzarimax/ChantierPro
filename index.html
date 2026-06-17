@@ -361,7 +361,10 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <div style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--r);padding:14px;margin-bottom:14px;">
         <div style="font-size:12px;color:var(--c-muted);margin-bottom:10px;line-height:1.5;">Saisissez chaque côté : sa <b style="color:var(--c-text);">longueur</b> et son <b style="color:var(--c-text);">angle</b> (0°=droite, 90°=haut, 180°=gauche, 270°=bas). L'app calcule la surface.</div>
         <div id="pl-segments"></div>
-        <button class="btn btn-secondary" id="pl-add-seg" style="width:100%;margin-top:8px;">+ Ajouter un côté</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+          <button class="btn btn-secondary" id="pl-add-seg">+ Ajouter un côté</button>
+          <button class="btn btn-secondary" id="pl-close-form" style="border-color:rgba(45,140,240,.4);color:var(--c-accent);">⊕ Fermer la forme</button>
+        </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
@@ -390,6 +393,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         <button class="btn btn-secondary" id="pl-reset">🗑 Réinitialiser</button>
         <button class="btn btn-primary" id="pl-export">📄 Exporter PDF</button>
       </div>
+      <button class="btn btn-primary" id="pl-use-parcours" style="width:100%;margin-top:8px;display:none;">✓ Utiliser cette surface dans le devis</button>
     </div>
 
     <div class="view" id="view-depenses">
@@ -410,6 +414,16 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <button class="btn btn-primary" id="dep-add" style="width:100%;margin-bottom:14px;">+ Nouvelle dépense</button>
 
       <div id="dep-list"></div>
+    </div>
+
+    <div class="view" id="view-bibliotheque">
+      <div class="section-title">Bibliothèque de prix</div>
+      <div class="section-sub">Vos tarifs d'ouvrages — utilisés pour générer les devis</div>
+      <div style="background:rgba(45,140,240,.08);border:1px solid rgba(45,140,240,.25);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--c-info);line-height:1.5;">💡 Ces prix sont injectés dans l'IA : vos devis utiliseront VOS tarifs au lieu de prix inventés. Modifiez-les selon votre marché.</div>
+      <input type="text" class="form-input" id="bib-search" placeholder="🔍 Rechercher un ouvrage..." style="margin-bottom:12px;"/>
+      <button class="btn btn-primary" id="bib-add" style="width:100%;margin-bottom:8px;">+ Nouvel ouvrage</button>
+      <button class="btn btn-secondary" id="bib-restore" style="width:100%;margin-bottom:14px;font-size:13px;">⟲ Charger le catalogue complet (198 ouvrages)</button>
+      <div id="bib-list"></div>
     </div>
 
     <div id="pl-dial-modal">
@@ -483,6 +497,30 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     </div>
   </div>
 
+  <div id="modal-bib" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-hdr">
+        <div class="modal-title" id="bib-modal-title">Nouvel ouvrage</div>
+        <button class="btn btn-secondary" style="padding:8px 12px;" id="bib-close">✕</button>
+      </div>
+      <div class="modal-body" style="padding-bottom:30px;">
+        <div class="form-group"><label class="form-label">Désignation *</label><input type="text" class="form-input" id="bib-desig" placeholder="Ex: Pose tuile canal"/></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Prix unitaire HT *</label><input type="number" inputmode="decimal" class="form-input" id="bib-prix" placeholder="0.00" step="0.01"/></div>
+          <div class="form-group"><label class="form-label">Unité</label>
+            <select class="form-input" id="bib-unite"><option value="m²">m²</option><option value="ml">ml</option><option value="m³">m³</option><option value="u">u</option><option value="h">h</option><option value="forfait">forfait</option></select>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Catégorie</label>
+          <select class="form-input" id="bib-cat"><option>Préparation / Démolition</option><option>Terrassement / VRD</option><option>Fondations / Gros œuvre</option><option>Plancher / Structure</option><option>Charpente / Ossature bois</option><option>Couverture</option><option>Zinguerie / Évacuation EP</option><option>Isolation</option><option>Menuiserie extérieure</option><option>Menuiserie intérieure</option><option>Plâtrerie / Cloisons</option><option>Carrelage / Faïence</option><option>Sols souples / Parquet</option><option>Peinture / Revêtements</option><option>Plomberie / Sanitaire</option><option>Chauffage / Ventilation</option><option>Électricité</option><option>Étanchéité / Toiture-terrasse</option><option>Extérieur / Aménagement</option><option>Divers / Chantier</option></select>
+        </div>
+        <button class="btn btn-primary" id="bib-save" style="width:100%;margin-top:8px;">Enregistrer</button>
+        <button class="btn btn-secondary" id="bib-delete" style="width:100%;margin-top:8px;display:none;">🗑 Supprimer</button>
+      </div>
+    </div>
+  </div>
+
   <nav id="nav-bar">
     <button class="nav-btn active" data-view="accueil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
     <button class="nav-btn" data-view="visites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>Visites</button>
@@ -502,6 +540,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <div class="sm-cat">OUTILS</div>
       <button class="sm-item" data-menu="banque"><svg viewBox="0 0 24 24"><line x1="3" y1="22" x2="21" y2="22"/><path d="M3 10h18M5 10v12M19 10v12M12 2L3 10h18z"/></svg>Banque <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="depenses"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Dépenses <span class="sm-badge">NOUVEAU</span></button>
+      <button class="sm-item" data-menu="bibliotheque"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Bibliothèque de prix <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="plans"><svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>Édition de plans</button>
       <button class="sm-item" data-menu="clients"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Clients</button>
       <button class="sm-item" data-menu="planning"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Planning</button>
@@ -596,7 +635,10 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         <div id="ctab-surfaces">
           <div class="card-title">Surfaces rectangulaires</div>
           <div id="c-surfaces-list"></div>
-          <button class="btn btn-secondary btn-full" id="btn-add-csurface">+ Surface</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button class="btn btn-secondary" id="btn-add-csurface">+ Surface</button>
+            <button class="btn btn-secondary" id="btn-add-cpolygone" style="border-color:rgba(45,140,240,.4);color:var(--c-accent);">◇ Forme complexe</button>
+          </div>
           <div class="form-group" style="margin-top:10px;"><label class="form-label">Déductions (ouvertures)</label>
             <div id="c-deductions-list"></div>
             <button class="btn btn-secondary" style="padding:8px 12px;font-size:12px;margin-top:6px;" id="btn-add-cdeduction">+ Déduire ouverture</button>
@@ -816,9 +858,206 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 'use strict';
 var SK='chantierspro_max_v1';
 var yr=new Date().getFullYear();
-var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],depenses:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
+var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],depenses:[],bibliotheque:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
 var db=JSON.parse(JSON.stringify(DFLT));
-function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;if(!db.depenses)db.depenses=[];}}catch(e){db=JSON.parse(JSON.stringify(DFLT));}}
+function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;if(!db.depenses)db.depenses=[];if(!db.bibliotheque)db.bibliotheque=[];if(!db.bibliotheque.length)db.bibliotheque=defaultBibliotheque();
+    // Migration catalogue v2 : compléter si l'ancien catalogue (27 ouvrages) est présent sans ajouts perso
+    if(db.bibliotheque.length>0&&db.bibliotheque.length<50&&!db.settings._bibV2){
+      var existingDesigs={};db.bibliotheque.forEach(function(b){existingDesigs[(b.designation||'').toLowerCase()]=1;});
+      defaultBibliotheque().forEach(function(b){if(!existingDesigs[(b.designation||'').toLowerCase()])db.bibliotheque.push(b);});
+      if(!db.settings)db.settings={};db.settings._bibV2=true;
+    }}}catch(e){db=JSON.parse(JSON.stringify(DFLT));}}
+function defaultBibliotheque(){
+  return [
+    {id:'b1',categorie:'Préparation / Démolition',designation:'Installation de chantier',unite:'forfait',prix:350},
+    {id:'b2',categorie:'Préparation / Démolition',designation:'Dépose cloison non porteuse',unite:'m²',prix:18},
+    {id:'b3',categorie:'Préparation / Démolition',designation:'Démolition mur porteur (avec étaiement)',unite:'m³',prix:180},
+    {id:'b4',categorie:'Préparation / Démolition',designation:'Dépose carrelage sol',unite:'m²',prix:14},
+    {id:'b5',categorie:'Préparation / Démolition',designation:'Dépose revêtement mural',unite:'m²',prix:10},
+    {id:'b6',categorie:'Préparation / Démolition',designation:'Piochage / décroûtage enduit',unite:'m²',prix:16},
+    {id:'b7',categorie:'Préparation / Démolition',designation:'Évacuation gravats (benne)',unite:'forfait',prix:450},
+    {id:'b8',categorie:'Préparation / Démolition',designation:'Curage complet intérieur',unite:'m²',prix:25},
+    {id:'b9',categorie:'Terrassement / VRD',designation:'Terrassement en pleine masse',unite:'m³',prix:18},
+    {id:'b10',categorie:'Terrassement / VRD',designation:'Fouilles en rigole pour fondations',unite:'m³',prix:45},
+    {id:'b11',categorie:'Terrassement / VRD',designation:'Remblai compacté',unite:'m³',prix:28},
+    {id:'b12',categorie:'Terrassement / VRD',designation:'Évacuation terres excédentaires',unite:'m³',prix:22},
+    {id:'b13',categorie:'Terrassement / VRD',designation:'Tranchée pour réseaux',unite:'ml',prix:32},
+    {id:'b14',categorie:'Terrassement / VRD',designation:'Lit de pose sable',unite:'m³',prix:40},
+    {id:'b15',categorie:'Terrassement / VRD',designation:'Regard béton + tampon',unite:'u',prix:180},
+    {id:'b16',categorie:'Terrassement / VRD',designation:'Drainage périphérique',unite:'ml',prix:38},
+    {id:'b17',categorie:'Fondations / Gros œuvre',designation:'Béton de propreté',unite:'m²',prix:12},
+    {id:'b18',categorie:'Fondations / Gros œuvre',designation:'Semelle filante béton armé',unite:'m³',prix:185},
+    {id:'b19',categorie:'Fondations / Gros œuvre',designation:'Plot / semelle isolée',unite:'u',prix:120},
+    {id:'b20',categorie:'Fondations / Gros œuvre',designation:'Mur de soubassement aggloméré',unite:'m²',prix:68},
+    {id:'b21',categorie:'Fondations / Gros œuvre',designation:'Hérisson + film polyane',unite:'m²',prix:22},
+    {id:'b22',categorie:'Fondations / Gros œuvre',designation:'Dalle béton armé sur terre-plein',unite:'m²',prix:55},
+    {id:'b23',categorie:'Fondations / Gros œuvre',designation:'Chaînage horizontal béton armé',unite:'ml',prix:35},
+    {id:'b24',categorie:'Fondations / Gros œuvre',designation:'Poteau béton armé',unite:'ml',prix:65},
+    {id:'b25',categorie:'Fondations / Gros œuvre',designation:'Mur parpaing 20 monté',unite:'m²',prix:55},
+    {id:'b26',categorie:'Fondations / Gros œuvre',designation:'Mur parpaing 15 monté',unite:'m²',prix:48},
+    {id:'b27',categorie:'Fondations / Gros œuvre',designation:'Mur brique monomur',unite:'m²',prix:95},
+    {id:'b28',categorie:'Fondations / Gros œuvre',designation:'Linteau béton préfabriqué',unite:'ml',prix:45},
+    {id:'b29',categorie:'Fondations / Gros œuvre',designation:'Appui de fenêtre',unite:'ml',prix:55},
+    {id:'b30',categorie:'Plancher / Structure',designation:'Plancher poutrelles-hourdis béton',unite:'m²',prix:75},
+    {id:'b31',categorie:'Plancher / Structure',designation:'Dalle de compression + treillis',unite:'m²',prix:42},
+    {id:'b32',categorie:'Plancher / Structure',designation:'Plancher collaborant',unite:'m²',prix:85},
+    {id:'b33',categorie:'Plancher / Structure',designation:'Poutre béton armé',unite:'ml',prix:95},
+    {id:'b34',categorie:'Plancher / Structure',designation:'Escalier béton (coffrage + coulage)',unite:'u',prix:1800},
+    {id:'b35',categorie:'Charpente / Ossature bois',designation:'Charpente traditionnelle (fourniture + pose)',unite:'m²',prix:75},
+    {id:'b36',categorie:'Charpente / Ossature bois',designation:'Charpente fermettes industrielles',unite:'m²',prix:48},
+    {id:'b37',categorie:'Charpente / Ossature bois',designation:'Ossature bois mur',unite:'m²',prix:95},
+    {id:'b38',categorie:'Charpente / Ossature bois',designation:'Solivage bois',unite:'m²',prix:55},
+    {id:'b39',categorie:'Charpente / Ossature bois',designation:'Panne / poutre bois',unite:'ml',prix:42},
+    {id:'b40',categorie:'Charpente / Ossature bois',designation:'Traitement charpente (fongicide/insecticide)',unite:'m²',prix:12},
+    {id:'b41',categorie:'Charpente / Ossature bois',designation:'Chevronnage',unite:'m²',prix:28},
+    {id:'b42',categorie:'Couverture',designation:'Dépose couverture existante + évacuation',unite:'m²',prix:12},
+    {id:'b43',categorie:'Couverture',designation:'Écran sous-toiture HPV respirant',unite:'m²',prix:4.5},
+    {id:'b44',categorie:'Couverture',designation:'Contre-liteaux et liteaux traités classe 2',unite:'m²',prix:9},
+    {id:'b45',categorie:'Couverture',designation:'Tuiles terre cuite (fourniture + pose)',unite:'m²',prix:32},
+    {id:'b46',categorie:'Couverture',designation:'Tuiles canal (fourniture + pose)',unite:'m²',prix:38},
+    {id:'b47',categorie:'Couverture',designation:'Ardoise naturelle (fourniture + pose)',unite:'m²',prix:85},
+    {id:'b48',categorie:'Couverture',designation:'Bac acier couverture',unite:'m²',prix:42},
+    {id:'b49',categorie:'Couverture',designation:'Faîtage ventilé (closoir + fixation)',unite:'ml',prix:38},
+    {id:'b50',categorie:'Couverture',designation:'Arêtiers (closoir + tuiles arêtières)',unite:'ml',prix:42},
+    {id:'b51',categorie:'Couverture',designation:'Noue zinc (fourniture + pose)',unite:'ml',prix:55},
+    {id:'b52',categorie:'Couverture',designation:'Rive (tuiles à rabat ou planche)',unite:'ml',prix:28},
+    {id:'b53',categorie:'Couverture',designation:'Solin / raccord maçonnerie',unite:'ml',prix:35},
+    {id:'b54',categorie:'Couverture',designation:'Fenêtre de toit (Velux) posée',unite:'u',prix:650},
+    {id:'b55',categorie:'Couverture',designation:'Main d\'œuvre couverture',unite:'m²',prix:35},
+    {id:'b56',categorie:'Zinguerie / Évacuation EP',designation:'Gouttière zinc (fourniture + pose)',unite:'ml',prix:42},
+    {id:'b57',categorie:'Zinguerie / Évacuation EP',designation:'Gouttière PVC',unite:'ml',prix:28},
+    {id:'b58',categorie:'Zinguerie / Évacuation EP',designation:'Descente EP zinc',unite:'ml',prix:38},
+    {id:'b59',categorie:'Zinguerie / Évacuation EP',designation:'Descente EP PVC',unite:'ml',prix:22},
+    {id:'b60',categorie:'Zinguerie / Évacuation EP',designation:'Chéneau zinc',unite:'ml',prix:65},
+    {id:'b61',categorie:'Zinguerie / Évacuation EP',designation:'Habillage planche de rive',unite:'ml',prix:32},
+    {id:'b62',categorie:'Isolation',designation:'Isolation ouate de cellulose soufflée (ATec)',unite:'m²',prix:45},
+    {id:'b63',categorie:'Isolation',designation:'Isolation fibre de bois (panneau)',unite:'m²',prix:38},
+    {id:'b64',categorie:'Isolation',designation:'Isolation laine de bois flexible',unite:'m²',prix:28},
+    {id:'b65',categorie:'Isolation',designation:'Isolation laine de verre combles',unite:'m²',prix:18},
+    {id:'b66',categorie:'Isolation',designation:'Isolation laine de roche',unite:'m²',prix:22},
+    {id:'b67',categorie:'Isolation',designation:'Isolation polystyrène extrudé',unite:'m²',prix:25},
+    {id:'b68',categorie:'Isolation',designation:'Sarking (isolation sur chevrons)',unite:'m²',prix:68},
+    {id:'b69',categorie:'Isolation',designation:'ITE polystyrène + enduit',unite:'m²',prix:120},
+    {id:'b70',categorie:'Isolation',designation:'ITE fibre de bois + enduit',unite:'m²',prix:145},
+    {id:'b71',categorie:'Isolation',designation:'Pare-vapeur + adhésifs',unite:'m²',prix:6},
+    {id:'b72',categorie:'Isolation',designation:'Frein-vapeur hygrovariable',unite:'m²',prix:8},
+    {id:'b73',categorie:'Isolation',designation:'Main d\'œuvre pose isolation',unite:'m²',prix:18},
+    {id:'b74',categorie:'Menuiserie extérieure',designation:'Fenêtre PVC double vitrage posée',unite:'u',prix:450},
+    {id:'b75',categorie:'Menuiserie extérieure',designation:'Fenêtre alu double vitrage posée',unite:'u',prix:680},
+    {id:'b76',categorie:'Menuiserie extérieure',designation:'Fenêtre bois double vitrage posée',unite:'u',prix:620},
+    {id:'b77',categorie:'Menuiserie extérieure',designation:'Porte-fenêtre PVC posée',unite:'u',prix:750},
+    {id:'b78',categorie:'Menuiserie extérieure',designation:'Baie coulissante alu',unite:'u',prix:1450},
+    {id:'b79',categorie:'Menuiserie extérieure',designation:'Porte d\'entrée alu',unite:'u',prix:1800},
+    {id:'b80',categorie:'Menuiserie extérieure',designation:'Volet roulant électrique',unite:'u',prix:550},
+    {id:'b81',categorie:'Menuiserie extérieure',designation:'Volet battant bois',unite:'u',prix:380},
+    {id:'b82',categorie:'Menuiserie extérieure',designation:'Porte de garage sectionnelle',unite:'u',prix:1600},
+    {id:'b83',categorie:'Menuiserie extérieure',designation:'Dépose ancienne menuiserie',unite:'u',prix:65},
+    {id:'b84',categorie:'Menuiserie intérieure',designation:'Bloc-porte intérieur posé',unite:'u',prix:280},
+    {id:'b85',categorie:'Menuiserie intérieure',designation:'Porte coulissante à galandage',unite:'u',prix:650},
+    {id:'b86',categorie:'Menuiserie intérieure',designation:'Plinthe bois / MDF',unite:'ml',prix:12},
+    {id:'b87',categorie:'Menuiserie intérieure',designation:'Parquet contrecollé posé',unite:'m²',prix:55},
+    {id:'b88',categorie:'Menuiserie intérieure',designation:'Parquet massif posé',unite:'m²',prix:85},
+    {id:'b89',categorie:'Menuiserie intérieure',designation:'Plan de travail (pose)',unite:'ml',prix:120},
+    {id:'b90',categorie:'Menuiserie intérieure',designation:'Placard sur mesure',unite:'ml',prix:450},
+    {id:'b91',categorie:'Menuiserie intérieure',designation:'Habillage tableau / ébrasement',unite:'ml',prix:35},
+    {id:'b92',categorie:'Menuiserie intérieure',designation:'Trappe de visite',unite:'u',prix:95},
+    {id:'b93',categorie:'Plâtrerie / Cloisons',designation:'Cloison placo 72mm (BA13)',unite:'m²',prix:38},
+    {id:'b94',categorie:'Plâtrerie / Cloisons',designation:'Cloison placo hydrofuge',unite:'m²',prix:45},
+    {id:'b95',categorie:'Plâtrerie / Cloisons',designation:'Cloison placo phonique',unite:'m²',prix:52},
+    {id:'b96',categorie:'Plâtrerie / Cloisons',designation:'Doublage isolant collé',unite:'m²',prix:42},
+    {id:'b97',categorie:'Plâtrerie / Cloisons',designation:'Doublage sur ossature',unite:'m²',prix:48},
+    {id:'b98',categorie:'Plâtrerie / Cloisons',designation:'Plafond placo sur ossature',unite:'m²',prix:45},
+    {id:'b99',categorie:'Plâtrerie / Cloisons',designation:'Faux plafond suspendu',unite:'m²',prix:55},
+    {id:'b100',categorie:'Plâtrerie / Cloisons',designation:'Enduit de lissage',unite:'m²',prix:12},
+    {id:'b101',categorie:'Plâtrerie / Cloisons',designation:'Bandes à joint + ponçage',unite:'m²',prix:9},
+    {id:'b102',categorie:'Plâtrerie / Cloisons',designation:'Carreau de plâtre',unite:'m²',prix:42},
+    {id:'b103',categorie:'Plâtrerie / Cloisons',designation:'Coffrage / habillage gaine',unite:'ml',prix:38},
+    {id:'b104',categorie:'Carrelage / Faïence',designation:'Carrelage sol (pose + fourniture)',unite:'m²',prix:55},
+    {id:'b105',categorie:'Carrelage / Faïence',designation:'Carrelage grand format',unite:'m²',prix:75},
+    {id:'b106',categorie:'Carrelage / Faïence',designation:'Faïence murale',unite:'m²',prix:60},
+    {id:'b107',categorie:'Carrelage / Faïence',designation:'Mosaïque',unite:'m²',prix:95},
+    {id:'b108',categorie:'Carrelage / Faïence',designation:'Chape de ragréage',unite:'m²',prix:18},
+    {id:'b109',categorie:'Carrelage / Faïence',designation:'Chape liquide anhydrite',unite:'m²',prix:28},
+    {id:'b110',categorie:'Carrelage / Faïence',designation:'Plinthe carrelage',unite:'ml',prix:18},
+    {id:'b111',categorie:'Carrelage / Faïence',designation:'Profilé de finition',unite:'ml',prix:12},
+    {id:'b112',categorie:'Carrelage / Faïence',designation:'Joint de carrelage',unite:'m²',prix:8},
+    {id:'b113',categorie:'Carrelage / Faïence',designation:'Étanchéité sous carrelage (SPEC)',unite:'m²',prix:22},
+    {id:'b114',categorie:'Sols souples / Parquet',designation:'Sol PVC / lino',unite:'m²',prix:32},
+    {id:'b115',categorie:'Sols souples / Parquet',designation:'Moquette',unite:'m²',prix:28},
+    {id:'b116',categorie:'Sols souples / Parquet',designation:'Parquet stratifié posé',unite:'m²',prix:35},
+    {id:'b117',categorie:'Sols souples / Parquet',designation:'Sous-couche acoustique',unite:'m²',prix:8},
+    {id:'b118',categorie:'Sols souples / Parquet',designation:'Ragréage autolissant',unite:'m²',prix:15},
+    {id:'b119',categorie:'Sols souples / Parquet',designation:'Béton ciré',unite:'m²',prix:95},
+    {id:'b120',categorie:'Peinture / Revêtements',designation:'Peinture murs (2 couches + sous-couche)',unite:'m²',prix:22},
+    {id:'b121',categorie:'Peinture / Revêtements',designation:'Peinture plafond',unite:'m²',prix:25},
+    {id:'b122',categorie:'Peinture / Revêtements',designation:'Peinture boiseries',unite:'m²',prix:28},
+    {id:'b123',categorie:'Peinture / Revêtements',designation:'Peinture façade',unite:'m²',prix:32},
+    {id:'b124',categorie:'Peinture / Revêtements',designation:'Enduit décoratif',unite:'m²',prix:45},
+    {id:'b125',categorie:'Peinture / Revêtements',designation:'Papier peint (pose)',unite:'m²',prix:18},
+    {id:'b126',categorie:'Peinture / Revêtements',designation:'Toile de verre + peinture',unite:'m²',prix:28},
+    {id:'b127',categorie:'Peinture / Revêtements',designation:'Lasure / vernis bois',unite:'m²',prix:22},
+    {id:'b128',categorie:'Peinture / Revêtements',designation:'Ravalement façade complet',unite:'m²',prix:65},
+    {id:'b129',categorie:'Peinture / Revêtements',designation:'Rebouchage / préparation support',unite:'m²',prix:12},
+    {id:'b130',categorie:'Plomberie / Sanitaire',designation:'Alimentation eau (PER) par point',unite:'u',prix:120},
+    {id:'b131',categorie:'Plomberie / Sanitaire',designation:'Évacuation PVC par point',unite:'u',prix:95},
+    {id:'b132',categorie:'Plomberie / Sanitaire',designation:'WC suspendu (bâti + cuvette) posé',unite:'u',prix:550},
+    {id:'b133',categorie:'Plomberie / Sanitaire',designation:'WC classique posé',unite:'u',prix:280},
+    {id:'b134',categorie:'Plomberie / Sanitaire',designation:'Lavabo / vasque posé',unite:'u',prix:320},
+    {id:'b135',categorie:'Plomberie / Sanitaire',designation:'Douche à l\'italienne complète',unite:'u',prix:1800},
+    {id:'b136',categorie:'Plomberie / Sanitaire',designation:'Receveur + paroi de douche',unite:'u',prix:950},
+    {id:'b137',categorie:'Plomberie / Sanitaire',designation:'Baignoire posée',unite:'u',prix:650},
+    {id:'b138',categorie:'Plomberie / Sanitaire',designation:'Meuble vasque',unite:'u',prix:480},
+    {id:'b139',categorie:'Plomberie / Sanitaire',designation:'Chauffe-eau électrique posé',unite:'u',prix:850},
+    {id:'b140',categorie:'Plomberie / Sanitaire',designation:'Chauffe-eau thermodynamique',unite:'u',prix:2800},
+    {id:'b141',categorie:'Plomberie / Sanitaire',designation:'Mitigeur (fourniture + pose)',unite:'u',prix:180},
+    {id:'b142',categorie:'Plomberie / Sanitaire',designation:'Recherche de fuite',unite:'forfait',prix:250},
+    {id:'b143',categorie:'Chauffage / Ventilation',designation:'Radiateur eau chaude posé',unite:'u',prix:380},
+    {id:'b144',categorie:'Chauffage / Ventilation',designation:'Radiateur électrique posé',unite:'u',prix:280},
+    {id:'b145',categorie:'Chauffage / Ventilation',designation:'Plancher chauffant hydraulique',unite:'m²',prix:75},
+    {id:'b146',categorie:'Chauffage / Ventilation',designation:'Chaudière gaz condensation',unite:'u',prix:4500},
+    {id:'b147',categorie:'Chauffage / Ventilation',designation:'Pompe à chaleur air/eau',unite:'u',prix:12000},
+    {id:'b148',categorie:'Chauffage / Ventilation',designation:'Poêle à granulés posé',unite:'u',prix:4200},
+    {id:'b149',categorie:'Chauffage / Ventilation',designation:'Insert / foyer fermé',unite:'u',prix:2800},
+    {id:'b150',categorie:'Chauffage / Ventilation',designation:'VMC simple flux',unite:'u',prix:850},
+    {id:'b151',categorie:'Chauffage / Ventilation',designation:'VMC double flux',unite:'u',prix:3500},
+    {id:'b152',categorie:'Chauffage / Ventilation',designation:'Conduit de fumée inox',unite:'ml',prix:180},
+    {id:'b153',categorie:'Électricité',designation:'Point lumineux simple',unite:'u',prix:85},
+    {id:'b154',categorie:'Électricité',designation:'Prise de courant',unite:'u',prix:75},
+    {id:'b155',categorie:'Électricité',designation:'Interrupteur simple',unite:'u',prix:70},
+    {id:'b156',categorie:'Électricité',designation:'Va-et-vient',unite:'u',prix:95},
+    {id:'b157',categorie:'Électricité',designation:'Tableau électrique (mise aux normes)',unite:'u',prix:1200},
+    {id:'b158',categorie:'Électricité',designation:'Mise à la terre',unite:'forfait',prix:450},
+    {id:'b159',categorie:'Électricité',designation:'Tableau de communication',unite:'u',prix:380},
+    {id:'b160',categorie:'Électricité',designation:'Prise RJ45',unite:'u',prix:95},
+    {id:'b161',categorie:'Électricité',designation:'Saignée + rebouchage',unite:'ml',prix:18},
+    {id:'b162',categorie:'Électricité',designation:'Spot encastré LED',unite:'u',prix:65},
+    {id:'b163',categorie:'Électricité',designation:'Sèche-serviette électrique',unite:'u',prix:320},
+    {id:'b164',categorie:'Électricité',designation:'Borne de recharge VE',unite:'u',prix:1200},
+    {id:'b165',categorie:'Étanchéité / Toiture-terrasse',designation:'Étanchéité bitume toiture-terrasse',unite:'m²',prix:65},
+    {id:'b166',categorie:'Étanchéité / Toiture-terrasse',designation:'Étanchéité EPDM',unite:'m²',prix:55},
+    {id:'b167',categorie:'Étanchéité / Toiture-terrasse',designation:'Relevé d\'étanchéité',unite:'ml',prix:45},
+    {id:'b168',categorie:'Étanchéité / Toiture-terrasse',designation:'Isolation toiture-terrasse',unite:'m²',prix:48},
+    {id:'b169',categorie:'Étanchéité / Toiture-terrasse',designation:'Gravillonnage / protection',unite:'m²',prix:18},
+    {id:'b170',categorie:'Extérieur / Aménagement',designation:'Terrasse bois sur plots',unite:'m²',prix:120},
+    {id:'b171',categorie:'Extérieur / Aménagement',designation:'Terrasse carrelée sur plots',unite:'m²',prix:95},
+    {id:'b172',categorie:'Extérieur / Aménagement',designation:'Dalle béton extérieure',unite:'m²',prix:65},
+    {id:'b173',categorie:'Extérieur / Aménagement',designation:'Pavés / dallage',unite:'m²',prix:85},
+    {id:'b174',categorie:'Extérieur / Aménagement',designation:'Clôture grillage',unite:'ml',prix:45},
+    {id:'b175',categorie:'Extérieur / Aménagement',designation:'Clôture panneau bois',unite:'ml',prix:95},
+    {id:'b176',categorie:'Extérieur / Aménagement',designation:'Portail (fourniture + pose)',unite:'u',prix:1800},
+    {id:'b177',categorie:'Extérieur / Aménagement',designation:'Mur de clôture parpaing enduit',unite:'m²',prix:120},
+    {id:'b178',categorie:'Extérieur / Aménagement',designation:'Engazonnement',unite:'m²',prix:12},
+    {id:'b179',categorie:'Extérieur / Aménagement',designation:'Enrobé / bitume',unite:'m²',prix:55},
+    {id:'b180',categorie:'Divers / Chantier',designation:'Échafaudage (location + montage)',unite:'forfait',prix:1500},
+    {id:'b181',categorie:'Divers / Chantier',designation:'Nettoyage et évacuation déchets chantier',unite:'forfait',prix:600},
+    {id:'b182',categorie:'Divers / Chantier',designation:'Protection sols / mobilier',unite:'forfait',prix:250},
+    {id:'b183',categorie:'Divers / Chantier',designation:'Main d\'œuvre ouvrier qualifié',unite:'h',prix:45},
+    {id:'b184',categorie:'Divers / Chantier',designation:'Main d\'œuvre manœuvre',unite:'h',prix:35},
+    {id:'b185',categorie:'Divers / Chantier',designation:'Déplacement / forfait trajet',unite:'forfait',prix:80},
+    {id:'b186',categorie:'Divers / Chantier',designation:'Location nacelle (jour)',unite:'u',prix:350},
+    {id:'b187',categorie:'Divers / Chantier',designation:'Étude / métré',unite:'forfait',prix:200}
+  ];
+}
 function saveDB(){
   try{localStorage.setItem(SK,JSON.stringify(db));}catch(e){}
   pushToCloud();
@@ -1055,7 +1294,8 @@ function handleMenuNav(action){
   switch(action){
     case 'banque': showView('banque'); break;
     case 'depenses': showView('depenses'); renderDepenses(); break;
-    case 'plans': showView('plans'); plRender(); break;
+    case 'bibliotheque': showView('bibliotheque'); renderBibliotheque(); break;
+    case 'plans': showView('plans'); _plParcoursMode=false; var _upb=document.getElementById('pl-use-parcours'); if(_upb)_upb.style.display='none'; plRender(); break;
     case 'clients': showView('clients'); if(typeof renderClients==='function')renderClients(); break;
     case 'planning': showView('planning'); if(typeof renderPlanningList==='function')renderPlanningList(); break;
     case 'parametres':
@@ -1136,6 +1376,25 @@ function plBuildPoints(){
     pts.push({x:x,y:y});
   });
   return pts;
+}
+function plFermerForme(){
+  plCollect();
+  // Ne garder que les segments réellement saisis
+  var valid=plSegments.filter(function(s){return pN(s.len)>0;});
+  if(valid.length<2){showToast('Saisissez au moins 2 côtés avant de fermer','error');return;}
+  plSegments=valid;
+  var pts=plBuildPoints();
+  var last=pts[pts.length-1];
+  // Vecteur du dernier point vers le départ (0,0)
+  var dx=-last.x,dy=-last.y;
+  var dist=Math.hypot(dx,dy);
+  if(dist<0.01){showToast('La forme est déjà fermée','info');plRender();return;}
+  var ang=Math.atan2(dy,dx)*180/Math.PI;
+  if(ang<0)ang+=360;
+  // Ajouter le segment de fermeture
+  plSegments.push({len:dist.toFixed(2),ang:Math.round(ang).toString()});
+  plRender();
+  showToast('Forme fermée (+'+dist.toFixed(2)+' m)','success');
 }
 function plCompute(){
   var pts=plBuildPoints();
@@ -1220,6 +1479,39 @@ function plExportPDF(){
     +'<script>setTimeout(function(){window.print();},300);<\/script>'
     +'</body></html>';
   win.document.write(html);win.document.close();
+}
+
+var _plParcoursMode=false;
+function openPolygoneForParcours(){
+  _plParcoursMode=true;
+  plSegments=[{len:'',ang:''}];
+  closeSideMenu();
+  document.getElementById('modal-parcours').classList.remove('open');
+  showView('plans');
+  plRender();
+  var useBtn=document.getElementById('pl-use-parcours');
+  if(useBtn)useBtn.style.display='block';
+}
+function usePolygoneInParcours(){
+  plCollect();
+  var pts=plBuildPoints();
+  if(pts.length<3){showToast('Dessinez au moins 3 côtés','error');return;}
+  var p=pts.slice();var n=p.length;
+  var closed=n>1&&Math.abs(p[0].x-p[n-1].x)<1e-9&&Math.abs(p[0].y-p[n-1].y)<1e-9;
+  var poly=closed?p.slice(0,-1):p.slice();
+  var m=poly.length,a=0;
+  for(var i=0;i<m;i++){var j=(i+1)%m;a+=poly[i].x*poly[j].y-poly[j].x*poly[i].y;}
+  var surf=Math.abs(a)/2;
+  if(surf<=0){showToast('Surface invalide','error');return;}
+  cSurfaces.push({id:genId(),nom:'Forme complexe',l:'',h:'',surfacePoly:surf.toFixed(2)});
+  renderCSurfaces();
+  _plParcoursMode=false;
+  var useBtn=document.getElementById('pl-use-parcours');
+  if(useBtn)useBtn.style.display='none';
+  showView('accueil');
+  document.getElementById('modal-parcours').classList.add('open');
+  if(typeof switchCotesTab==='function')switchCotesTab('surfaces');
+  showToast('Surface '+surf.toFixed(2)+' m² ajoutée','success');
 }
 
 // ============================================================
@@ -1328,6 +1620,76 @@ function deleteDepense(){
   saveDB();renderDepenses();renderGreeting();
   document.getElementById('modal-depense').classList.remove('open');
   showToast('Dépense supprimée','success');
+}
+var editBibId=null;
+var BIB_CATS=['Couverture','Isolation','Maçonnerie','Plâtrerie','Carrelage','Peinture','Plomberie','Électricité','Menuiserie','Divers'];
+function renderBibliotheque(){
+  var list=document.getElementById('bib-list');if(!list)return;
+  var search=(document.getElementById('bib-search')?document.getElementById('bib-search').value:'').toLowerCase().trim();
+  var items=(db.bibliotheque||[]).filter(function(b){
+    return !search||(b.designation||'').toLowerCase().indexOf(search)>=0||(b.categorie||'').toLowerCase().indexOf(search)>=0;
+  });
+  if(!items.length){list.innerHTML='<div class="empty-state" style="padding:30px;"><div class="empty-state-icon">📚</div><div style="font-size:14px;">'+(search?'Aucun ouvrage trouvé':'Bibliothèque vide')+'</div></div>';return;}
+  // Grouper par catégorie
+  var groups={},order=[];
+  items.forEach(function(b){var c=b.categorie||'Divers';if(!groups[c]){groups[c]=[];order.push(c);}groups[c].push(b);});
+  list.innerHTML=order.map(function(cat){
+    return '<div style="font-size:11px;font-family:var(--font-mono);color:var(--c-accent);letter-spacing:1px;margin:14px 4px 8px;">'+esc(cat).toUpperCase()+'</div>'
+      +groups[cat].map(function(b){
+        return '<div class="card" style="margin-bottom:6px;cursor:pointer;padding:12px;" data-bibedit="'+b.id+'">'
+          +'<div style="display:flex;align-items:center;gap:12px;">'
+          +'<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;">'+esc(b.designation)+'</div>'
+          +'<div style="font-size:11px;color:var(--c-muted);">'+esc(b.unite)+'</div></div>'
+          +'<div style="font-family:var(--font-mono);font-weight:700;color:var(--c-accent);">'+fmtMoney(b.prix)+'</div>'
+          +'</div></div>';
+      }).join('');
+  }).join('');
+}
+function openBib(id){
+  editBibId=id||null;
+  var b=id?(db.bibliotheque||[]).find(function(x){return x.id===id;}):null;
+  document.getElementById('bib-modal-title').textContent=b?'Modifier l\'ouvrage':'Nouvel ouvrage';
+  document.getElementById('bib-desig').value=b?b.designation||'':'';
+  document.getElementById('bib-prix').value=b?b.prix||'':'';
+  document.getElementById('bib-unite').value=b?b.unite||'m²':'m²';
+  document.getElementById('bib-cat').value=b?b.categorie||'Divers':'Couverture';
+  document.getElementById('bib-delete').style.display=b?'block':'none';
+  document.getElementById('modal-bib').classList.add('open');
+}
+function saveBib(){
+  var desig=document.getElementById('bib-desig').value.trim();
+  var prix=pN(document.getElementById('bib-prix').value);
+  if(!desig){showToast('Désignation requise','error');return;}
+  var b={id:editBibId||genId(),designation:desig,prix:prix,unite:document.getElementById('bib-unite').value,categorie:document.getElementById('bib-cat').value};
+  if(editBibId){var i=db.bibliotheque.findIndex(function(x){return x.id===editBibId;});if(i>=0)db.bibliotheque[i]=b;}
+  else db.bibliotheque.push(b);
+  saveDB();renderBibliotheque();
+  document.getElementById('modal-bib').classList.remove('open');
+  showToast('Ouvrage enregistré','success');
+}
+function deleteBib(){
+  if(!editBibId)return;
+  db.bibliotheque=db.bibliotheque.filter(function(x){return x.id!==editBibId;});
+  saveDB();renderBibliotheque();
+  document.getElementById('modal-bib').classList.remove('open');
+  showToast('Ouvrage supprimé','success');
+}
+function restoreBibliotheque(){
+  var full=defaultBibliotheque();
+  var existing=db.bibliotheque||[];
+  // Conserver les prix modifiés et les ouvrages persos : fusion par designation
+  var byDesig={};
+  existing.forEach(function(b){if(b.designation)byDesig[b.designation.toLowerCase()]=b;});
+  full.forEach(function(b){
+    var prev=byDesig[b.designation.toLowerCase()];
+    if(prev){b.prix=prev.prix;b.id=prev.id;} // garder le prix déjà ajusté
+  });
+  // Ajouter les ouvrages persos absents du catalogue
+  var fullDesigs={};full.forEach(function(b){fullDesigs[b.designation.toLowerCase()]=1;});
+  existing.forEach(function(b){if(b.designation&&!fullDesigs[b.designation.toLowerCase()])full.push(b);});
+  db.bibliotheque=full;
+  saveDB();renderBibliotheque();
+  showToast(full.length+' ouvrages chargés','success');
 }
 function depScanTicket(file){
   var status=document.getElementById('dep-scan-status');
@@ -1545,13 +1907,20 @@ function applyNatureTabs(nature){
   });
 }
 
-function calcCSurf(s){return (pN(s.l)||0)*(pN(s.h)||0);}
+function calcCSurf(s){return s.surfacePoly?pN(s.surfacePoly):(pN(s.l)||0)*(pN(s.h)||0);}
 function calcCMurSurf(m){return (pN(m.l)||0)*((pN(m.hg)||0)+(pN(m.hd)||0))/2;}
 function calcCMurOuv(m){return (m.ouvertures||[]).reduce(function(a,o){return a+(pN(o.l)||0)*(pN(o.h)||0);},0);}
 
 function renderCSurfaces(){
   var cont=document.getElementById('c-surfaces-list');if(!cont)return;
   cont.innerHTML=cSurfaces.map(function(s){
+    if(s.surfacePoly){
+      return '<div class="devis-line" data-csid="'+s.id+'"><div style="display:grid;grid-template-columns:2fr 1fr 20px;gap:6px;align-items:center;">'
+        +'<input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom" value="'+esc(s.nom)+'" data-csf="nom"/>'
+        +'<div style="font-size:13px;font-family:var(--font-mono);color:var(--c-accent);text-align:center;">◇ '+pN(s.surfacePoly).toFixed(2)+' m²</div>'
+        +'<button class="devis-remove" data-csrem="'+s.id+'">✕</button>'
+        +'</div><div class="cote-tot" style="font-size:11px;color:var(--c-muted);margin-top:4px;">Forme complexe = '+pN(s.surfacePoly).toFixed(2)+' m²</div></div>';
+    }
     return '<div class="devis-line" data-csid="'+s.id+'"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:6px;align-items:center;">'
       +'<input type="text" class="form-input" style="font-size:13px;padding:8px;" placeholder="Nom pièce" value="'+esc(s.nom)+'" data-csf="nom"/>'
       +'<input type="number" class="form-input" style="font-size:13px;padding:8px;" placeholder="L (m)" value="'+(s.l||'')+'" data-csf="l" step="0.01" inputmode="decimal"/>'
@@ -1680,7 +2049,7 @@ function buildAndShowPlan(){
     else if(t.type==='2pentes'){surfR=2*ldebord*(lardebord/2)*slope2;}
     else if(t.type==='4pentes'){surfR=ldebord*lardebord*slope2;}
     else{surfR=2*ldebord*(lardebord/2*slope2+lardebord*0.3);}
-    rooms.push({nom:'Toiture '+t.type,l:ldebord,w:lardebord,type:'toiture',nbPans:nbPans,halfLar:halfLar,pente:t.pente,type_toit:t.type,surfReelle:surfR});
+    rooms.push({nom:'Toiture '+t.type,l:ldebord,w:lardebord,type:'toiture',nbPans:nbPans,halfLar:halfLar,pente:t.pente,type_toit:t.type,sens:(t.sens||'long'),surfReelle:surfR});
   }
   var mg=55,gap=20;
   // cH calculé dynamiquement après mlines (voir plus bas)
@@ -1704,7 +2073,7 @@ function buildAndShowPlan(){
   rooms.forEach(function(r){var rw=Math.max(r.l*sc,55);var rh=Math.max(r.w*sc,35);if(curX+rw>maxW+mg&&placed.length){curX=mg;curY+=rowH+gap;rowH=0;}placed.push(Object.assign({},r,{x:curX,y:curY,pw:rw,ph:rh}));curX+=rw+gap;if(rh>rowH)rowH=rh;});
   // Pré-calculer nb lignes métrés pour dimensionner le cartouche
   var _preNbLines=0;
-  if(Math.max(0,cSurfaces.reduce(function(a,s){return a+(pN(s.l)||0)*(pN(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0))>0)_preNbLines++;
+  if(Math.max(0,cSurfaces.reduce(function(a,s){return a+(s.surfacePoly?pN(s.surfacePoly):(pN(s.l)||0)*(pN(s.h)||0));},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0))>0)_preNbLines++;
   if(cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0)>0)_preNbLines++;
   if(cVolumes.reduce(function(a,v){return a+(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);},0)>0)_preNbLines++;
   if(cLineaires.reduce(function(a,l){return a+(pN(l.lg)||0);},0)>0)_preNbLines++;
@@ -1715,7 +2084,7 @@ function buildAndShowPlan(){
   cH=Math.max(88,28+Math.max(1,_preNbLines)*13+10);
   var tW=Math.max(maxW+2*mg,420);
   var tH=(placed.length>0?curY+rowH+mg:mg+40)+cH+30;
-  var sNette=Math.max(0,cSurfaces.reduce(function(a,s){return a+(pN(s.l)||0)*(pN(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0));
+  var sNette=Math.max(0,cSurfaces.reduce(function(a,s){return a+(s.surfacePoly?pN(s.surfacePoly):(pN(s.l)||0)*(pN(s.h)||0));},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0));
   var murNette=cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0);
   var vtot=cVolumes.reduce(function(a,v){return a+(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);},0);
   var ltot=cLineaires.reduce(function(a,l){return a+(pN(l.lg)||0);},0);
@@ -1753,6 +2122,14 @@ function buildAndShowPlan(){
       sv.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="url(#h1)" opacity="0.3"/>');
       var cx=x+w/2;var cy=y+h/2;
       if(r.type_toit==='2pentes'||r.type_toit==='mansarde'){
+        if(r.sens==='larg'){
+          // Faîtage transversal (parallèle au petit côté, horizontal centré)
+          sv.push('<line x1="'+(x+4)+'" y1="'+cy+'" x2="'+(x+w-4)+'" y2="'+cy+'" stroke="#1a4a7a" stroke-width="2" stroke-dasharray="5,3"/>');
+          sv.push('<line x1="'+x+'" y1="'+y+'" x2="'+(x+4)+'" y2="'+cy+'" stroke="#1a4a7a" stroke-width="1"/>');
+          sv.push('<line x1="'+x+'" y1="'+(y+h)+'" x2="'+(x+4)+'" y2="'+cy+'" stroke="#1a4a7a" stroke-width="1"/>');
+          sv.push('<line x1="'+(x+w)+'" y1="'+y+'" x2="'+(x+w-4)+'" y2="'+cy+'" stroke="#1a4a7a" stroke-width="1"/>');
+          sv.push('<line x1="'+(x+w)+'" y1="'+(y+h)+'" x2="'+(x+w-4)+'" y2="'+cy+'" stroke="#1a4a7a" stroke-width="1"/>');
+        } else {
         // Faîtage longitudinal (parallèle au grand côté, centré)
         sv.push('<line x1="'+cx+'" y1="'+(y+4)+'" x2="'+cx+'" y2="'+(y+h-4)+'" stroke="#1a4a7a" stroke-width="2" stroke-dasharray="5,3"/>');
         // 4 lignes de rampants (coins → faîtage)
@@ -1760,6 +2137,7 @@ function buildAndShowPlan(){
         sv.push('<line x1="'+(x+w)+'" y1="'+y+'" x2="'+cx+'" y2="'+(y+4)+'" stroke="#1a4a7a" stroke-width="1"/>');
         sv.push('<line x1="'+x+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+(y+h-4)+'" stroke="#1a4a7a" stroke-width="1"/>');
         sv.push('<line x1="'+(x+w)+'" y1="'+(y+h)+'" x2="'+cx+'" y2="'+(y+h-4)+'" stroke="#1a4a7a" stroke-width="1"/>');
+        }
       } else if(r.type_toit==='4pentes'){
         // Arêtiers à 45° depuis les 4 coins
         // offset = h/2 (demi-largeur en px)
@@ -1917,7 +2295,7 @@ async function doGenerateDevisFromParcours(){
   document.getElementById('btn-step-next').disabled=true;
 
   // Calcul des métrés réels
-  var sNette=Math.max(0,cSurfaces.reduce(function(a,s){return a+(pN(s.l)||0)*(pN(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0));
+  var sNette=Math.max(0,cSurfaces.reduce(function(a,s){return a+(s.surfacePoly?pN(s.surfacePoly):(pN(s.l)||0)*(pN(s.h)||0));},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0));
   var murNette=cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0);
   var vtot=cVolumes.reduce(function(a,v){return a+(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);},0);
   var ltot=cLineaires.reduce(function(a,l){return a+(pN(l.lg)||0);},0);
@@ -1980,6 +2358,20 @@ async function doGenerateDevisFromParcours(){
         +'  Surface réelle: '+tsurfVal.toFixed(2)+' m²\n'
         +(fml>0?'  Faîtage: '+fml.toFixed(2)+' ml\n':'')
         +(arretiers>0?'  Arêtiers (x'+nbArr+'): '+(arretiers*nbArr).toFixed(2)+' ml total ('+arretiers.toFixed(2)+' ml × '+nbArr+')\n':'')
+        +(function(){
+          // Rives = bords rampants latéraux. Longueur de rampant selon pente.
+          var pr=(t.pente||35)*Math.PI/180;
+          var sens=t.sens||'long';
+          if(t.type==='2pentes'){
+            var base=sens==='larg'?(t.l||0):(t.lar||0);
+            var rampant=(base/2)/Math.cos(pr);
+            return '  Rives (rampant pignon): '+rampant.toFixed(2)+' ml × 4 = '+(rampant*4).toFixed(2)+' ml total\n';
+          } else if(t.type==='1pan'){
+            var rampant1=((t.lar||0))/Math.cos(pr);
+            return '  Rives: '+rampant1.toFixed(2)+' ml × 2 = '+(rampant1*2).toFixed(2)+' ml total\n';
+          }
+          return '';
+        })()
         +'  Pente: '+(t.pente||35)+'°\n'
         +'  Longueur: '+(t.l||0)+'m × Largeur: '+(t.lar||0)+'m\n'
         +(t.debord?'  Débord: '+t.debord+'m\n':'');
@@ -2015,10 +2407,17 @@ async function doGenerateDevisFromParcours(){
     +'10. Regroupe les lignes par "lot" cohérent : chaque ligne porte le nom de sa partie. Ordonne les lots dans l\'ordre logique du chantier. Ligne sans partie évidente: lot="Divers".';
 
   // Ajouter instruction système stricte en tête du prompt
+  var bibPrompt='';
+  if(db.bibliotheque&&db.bibliotheque.length){
+    bibPrompt='\n\n=== BIBLIOTHÈQUE DE PRIX (OBLIGATOIRE) ===\n'
+      +'Utilise EN PRIORITÉ ces prix unitaires (ce sont les tarifs de l\'artisan). Si un ouvrage du devis correspond à un élément ci-dessous, reprends EXACTEMENT son prix unitaire et son unité. N\'invente un prix QUE pour un ouvrage absent de cette liste :\n'
+      +db.bibliotheque.map(function(b){return '- '+b.designation+' = '+b.prix+' €/'+b.unite+' ['+b.categorie+']';}).join('\n')
+      +'\n=== FIN BIBLIOTHÈQUE ===\n';
+  }
   var fullPrompt='INSTRUCTION CRITIQUE: Tu dois répondre UNIQUEMENT avec un tableau JSON valide.\n'
     +'Pas de texte avant, pas de texte après, pas de markdown, pas de ```json.\n'
     +'Commence directement par [ et termine par ].\n\n'
-    +prompt;
+    +prompt+bibPrompt;
   var result;
   try{
     result=await callAI(fullPrompt);
@@ -2226,6 +2625,42 @@ function exportFournisseurPDF(id){
   var w=window.open('','_blank');
   if(w){w.document.write(html);w.document.close();}
   else showToast('Autorisez les pop-ups','error');
+}
+function backupExport(){
+  try{
+    var data=JSON.stringify(db,null,2);
+    var blob=new Blob([data],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    var dt=new Date().toISOString().split('T')[0];
+    a.href=url;a.download='chantierspro-sauvegarde-'+dt+'.json';
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},100);
+    showToast('Sauvegarde exportée','success');
+  }catch(e){showToast('Erreur export','error');}
+}
+function backupImport(file){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var imported=JSON.parse(e.target.result);
+      if(!imported||typeof imported!=='object'){showToast('Fichier invalide','error');return;}
+      // Fusionner : garder ce qui existe, ajouter l'importé
+      ['clients','devis','visites','planning','factures','depenses'].forEach(function(c){
+        if(Array.isArray(imported[c])){
+          var byId={};
+          (db[c]||[]).forEach(function(it){if(it&&it.id)byId[it.id]=it;});
+          imported[c].forEach(function(it){if(it&&it.id)byId[it.id]=it;});
+          db[c]=Object.keys(byId).map(function(k){return byId[k];});
+        }
+      });
+      if(imported.settings)db.settings=Object.assign({},db.settings,imported.settings);
+      saveDB();if(typeof flushToCloudNow==='function')flushToCloudNow();
+      if(typeof afterLogin==='function')afterLogin();
+      showToast('Sauvegarde importée ✓','success');
+    }catch(err){showToast('Fichier illisible','error');}
+  };
+  reader.readAsText(file);
 }
 function getClientEmail(nom){
   if(!nom)return '';
@@ -2544,7 +2979,7 @@ async function scannerToDevis(){var text=document.getElementById('scanner-text')
 function populateSettings(){var s=db.settings;document.getElementById('s-entreprise').value=s.entreprise||'';document.getElementById('s-siret').value=s.siret||'';document.getElementById('s-tel').value=s.tel||'';document.getElementById('s-email').value=s.email||'';document.getElementById('s-adresse').value=s.adresse||'';document.getElementById('s-prefix').value=s.prefix||'DEV-'+yr+'-';document.getElementById('s-nextnum').value=s.nextNum||1;var t=s.tarifs||{};document.getElementById('t-carreleur').value=t.carreleur_mo||42;document.getElementById('t-peintre').value=t.peintre_mo||38;document.getElementById('t-plombier').value=t.plombier_mo||62;document.getElementById('t-electricien').value=t.electricien_mo||60;document.getElementById('t-menuisier').value=t.menuisier_mo||50;document.getElementById('t-macon').value=t.macon_mo||45;document.getElementById('t-marge').value=t.marge||0;document.getElementById('t-tva').value=t.tva_defaut||10;document.getElementById('t-notes').value=t.notes||'';var ai=s.ai||{};document.getElementById('s-ia-provider').value=ai.provider||'claude';document.getElementById('s-claude-key').value=ai.claudeKey||'';document.getElementById('s-openai-key').value=ai.openaiKey||'';document.getElementById('s-claude-model').value=ai.claudeModel||'claude-sonnet-4-20250514';document.getElementById('s-openai-model').value=ai.openaiModel||'gpt-4o-mini';document.getElementById('s-proxy-url').value=ai.proxyUrl||'';if(s.logo){document.getElementById('logo-preview').innerHTML='<img src="'+s.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>';}updateProviderUI();updateNumPrev();}
 function updateProviderUI(){var p=document.getElementById('s-ia-provider').value;document.getElementById('claude-cfg').style.display=p==='claude'?'block':'none';document.getElementById('openai-cfg').style.display=p==='openai'?'block':'none';}
 function updateNumPrev(){var px=document.getElementById('s-prefix').value||'DEV-'+yr+'-';document.getElementById('next-num-preview').textContent=px+String(parseInt(document.getElementById('s-nextnum').value)||1).padStart(3,'0');}
-function saveSettings(){var s=db.settings;s.entreprise=document.getElementById('s-entreprise').value;s.siret=document.getElementById('s-siret').value;s.tel=document.getElementById('s-tel').value;s.email=document.getElementById('s-email').value;s.adresse=document.getElementById('s-adresse').value;s.prefix=document.getElementById('s-prefix').value||'DEV-'+yr+'-';s.nextNum=parseInt(document.getElementById('s-nextnum').value)||1;s.tarifs={carreleur_mo:parseFloat(document.getElementById('t-carreleur').value)||42,peintre_mo:parseFloat(document.getElementById('t-peintre').value)||38,plombier_mo:parseFloat(document.getElementById('t-plombier').value)||62,electricien_mo:parseFloat(document.getElementById('t-electricien').value)||60,menuisier_mo:parseFloat(document.getElementById('t-menuisier').value)||50,macon_mo:parseFloat(document.getElementById('t-macon').value)||45,marge:parseFloat(document.getElementById('t-marge').value)||0,tva_defaut:parseFloat(document.getElementById('t-tva').value)||10,notes:document.getElementById('t-notes').value};s.ai={provider:document.getElementById('s-ia-provider').value,claudeKey:document.getElementById('s-claude-key').value.replace(/[‐‑‒–—―−－]/g,'-').trim(),openaiKey:document.getElementById('s-openai-key').value.replace(/[‐‑‒–—―−－]/g,'-').trim(),claudeModel:document.getElementById('s-claude-model').value,openaiModel:document.getElementById('s-openai-model').value,proxyUrl:document.getElementById('s-proxy-url').value};saveDB();renderGreeting();document.getElementById('modal-settings').classList.remove('open');showToast('Paramètres sauvegardés','success');}
+function saveSettings(){var s=db.settings;s.entreprise=document.getElementById('s-entreprise').value;s.siret=document.getElementById('s-siret').value;s.tel=document.getElementById('s-tel').value;s.email=document.getElementById('s-email').value;s.adresse=document.getElementById('s-adresse').value;s.prefix=document.getElementById('s-prefix').value||'DEV-'+yr+'-';s.nextNum=parseInt(document.getElementById('s-nextnum').value)||1;s.tarifs={carreleur_mo:parseFloat(document.getElementById('t-carreleur').value)||42,peintre_mo:parseFloat(document.getElementById('t-peintre').value)||38,plombier_mo:parseFloat(document.getElementById('t-plombier').value)||62,electricien_mo:parseFloat(document.getElementById('t-electricien').value)||60,menuisier_mo:parseFloat(document.getElementById('t-menuisier').value)||50,macon_mo:parseFloat(document.getElementById('t-macon').value)||45,marge:parseFloat(document.getElementById('t-marge').value)||0,tva_defaut:parseFloat(document.getElementById('t-tva').value)||10,notes:document.getElementById('t-notes').value};s.ai={provider:document.getElementById('s-ia-provider').value,claudeKey:document.getElementById('s-claude-key').value.replace(/[‐‑‒–—―−－]/g,'-').trim(),openaiKey:document.getElementById('s-openai-key').value.replace(/[‐‑‒–—―−－]/g,'-').trim(),claudeModel:document.getElementById('s-claude-model').value,openaiModel:document.getElementById('s-openai-model').value,proxyUrl:document.getElementById('s-proxy-url').value};saveDB();if(typeof flushToCloudNow==='function')flushToCloudNow();renderGreeting();document.getElementById('modal-settings').classList.remove('open');showToast('Paramètres sauvegardés','success');}
 function handleLogoUpload(file){if(!file)return;var canvas=document.createElement('canvas');var img=new Image();img.onload=function(){var max=256;var r=Math.min(max/img.width,max/img.height);canvas.width=img.width*r;canvas.height=img.height*r;canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);var b64=canvas.toDataURL('image/jpeg',0.8);db.settings.logo=b64;saveDB();document.getElementById('logo-preview').innerHTML='<img src="'+b64+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>';};img.src=URL.createObjectURL(file);}
 function openSettings(){populateSettings();document.getElementById('modal-settings').classList.add('open');}
 // ============================================================
@@ -2553,7 +2988,7 @@ function openSettings(){populateSettings();document.getElementById('modal-settin
 function injectPlanIntoDevis(){
   if(!planSVG){showToast('Pas de plan','error');return;}
   document.getElementById('modal-parcours').classList.remove('open');
-  var sN=Math.max(0,cSurfaces.reduce(function(a,s){return a+(pN(s.l)||0)*(pN(s.h)||0);},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0));
+  var sN=Math.max(0,cSurfaces.reduce(function(a,s){return a+(s.surfacePoly?pN(s.surfacePoly):(pN(s.l)||0)*(pN(s.h)||0));},0)-cDeductions.reduce(function(a,d){return a+(pN(d.l)||0)*(pN(d.h)||0);},0));
   var mN=cMurs.reduce(function(a,m){return a+Math.max(0,calcCMurSurf(m)-calcCMurOuv(m));},0);
   var vT=cVolumes.reduce(function(a,v){return a+(pN(v.l)||0)*(pN(v.L)||0)*(pN(v.h)||0);},0);
   var lT=cLineaires.reduce(function(a,l){return a+(pN(l.lg)||0);},0);
@@ -2642,6 +3077,8 @@ document.addEventListener('DOMContentLoaded',function(){
   // Éditeur de plans
   var plAdd=document.getElementById('pl-add-seg');
   if(plAdd)plAdd.addEventListener('click',function(){plCollect();plSegments.push({len:'',ang:''});plRender();});
+  var plCloseForm=document.getElementById('pl-close-form');
+  if(plCloseForm)plCloseForm.addEventListener('click',plFermerForme);
   var plSegCont=document.getElementById('pl-segments');
   if(plSegCont){
     plSegCont.addEventListener('input',function(e){if(e.target.dataset.plf){plCollect();plCompute();}});
@@ -2677,6 +3114,18 @@ document.addEventListener('DOMContentLoaded',function(){
   // Dépenses
   var depAdd=document.getElementById('dep-add');
   if(depAdd)depAdd.addEventListener('click',function(){openDepense(null);});
+  var bibAdd=document.getElementById('bib-add');
+  if(bibAdd)bibAdd.addEventListener('click',function(){openBib(null);});
+  var bibClose=document.getElementById('bib-close');
+  if(bibClose)bibClose.addEventListener('click',function(){document.getElementById('modal-bib').classList.remove('open');});
+  var bibSave=document.getElementById('bib-save');
+  if(bibSave)bibSave.addEventListener('click',saveBib);
+  var bibDelete=document.getElementById('bib-delete');
+  if(bibDelete)bibDelete.addEventListener('click',deleteBib);
+  var bibSearch=document.getElementById('bib-search');
+  if(bibSearch)bibSearch.addEventListener('input',renderBibliotheque);
+  var bibList=document.getElementById('bib-list');
+  if(bibList)bibList.addEventListener('click',function(e){var row=e.target.closest('[data-bibedit]');if(row)openBib(row.dataset.bibedit);});
   var dRegen=document.getElementById('d-regen-btn');
   if(dRegen)dRegen.addEventListener('click',function(){if(window._regenVisiteId)reopenParcoursFromVisite(window._regenVisiteId);});
   var _bhdep=document.getElementById('btn-home-depenses');
@@ -2719,6 +3168,10 @@ document.addEventListener('DOMContentLoaded',function(){
   // Surfaces
   // SURFACES — input sans re-render
   document.getElementById('btn-add-csurface').addEventListener('click',function(){cSurfaces.push({id:genId(),nom:'Surface',l:'',h:''});renderCSurfaces();});
+  var _bacp=document.getElementById('btn-add-cpolygone');
+  if(_bacp)_bacp.addEventListener('click',openPolygoneForParcours);
+  var _bup=document.getElementById('pl-use-parcours');
+  if(_bup)_bup.addEventListener('click',usePolygoneInParcours);
   document.getElementById('btn-add-cdeduction').addEventListener('click',function(){cDeductions.push({id:genId(),nom:'Porte',l:'0.9',h:'2.1'});renderCSurfaces();});
   document.getElementById('ctab-surfaces').addEventListener('focus',function(e){if(e.target.tagName==='INPUT'&&e.target.type==='number'&&(e.target.value==='0'||e.target.value==='0.00'))e.target.value='';},true);
   document.getElementById('ctab-surfaces').addEventListener('input',function(e){
@@ -2906,6 +3359,11 @@ document.addEventListener('DOMContentLoaded',function(){
   // SETTINGS
   document.getElementById('close-modal-settings').addEventListener('click',function(){document.getElementById('modal-settings').classList.remove('open');});
   document.getElementById('btn-save-settings').addEventListener('click',function(){saveSettings();});
+  var _bbe=document.getElementById('btn-backup-export');
+  if(_bbe)_bbe.addEventListener('click',backupExport);
+  var _bbi=document.getElementById('btn-backup-import');
+  var _bfi=document.getElementById('backup-file-input');
+  if(_bbi&&_bfi){_bbi.addEventListener('click',function(){_bfi.click();});_bfi.addEventListener('change',function(){if(_bfi.files&&_bfi.files[0]){backupImport(_bfi.files[0]);_bfi.value='';}});}
   document.getElementById('btn-logout').addEventListener('click',function(){if(fbReady&&fbAuth)fbAuth.signOut().catch(function(){});saveDB();hideApp();document.getElementById('modal-settings').classList.remove('open');});
   document.getElementById('btn-upload-logo').addEventListener('click',function(){document.getElementById('logo-input').click();});
   document.getElementById('logo-input').addEventListener('change',function(e){if(e.target.files[0])handleLogoUpload(e.target.files[0]);});
@@ -3423,6 +3881,15 @@ function validerSignature(){
       <div class="form-group"><label class="form-label">URL proxy (recommandé — clé sécurisée côté serveur)</label><input type="url" class="form-input" id="s-proxy-url" placeholder="https://chantierspro-ai.maximecoulon.workers.dev"/><div style="font-size:11px;color:var(--c-muted);margin-top:4px;">Si renseigné, la clé API ci-dessus devient inutile : elle est stockée dans le Worker Cloudflare.</div></div>
     </div>
     <button class="btn btn-primary btn-full" id="btn-save-settings" style="margin-top:16px;">💾 Enregistrer</button>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--c-border);">
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--c-muted);letter-spacing:1px;margin-bottom:8px;">SAUVEGARDE</div>
+      <div style="font-size:12px;color:var(--c-muted);margin-bottom:10px;line-height:1.5;">Avant une mise à jour de l'app, exportez vos données par sécurité. Réimportez-les ensuite si besoin.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="btn btn-secondary" id="btn-backup-export">⬇️ Exporter</button>
+        <button class="btn btn-secondary" id="btn-backup-import">⬆️ Importer</button>
+      </div>
+      <input type="file" id="backup-file-input" accept="application/json,.json" style="display:none;"/>
+    </div>
     <button class="btn btn-danger btn-full" id="btn-logout" style="margin-top:8px;">🚪 Déconnexion</button>
   </div>
 </div>
