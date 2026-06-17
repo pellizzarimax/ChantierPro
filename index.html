@@ -422,7 +422,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <div style="background:rgba(45,140,240,.08);border:1px solid rgba(45,140,240,.25);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--c-info);line-height:1.5;">💡 Ces prix sont injectés dans l'IA : vos devis utiliseront VOS tarifs au lieu de prix inventés. Modifiez-les selon votre marché.</div>
       <input type="text" class="form-input" id="bib-search" placeholder="🔍 Rechercher un ouvrage..." style="margin-bottom:12px;"/>
       <button class="btn btn-primary" id="bib-add" style="width:100%;margin-bottom:8px;">+ Nouvel ouvrage</button>
-      <button class="btn btn-secondary" id="bib-restore" style="width:100%;margin-bottom:14px;font-size:13px;">⟲ Charger le catalogue complet (198 ouvrages)</button>
+      <button class="btn btn-secondary" id="bib-restore" style="width:100%;margin-bottom:14px;font-size:13px;">⟲ Charger le catalogue complet</button>
       <div id="bib-list"></div>
     </div>
 
@@ -515,6 +515,30 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         <div class="form-group"><label class="form-label">Catégorie</label>
           <select class="form-input" id="bib-cat"><option>Préparation / Démolition</option><option>Terrassement / VRD</option><option>Fondations / Gros œuvre</option><option>Plancher / Structure</option><option>Charpente / Ossature bois</option><option>Couverture</option><option>Zinguerie / Évacuation EP</option><option>Isolation</option><option>Menuiserie extérieure</option><option>Menuiserie intérieure</option><option>Plâtrerie / Cloisons</option><option>Carrelage / Faïence</option><option>Sols souples / Parquet</option><option>Peinture / Revêtements</option><option>Plomberie / Sanitaire</option><option>Chauffage / Ventilation</option><option>Électricité</option><option>Étanchéité / Toiture-terrasse</option><option>Extérieur / Aménagement</option><option>Divers / Chantier</option></select>
         </div>
+
+        <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--c-border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-size:12px;font-family:var(--font-mono);color:var(--c-accent);letter-spacing:1px;">DÉBOURSÉ DÉTAILLÉ</div>
+            <button class="btn btn-secondary" id="bib-toggle-detail" style="padding:4px 10px;font-size:11px;">Afficher</button>
+          </div>
+          <div id="bib-detail-section" style="display:none;">
+            <div style="font-size:11px;color:var(--c-muted);margin-bottom:8px;">Fournitures (matériaux)</div>
+            <div id="bib-fournitures-list"></div>
+            <button class="btn btn-secondary" id="bib-add-fourniture" style="width:100%;font-size:12px;margin-bottom:14px;">+ Ajouter une fourniture</button>
+            <div style="font-size:11px;color:var(--c-muted);margin-bottom:8px;">Main d'œuvre</div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">Temps (h)</label><input type="number" inputmode="decimal" class="form-input" id="bib-mo-temps" placeholder="0" step="0.25"/></div>
+              <div class="form-group"><label class="form-label">Taux (€/h)</label><input type="number" inputmode="decimal" class="form-input" id="bib-mo-taux" placeholder="45" step="0.5"/></div>
+            </div>
+            <div class="form-group"><label class="form-label">Marge (%)</label><input type="number" inputmode="decimal" class="form-input" id="bib-marge" placeholder="0" step="1"/></div>
+            <div style="background:var(--c-surface2);border-radius:var(--r);padding:12px 14px;margin:10px 0;">
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--c-muted);">Déboursé sec</span><span id="bib-debourse-val" style="font-family:var(--font-mono);">0,00 €</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;"><span>Prix de vente calculé</span><span id="bib-pv-val" style="font-family:var(--font-mono);color:var(--c-accent);">0,00 €</span></div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:4px;"><input type="checkbox" id="bib-prix-force" style="width:auto;"/> Forcer le prix manuellement (ignorer le calcul)</label>
+          </div>
+        </div>
+
         <button class="btn btn-primary" id="bib-save" style="width:100%;margin-top:8px;">Enregistrer</button>
         <button class="btn btn-secondary" id="bib-delete" style="width:100%;margin-top:8px;display:none;">🗑 Supprimer</button>
       </div>
@@ -1071,7 +1095,7 @@ function pushToCloud(){
     try{
       var col=fbDb.collection('users').doc(currentUser.uid).collection('data');
       var ts=firebase.firestore.FieldValue.serverTimestamp();
-      ['clients','devis','visites','planning','factures','depenses'].forEach(function(c){
+      ['clients','devis','visites','planning','factures','depenses','bibliotheque'].forEach(function(c){
         col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(e){console.warn('Sync '+c,e);});
       });
       col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(e){console.warn('Sync settings',e);});
@@ -1140,7 +1164,7 @@ function flushToCloudNow(){
   try{
     var col=fbDb.collection('users').doc(currentUser.uid).collection('data');
     var ts=firebase.firestore.FieldValue.serverTimestamp();
-    ['clients','devis','visites','planning','factures','depenses'].forEach(function(c){
+    ['clients','devis','visites','planning','factures','depenses','bibliotheque'].forEach(function(c){
       col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(){});
     });
     col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(){});
@@ -1259,7 +1283,7 @@ function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;v
       }
     }
   }).catch(function(){});
-  ['clients','devis','visites','planning','factures','depenses'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){
+  ['clients','devis','visites','planning','factures','depenses','bibliotheque'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){
     // Fusion sûre : union par id, sans perdre les données locales non encore synchronisées
     var remote=x.items||[];var local=db[c]||[];
     var byId={};
@@ -1622,6 +1646,64 @@ function deleteDepense(){
   showToast('Dépense supprimée','success');
 }
 var editBibId=null;
+var METIERS={
+  'Maçon / Gros œuvre':['Préparation / Démolition','Terrassement / VRD','Fondations / Gros œuvre','Plancher / Structure'],
+  'Charpentier':['Charpente / Ossature bois'],
+  'Couvreur':['Couverture','Zinguerie / Évacuation EP','Étanchéité / Toiture-terrasse'],
+  'Isolation / Énergie':['Isolation'],
+  'Menuisier':['Menuiserie extérieure','Menuiserie intérieure'],
+  'Plaquiste':['Plâtrerie / Cloisons'],
+  'Carreleur / Solier':['Carrelage / Faïence','Sols souples / Parquet'],
+  'Peintre':['Peinture / Revêtements'],
+  'Plombier / Chauffagiste':['Plomberie / Sanitaire','Chauffage / Ventilation'],
+  'Électricien':['Électricité'],
+  'Paysagiste / Extérieur':['Extérieur / Aménagement'],
+  'Tous corps d\'état':['Divers / Chantier']
+};
+function metierForCat(cat){
+  for(var m in METIERS){if(METIERS[m].indexOf(cat)>=0)return m;}
+  return 'Tous corps d\'état';
+}
+function calcDebourse(b){
+  // Déboursé sec = fournitures + main d'œuvre
+  var four=(b.fournitures||[]).reduce(function(a,f){return a+(pN(f.qte)||0)*(pN(f.pu)||0);},0);
+  var mo=(pN(b.moTemps)||0)*(pN(b.moTaux)||0);
+  return four+mo;
+}
+function calcPrixVente(b){
+  if(b.prixForce)return pN(b.prix)||0;
+  var deb=calcDebourse(b);
+  if(deb<=0)return pN(b.prix)||0; // pas de détail → prix manuel
+  var marge=pN(b.marge)||0;
+  return +(deb*(1+marge/100)).toFixed(2);
+}
+var _bibFournitures=[];
+function renderBibFournitures(){
+  var cont=document.getElementById('bib-fournitures-list');if(!cont)return;
+  cont.innerHTML=_bibFournitures.map(function(f,i){
+    return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:6px;align-items:center;margin-bottom:6px;">'
+      +'<input type="text" class="form-input" style="font-size:12px;padding:7px;" placeholder="Matériau" value="'+esc(f.nom||'')+'" data-bff="nom" data-bfi="'+i+'"/>'
+      +'<input type="number" inputmode="decimal" class="form-input" style="font-size:12px;padding:7px;" placeholder="Qté" value="'+esc(f.qte||'')+'" data-bff="qte" data-bfi="'+i+'"/>'
+      +'<input type="number" inputmode="decimal" class="form-input" style="font-size:12px;padding:7px;" placeholder="PU" value="'+esc(f.pu||'')+'" data-bff="pu" data-bfi="'+i+'"/>'
+      +'<button class="devis-remove" data-bfrem="'+i+'">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function bibCollectAndRecalc(){
+  // Lire les valeurs courantes dans _bibFournitures
+  var tmp={fournitures:_bibFournitures,
+    moTemps:document.getElementById('bib-mo-temps').value,
+    moTaux:document.getElementById('bib-mo-taux').value,
+    marge:document.getElementById('bib-marge').value,
+    prixForce:document.getElementById('bib-prix-force').checked,
+    prix:document.getElementById('bib-prix').value};
+  var deb=calcDebourse(tmp);
+  var pv=calcPrixVente(tmp);
+  document.getElementById('bib-debourse-val').textContent=fmtMoney(deb);
+  document.getElementById('bib-pv-val').textContent=fmtMoney(pv);
+  // Si pas forcé et déboursé présent, refléter dans le champ prix
+  if(!tmp.prixForce&&deb>0){document.getElementById('bib-prix').value=pv;}
+}
 var BIB_CATS=['Couverture','Isolation','Maçonnerie','Plâtrerie','Carrelage','Peinture','Plomberie','Électricité','Menuiserie','Divers'];
 function renderBibliotheque(){
   var list=document.getElementById('bib-list');if(!list)return;
@@ -1654,13 +1736,39 @@ function openBib(id){
   document.getElementById('bib-unite').value=b?b.unite||'m²':'m²';
   document.getElementById('bib-cat').value=b?b.categorie||'Divers':'Couverture';
   document.getElementById('bib-delete').style.display=b?'block':'none';
+  // Déboursé détaillé
+  _bibFournitures=(b&&b.fournitures)?JSON.parse(JSON.stringify(b.fournitures)):[];
+  document.getElementById('bib-mo-temps').value=b&&b.moTemps?b.moTemps:'';
+  document.getElementById('bib-mo-taux').value=b&&b.moTaux?b.moTaux:'';
+  document.getElementById('bib-marge').value=b&&b.marge?b.marge:'';
+  document.getElementById('bib-prix-force').checked=b&&b.prixForce?true:false;
+  renderBibFournitures();
+  // Replier la section par défaut, déplier si l'ouvrage a un détail
+  var hasDetail=_bibFournitures.length>0||(b&&(b.moTemps||b.marge));
+  document.getElementById('bib-detail-section').style.display=hasDetail?'block':'none';
+  document.getElementById('bib-toggle-detail').textContent=hasDetail?'Masquer':'Afficher';
+  bibCollectAndRecalc();
   document.getElementById('modal-bib').classList.add('open');
 }
 function saveBib(){
   var desig=document.getElementById('bib-desig').value.trim();
-  var prix=pN(document.getElementById('bib-prix').value);
   if(!desig){showToast('Désignation requise','error');return;}
-  var b={id:editBibId||genId(),designation:desig,prix:prix,unite:document.getElementById('bib-unite').value,categorie:document.getElementById('bib-cat').value};
+  var prixForce=document.getElementById('bib-prix-force').checked;
+  var b={
+    id:editBibId||genId(),
+    designation:desig,
+    unite:document.getElementById('bib-unite').value,
+    categorie:document.getElementById('bib-cat').value,
+    metier:metierForCat(document.getElementById('bib-cat').value),
+    fournitures:_bibFournitures.filter(function(f){return (f.nom||'').trim()||pN(f.pu)>0;}),
+    moTemps:pN(document.getElementById('bib-mo-temps').value)||0,
+    moTaux:pN(document.getElementById('bib-mo-taux').value)||0,
+    marge:pN(document.getElementById('bib-marge').value)||0,
+    prixForce:prixForce
+  };
+  // Prix de vente : calculé ou forcé
+  if(prixForce){b.prix=pN(document.getElementById('bib-prix').value)||0;}
+  else{var pv=calcPrixVente(b);b.prix=pv>0?pv:(pN(document.getElementById('bib-prix').value)||0);}
   if(editBibId){var i=db.bibliotheque.findIndex(function(x){return x.id===editBibId;});if(i>=0)db.bibliotheque[i]=b;}
   else db.bibliotheque.push(b);
   saveDB();renderBibliotheque();
@@ -1673,6 +1781,18 @@ function deleteBib(){
   saveDB();renderBibliotheque();
   document.getElementById('modal-bib').classList.remove('open');
   showToast('Ouvrage supprimé','success');
+}
+function restoreBibliotheque(){
+  var cat=defaultBibliotheque();
+  var existing={};
+  (db.bibliotheque||[]).forEach(function(b){existing[(b.designation||'').toLowerCase()]=1;});
+  var added=0;
+  cat.forEach(function(b){
+    if(!existing[(b.designation||'').toLowerCase()]){db.bibliotheque.push(b);added++;}
+  });
+  if(db.settings)db.settings._bibV2=true;
+  saveDB();renderBibliotheque();
+  showToast(added>0?(added+' ouvrages ajoutés ✓'):'Catalogue déjà complet','success');
 }
 function restoreBibliotheque(){
   var full=defaultBibliotheque();
@@ -2646,7 +2766,7 @@ function backupImport(file){
       var imported=JSON.parse(e.target.result);
       if(!imported||typeof imported!=='object'){showToast('Fichier invalide','error');return;}
       // Fusionner : garder ce qui existe, ajouter l'importé
-      ['clients','devis','visites','planning','factures','depenses'].forEach(function(c){
+      ['clients','devis','visites','planning','factures','depenses','bibliotheque'].forEach(function(c){
         if(Array.isArray(imported[c])){
           var byId={};
           (db[c]||[]).forEach(function(it){if(it&&it.id)byId[it.id]=it;});
@@ -3126,6 +3246,32 @@ document.addEventListener('DOMContentLoaded',function(){
   if(bibSearch)bibSearch.addEventListener('input',renderBibliotheque);
   var bibList=document.getElementById('bib-list');
   if(bibList)bibList.addEventListener('click',function(e){var row=e.target.closest('[data-bibedit]');if(row)openBib(row.dataset.bibedit);});
+  var bibRestore=document.getElementById('bib-restore');
+  if(bibRestore)bibRestore.addEventListener('click',restoreBibliotheque);
+  // Section déboursé
+  var bibToggle=document.getElementById('bib-toggle-detail');
+  if(bibToggle)bibToggle.addEventListener('click',function(){
+    var sec=document.getElementById('bib-detail-section');
+    var show=sec.style.display==='none';
+    sec.style.display=show?'block':'none';
+    bibToggle.textContent=show?'Masquer':'Afficher';
+  });
+  var bibAddF=document.getElementById('bib-add-fourniture');
+  if(bibAddF)bibAddF.addEventListener('click',function(){_bibFournitures.push({nom:'',qte:'',pu:''});renderBibFournitures();});
+  var bibFList=document.getElementById('bib-fournitures-list');
+  if(bibFList){
+    bibFList.addEventListener('input',function(e){
+      var t=e.target;if(t.dataset.bff!==undefined){var i=parseInt(t.dataset.bfi);if(_bibFournitures[i]){_bibFournitures[i][t.dataset.bff]=t.value;bibCollectAndRecalc();}}
+    });
+    bibFList.addEventListener('click',function(e){
+      var rem=e.target.closest('[data-bfrem]');if(rem){_bibFournitures.splice(parseInt(rem.dataset.bfrem),1);renderBibFournitures();bibCollectAndRecalc();}
+    });
+  }
+  ['bib-mo-temps','bib-mo-taux','bib-marge','bib-prix-force','bib-prix'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)el.addEventListener('input',bibCollectAndRecalc);
+    if(el&&el.type==='checkbox')el.addEventListener('change',bibCollectAndRecalc);
+  });
   var dRegen=document.getElementById('d-regen-btn');
   if(dRegen)dRegen.addEventListener('click',function(){if(window._regenVisiteId)reopenParcoursFromVisite(window._regenVisiteId);});
   var _bhdep=document.getElementById('btn-home-depenses');
