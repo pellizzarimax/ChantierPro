@@ -426,6 +426,65 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <div id="bib-list"></div>
     </div>
 
+    <div class="view" id="view-ossature">
+      <div class="section-title">Ossature bois</div>
+      <div class="section-sub">Débit de bois + pré-dimensionnement indicatif</div>
+
+      <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:12px;color:#f59e0b;line-height:1.5;">⚠️ Les sections proposées sont <b>indicatives</b> (pratique courante DTU 31.2). Pour toute structure, faites <b>valider le dimensionnement par un bureau d'études</b> selon vos charges réelles (neige, vent, descente de charges).</div>
+
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button class="btn btn-secondary ob-tab active" data-obtab="mur" style="flex:1;">Mur</button>
+        <button class="btn btn-secondary ob-tab" data-obtab="plancher" style="flex:1;">Plancher</button>
+      </div>
+
+      <div id="ob-pane-mur">
+        <div class="card" style="padding:14px;margin-bottom:14px;">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Longueur mur (m)</label><input type="number" inputmode="decimal" class="form-input" id="ob-mur-long" placeholder="6.00" step="0.01"/></div>
+            <div class="form-group"><label class="form-label">Hauteur mur (m)</label><input type="number" inputmode="decimal" class="form-input" id="ob-mur-haut" placeholder="2.50" step="0.01"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Entraxe montants</label>
+              <select class="form-input" id="ob-mur-entraxe"><option value="0.60">60 cm</option><option value="0.40">40 cm</option><option value="0.50">50 cm</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">Section montant</label>
+              <select class="form-input" id="ob-mur-section"><option value="45x95">45 × 95</option><option value="45x120">45 × 120</option><option value="45x145" selected>45 × 145</option><option value="45x170">45 × 170</option><option value="45x220">45 × 220</option><option value="60x180">60 × 180</option></select>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Lisse haute double (chaînage)</label>
+            <select class="form-input" id="ob-mur-lissehaute"><option value="2">Oui (double)</option><option value="1">Non (simple)</option></select>
+          </div>
+          <div style="font-size:11px;font-family:var(--font-mono);color:var(--c-accent);letter-spacing:1px;margin:12px 0 8px;">OUVERTURES (portes / fenêtres)</div>
+          <div id="ob-mur-ouvertures"></div>
+          <button class="btn btn-secondary" id="ob-mur-add-ouv" style="width:100%;font-size:12px;">+ Ajouter une ouverture</button>
+          <div class="form-group" style="margin-top:12px;"><label class="form-label">Contreventement (voile travaillant)</label>
+            <select class="form-input" id="ob-mur-voile"><option value="osb">OSB3 / Contreplaqué (calcul m²)</option><option value="none">Aucun / écharpes bois</option></select>
+          </div>
+          <button class="btn btn-primary" id="ob-mur-calc" style="width:100%;margin-top:8px;">Calculer le débit</button>
+        </div>
+        <div id="ob-mur-result"></div>
+      </div>
+
+      <div id="ob-pane-plancher" style="display:none;">
+        <div class="card" style="padding:14px;margin-bottom:14px;">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Portée (m)</label><input type="number" inputmode="decimal" class="form-input" id="ob-pl-portee" placeholder="4.00" step="0.01"/></div>
+            <div class="form-group"><label class="form-label">Largeur (m)</label><input type="number" inputmode="decimal" class="form-input" id="ob-pl-largeur" placeholder="5.00" step="0.01"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Entraxe solives</label>
+              <select class="form-input" id="ob-pl-entraxe"><option value="0.40">40 cm</option><option value="0.50">50 cm</option><option value="0.60">60 cm</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">Section solive</label>
+              <select class="form-input" id="ob-pl-section"><option value="63x175">63 × 175</option><option value="75x200" selected>75 × 200</option><option value="75x225">75 × 225</option><option value="100x220">100 × 220</option><option value="100x250">100 × 250</option></select>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="ob-pl-calc" style="width:100%;margin-top:8px;">Calculer le débit</button>
+        </div>
+        <div id="ob-pl-result"></div>
+      </div>
+    </div>
+
     <div id="pl-dial-modal">
       <div class="pl-dial-scrim" id="pl-dial-scrim"></div>
       <div class="pl-dial-sheet">
@@ -565,6 +624,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <button class="sm-item" data-menu="banque"><svg viewBox="0 0 24 24"><line x1="3" y1="22" x2="21" y2="22"/><path d="M3 10h18M5 10v12M19 10v12M12 2L3 10h18z"/></svg>Banque <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="depenses"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Dépenses <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="bibliotheque"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Bibliothèque de prix <span class="sm-badge">NOUVEAU</span></button>
+      <button class="sm-item" data-menu="ossature"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>Ossature bois <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="plans"><svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>Édition de plans</button>
       <button class="sm-item" data-menu="clients"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Clients</button>
       <button class="sm-item" data-menu="planning"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Planning</button>
@@ -1319,6 +1379,7 @@ function handleMenuNav(action){
     case 'banque': showView('banque'); break;
     case 'depenses': showView('depenses'); renderDepenses(); break;
     case 'bibliotheque': showView('bibliotheque'); renderBibliotheque(); break;
+    case 'ossature': showView('ossature'); if(typeof obRenderOuvertures==='function')obRenderOuvertures(); break;
     case 'plans': showView('plans'); _plParcoursMode=false; var _upb=document.getElementById('pl-use-parcours'); if(_upb)_upb.style.display='none'; plRender(); break;
     case 'clients': showView('clients'); if(typeof renderClients==='function')renderClients(); break;
     case 'planning': showView('planning'); if(typeof renderPlanningList==='function')renderPlanningList(); break;
@@ -1810,6 +1871,143 @@ function restoreBibliotheque(){
   db.bibliotheque=full;
   saveDB();renderBibliotheque();
   showToast(full.length+' ouvrages chargés','success');
+}
+var _obOuvertures=[];
+function obRenderOuvertures(){
+  var cont=document.getElementById('ob-mur-ouvertures');if(!cont)return;
+  cont.innerHTML=_obOuvertures.map(function(o,i){
+    return '<div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 20px;gap:6px;align-items:center;margin-bottom:6px;">'
+      +'<select class="form-input" style="font-size:12px;padding:7px;" data-obof="type" data-oboi="'+i+'"><option value="fenetre"'+(o.type==='fenetre'?' selected':'')+'>Fenêtre</option><option value="porte"'+(o.type==='porte'?' selected':'')+'>Porte</option></select>'
+      +'<input type="number" inputmode="decimal" class="form-input" style="font-size:12px;padding:7px;" placeholder="Larg." value="'+esc(o.larg||'')+'" data-obof="larg" data-oboi="'+i+'"/>'
+      +'<input type="number" inputmode="decimal" class="form-input" style="font-size:12px;padding:7px;" placeholder="Haut." value="'+esc(o.haut||'')+'" data-obof="haut" data-oboi="'+i+'"/>'
+      +'<button class="devis-remove" data-oborem="'+i+'">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function obSectionVol(sectionStr,ml){
+  // sectionStr "45x145" en mm → volume m³ pour ml mètres linéaires
+  var p=sectionStr.split('x');
+  var a=parseFloat(p[0])/1000, b=parseFloat(p[1])/1000;
+  return a*b*ml;
+}
+function obCalcMur(){
+  var L=pN(document.getElementById('ob-mur-long').value);
+  var H=pN(document.getElementById('ob-mur-haut').value);
+  var entraxe=pN(document.getElementById('ob-mur-entraxe').value);
+  var section=document.getElementById('ob-mur-section').value;
+  var lisseHaute=parseInt(document.getElementById('ob-mur-lissehaute').value);
+  var voile=document.getElementById('ob-mur-voile').value;
+  if(L<=0||H<=0){showToast('Renseignez longueur et hauteur','error');return;}
+
+  // MONTANTS courants : un tous les entraxe + 1, hauteur = H - lisses (basse + hautes)
+  // Hauteur montant = H - épaisseur lisse basse - épaisseur lisses hautes (~45mm chacune)
+  var epLisse=0.045;
+  var hMontant=Math.max(0,H-epLisse*(1+lisseHaute));
+  var nbMontantsCourants=Math.ceil(L/entraxe)+1;
+
+  // OUVERTURES : pour chaque, ajout de montants de chevêtre (2 doublés/côté), linteau, appui (fenêtre)
+  var nbMontantsChevetre=0, mlLinteau=0, mlAppui=0, nbMontantsCourts=0;
+  var ouvs=_obOuvertures.filter(function(o){return pN(o.larg)>0&&pN(o.haut)>0;});
+  ouvs.forEach(function(o){
+    var lg=pN(o.larg);
+    // 2 montants de chevêtre doublés de chaque côté = 4 montants hauteur H
+    nbMontantsChevetre+=4;
+    // Linteau au-dessus (largeur + 2×appui sur montants ~0.1m de chaque côté)
+    mlLinteau+=lg+0.2;
+    if(o.type==='fenetre'){
+      // appui (allège) en bas
+      mlAppui+=lg;
+      // montants courts sous appui (entraxe dans l'ouverture)
+      nbMontantsCourts+=Math.max(0,Math.ceil(lg/entraxe)-1);
+    }
+  });
+
+  // LISSES : basse (1×L) + haute (lisseHaute × L)
+  var mlLisseBasse=L;
+  var mlLisseHaute=L*lisseHaute;
+
+  // Débit détaillé
+  var mlMontants=nbMontantsCourants*hMontant + nbMontantsChevetre*H + nbMontantsCourts*(hMontant*0.4);
+  var mlLisses=mlLisseBasse+mlLisseHaute;
+  var mlTotal=mlMontants+mlLisses+mlLinteau+mlAppui;
+  var volTotal=obSectionVol(section,mlTotal);
+
+  // Voile contreventement (surface brute - ouvertures)
+  var surfOuv=ouvs.reduce(function(a,o){return a+pN(o.larg)*pN(o.haut);},0);
+  var surfVoile=voile==='osb'?Math.max(0,L*H-surfOuv):0;
+
+  // Pré-dim indicatif selon hauteur
+  var preconise='45x145';
+  if(H<=2.6)preconise='45x120 à 45x145';
+  else if(H<=3.0)preconise='45x145 à 45x170';
+  else preconise='45x170 et + (à valider BE)';
+
+  window._obMur={L:L,H:H,entraxe:entraxe,section:section,nbMontants:nbMontantsCourants,nbChevetre:nbMontantsChevetre,
+    mlMontants:mlMontants,mlLisses:mlLisses,mlLinteau:mlLinteau,mlAppui:mlAppui,mlTotal:mlTotal,vol:volTotal,
+    surfVoile:surfVoile,ouvertures:ouvs.length,preconise:preconise,hMontant:hMontant};
+
+  var rows=[
+    ['Montants courants ('+section+')',nbMontantsCourants+' u × '+hMontant.toFixed(2)+'m',(nbMontantsCourants*hMontant).toFixed(2)+' ml'],
+    ['Lisse basse ('+section+')','1 × '+L.toFixed(2)+'m',mlLisseBasse.toFixed(2)+' ml'],
+    ['Lisse haute'+(lisseHaute>1?' (double)':'')+' ('+section+')',lisseHaute+' × '+L.toFixed(2)+'m',mlLisseHaute.toFixed(2)+' ml']
+  ];
+  if(nbMontantsChevetre>0)rows.push(['Montants chevêtre ouvertures',nbMontantsChevetre+' u × '+H.toFixed(2)+'m',(nbMontantsChevetre*H).toFixed(2)+' ml']);
+  if(mlLinteau>0)rows.push(['Linteaux',ouvs.length+' ouv.',mlLinteau.toFixed(2)+' ml']);
+  if(mlAppui>0)rows.push(['Appuis (allèges)','fenêtres',mlAppui.toFixed(2)+' ml']);
+
+  var html='<div class="card" style="padding:16px;">'
+    +'<div style="font-weight:700;font-size:15px;margin-bottom:4px;">Débit de bois — mur '+L.toFixed(2)+' × '+H.toFixed(2)+'m</div>'
+    +'<div style="font-size:12px;color:var(--c-muted);margin-bottom:14px;">Entraxe '+(entraxe*100)+'cm · '+ouvs.length+' ouverture(s)</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+    +rows.map(function(r){return '<tr style="border-bottom:1px solid var(--c-border);"><td style="padding:7px 0;">'+r[0]+'</td><td style="padding:7px 6px;color:var(--c-muted);font-size:11px;text-align:right;">'+r[1]+'</td><td style="padding:7px 0;text-align:right;font-family:var(--font-mono);font-weight:600;">'+r[2]+'</td></tr>';}).join('')
+    +'</table>'
+    +'<div style="background:var(--c-surface2);border-radius:var(--r);padding:12px 14px;margin-top:14px;">'
+    +'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;margin-bottom:4px;"><span>Total bois ('+section+')</span><span style="font-family:var(--font-mono);color:var(--c-accent);">'+mlTotal.toFixed(2)+' ml</span></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--c-muted);">Volume bois</span><span style="font-family:var(--font-mono);">'+volTotal.toFixed(3)+' m³</span></div>'
+    +(surfVoile>0?'<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px;"><span style="color:var(--c-muted);">Voile contreventement (OSB)</span><span style="font-family:var(--font-mono);">'+surfVoile.toFixed(2)+' m²</span></div>':'')
+    +'</div>'
+    +'<div style="font-size:11px;color:#f59e0b;margin-top:12px;line-height:1.5;">📐 Pré-dim indicatif pour H='+H.toFixed(2)+'m : section <b>'+preconise+'</b>. À valider par un BE selon charges réelles.</div>'
+    +'</div>';
+  document.getElementById('ob-mur-result').innerHTML=html;
+  showToast('Débit calculé : '+mlTotal.toFixed(2)+' ml','success');
+}
+function obCalcPlancher(){
+  var portee=pN(document.getElementById('ob-pl-portee').value);
+  var largeur=pN(document.getElementById('ob-pl-largeur').value);
+  var entraxe=pN(document.getElementById('ob-pl-entraxe').value);
+  var section=document.getElementById('ob-pl-section').value;
+  if(portee<=0||largeur<=0){showToast('Renseignez portée et largeur','error');return;}
+
+  var nbSolives=Math.ceil(largeur/entraxe)+1;
+  var mlSolives=nbSolives*portee;
+  // Lambourdes/chevêtres de rive (2 × largeur)
+  var mlLambourdes=2*largeur;
+  var mlTotal=mlSolives+mlLambourdes;
+  var volTotal=obSectionVol(section,mlTotal);
+
+  // Pré-dim indicatif : portée admissible courante selon section (valeurs prudentes habitation C24, entraxe ~50cm)
+  // Référence indicative très conservatrice
+  var sp=section.split('x');var hmm=parseInt(sp[1]);
+  var porteeMax=hmm/35; // règle approximative h≈L/35 pour plancher habitation, conservatrice
+  var alerte=portee>porteeMax;
+
+  window._obPlancher={portee:portee,largeur:largeur,entraxe:entraxe,section:section,nbSolives:nbSolives,mlTotal:mlTotal,vol:volTotal};
+
+  var html='<div class="card" style="padding:16px;">'
+    +'<div style="font-weight:700;font-size:15px;margin-bottom:4px;">Débit solivage — '+portee.toFixed(2)+' × '+largeur.toFixed(2)+'m</div>'
+    +'<div style="font-size:12px;color:var(--c-muted);margin-bottom:14px;">Entraxe '+(entraxe*100)+'cm · solives '+section+'</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+    +'<tr style="border-bottom:1px solid var(--c-border);"><td style="padding:7px 0;">Solives ('+section+')</td><td style="padding:7px 6px;color:var(--c-muted);font-size:11px;text-align:right;">'+nbSolives+' u × '+portee.toFixed(2)+'m</td><td style="padding:7px 0;text-align:right;font-family:var(--font-mono);font-weight:600;">'+mlSolives.toFixed(2)+' ml</td></tr>'
+    +'<tr style="border-bottom:1px solid var(--c-border);"><td style="padding:7px 0;">Lambourdes de rive</td><td style="padding:7px 6px;color:var(--c-muted);font-size:11px;text-align:right;">2 × '+largeur.toFixed(2)+'m</td><td style="padding:7px 0;text-align:right;font-family:var(--font-mono);font-weight:600;">'+mlLambourdes.toFixed(2)+' ml</td></tr>'
+    +'</table>'
+    +'<div style="background:var(--c-surface2);border-radius:var(--r);padding:12px 14px;margin-top:14px;">'
+    +'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;margin-bottom:4px;"><span>Total bois ('+section+')</span><span style="font-family:var(--font-mono);color:var(--c-accent);">'+mlTotal.toFixed(2)+' ml</span></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--c-muted);">Volume bois</span><span style="font-family:var(--font-mono);">'+volTotal.toFixed(3)+' m³</span></div>'
+    +'</div>'
+    +'<div style="font-size:11px;color:'+(alerte?'#ef4444':'#f59e0b')+';margin-top:12px;line-height:1.5;">'+(alerte?'⚠️ Portée '+portee.toFixed(2)+'m élevée pour '+section+' (indicatif L/35 ≈ '+porteeMax.toFixed(2)+'m). ':'📐 Indicatif : ')+'Dimensionnement à <b>valider par un BE</b> (charges, classe bois, flèche).</div>'
+    +'</div>';
+  document.getElementById('ob-pl-result').innerHTML=html;
+  showToast('Débit calculé : '+mlTotal.toFixed(2)+' ml','success');
 }
 function depScanTicket(file){
   var status=document.getElementById('dep-scan-status');
@@ -3248,6 +3446,28 @@ document.addEventListener('DOMContentLoaded',function(){
   if(bibList)bibList.addEventListener('click',function(e){var row=e.target.closest('[data-bibedit]');if(row)openBib(row.dataset.bibedit);});
   var bibRestore=document.getElementById('bib-restore');
   if(bibRestore)bibRestore.addEventListener('click',restoreBibliotheque);
+  // OSSATURE BOIS
+  document.querySelectorAll('.ob-tab').forEach(function(tab){
+    tab.addEventListener('click',function(){
+      document.querySelectorAll('.ob-tab').forEach(function(t){t.classList.remove('active');});
+      tab.classList.add('active');
+      var which=tab.dataset.obtab;
+      document.getElementById('ob-pane-mur').style.display=which==='mur'?'block':'none';
+      document.getElementById('ob-pane-plancher').style.display=which==='plancher'?'block':'none';
+    });
+  });
+  var obMurAddOuv=document.getElementById('ob-mur-add-ouv');
+  if(obMurAddOuv)obMurAddOuv.addEventListener('click',function(){_obOuvertures.push({type:'fenetre',larg:'',haut:''});obRenderOuvertures();});
+  var obMurOuv=document.getElementById('ob-mur-ouvertures');
+  if(obMurOuv){
+    obMurOuv.addEventListener('input',function(e){var t=e.target;if(t.dataset.obof!==undefined){var i=parseInt(t.dataset.oboi);if(_obOuvertures[i])_obOuvertures[i][t.dataset.obof]=t.value;}});
+    obMurOuv.addEventListener('change',function(e){var t=e.target;if(t.dataset.obof==='type'){var i=parseInt(t.dataset.oboi);if(_obOuvertures[i])_obOuvertures[i].type=t.value;}});
+    obMurOuv.addEventListener('click',function(e){var rem=e.target.closest('[data-oborem]');if(rem){_obOuvertures.splice(parseInt(rem.dataset.oborem),1);obRenderOuvertures();}});
+  }
+  var obMurCalc=document.getElementById('ob-mur-calc');
+  if(obMurCalc)obMurCalc.addEventListener('click',obCalcMur);
+  var obPlCalc=document.getElementById('ob-pl-calc');
+  if(obPlCalc)obPlCalc.addEventListener('click',obCalcPlancher);
   // Section déboursé
   var bibToggle=document.getElementById('bib-toggle-detail');
   if(bibToggle)bibToggle.addEventListener('click',function(){
