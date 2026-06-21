@@ -2075,7 +2075,7 @@ function renderCA(){
     else{lbl.textContent=debut.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'})+' → '+new Date(fin-1).toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});}
   }
 }
-function renderRecentActivity(){var cont=document.getElementById('recent-activity');var items=[];db.devis.slice(-3).reverse().forEach(function(d){items.push({icon:'📄',text:d.client+' — '+fmtMoney(calcTTC(d)),sub:d.statut,date:d.date});});db.visites.slice(-2).reverse().forEach(function(v){items.push({icon:'🏠',text:v.client,sub:v.nature||'Visite',date:v.date});});if(!items.length){cont.innerHTML='<div class="empty-state" style="padding:20px;"><div class="empty-state-icon">📋</div><div style="font-size:14px;">Aucune activite</div></div>';return;}cont.innerHTML=items.slice(0,5).map(function(it){return '<div class="kv"><div style="display:flex;align-items:center;gap:8px;"><span>'+it.icon+'</span><div><div style="font-size:13px;font-weight:600;">'+esc(it.text)+'</div><div style="font-size:11px;color:var(--c-muted);">'+esc(it.sub)+'</div></div></div><span style="font-size:11px;color:var(--c-muted);">'+esc(it.date||'')+'</span></div>';}).join('');}
+function renderRecentActivity(){var cont=document.getElementById('recent-activity');var items=[];db.devis.slice(-3).reverse().forEach(function(d){items.push({icon:'📄',text:d.client+' — '+fmtMoney(calcTTC(d)),sub:d.statut,date:d.date,type:'devis',id:d.id});});db.visites.slice(-2).reverse().forEach(function(v){items.push({icon:'🏠',text:v.client,sub:v.nature||'Visite',date:v.date,type:'visite',id:v.id});});if(!items.length){cont.innerHTML='<div class="empty-state" style="padding:20px;"><div class="empty-state-icon">📋</div><div style="font-size:14px;">Aucune activite</div></div>';return;}cont.innerHTML=items.slice(0,5).map(function(it){return '<div class="kv ra-item" data-ra-type="'+it.type+'" data-ra-id="'+esc(it.id||'')+'" style="cursor:pointer;border-radius:8px;padding:8px;margin:0 -4px;transition:background .15s;"><div style="display:flex;align-items:center;gap:8px;"><span>'+it.icon+'</span><div><div style="font-size:13px;font-weight:600;">'+esc(it.text)+'</div><div style="font-size:11px;color:var(--c-muted);">'+esc(it.sub)+'</div></div></div><span style="font-size:11px;color:var(--c-muted);display:flex;align-items:center;gap:6px;">'+esc(it.date||'')+'<span style="color:var(--c-accent);font-size:14px;">›</span></span></div>';}).join('');}
 
 // ============================================================
 // PARCOURS 4 ÉTAPES
@@ -3469,6 +3469,16 @@ document.addEventListener('DOMContentLoaded',function(){
   if(obMurCalc)obMurCalc.addEventListener('click',obCalcMur);
   var obPlCalc=document.getElementById('ob-pl-calc');
   if(obPlCalc)obPlCalc.addEventListener('click',obCalcPlancher);
+  // Activité récente cliquable
+  var recentAct=document.getElementById('recent-activity');
+  if(recentAct)recentAct.addEventListener('click',function(e){
+    var item=e.target.closest('.ra-item');
+    if(!item)return;
+    var type=item.dataset.raType, id=item.dataset.raId;
+    if(!id)return;
+    if(type==='devis'){if(typeof openEditDevis==='function')openEditDevis(id);}
+    else if(type==='visite'){if(typeof reopenParcoursFromVisite==='function')reopenParcoursFromVisite(id);}
+  });
   // Section déboursé
   var bibToggle=document.getElementById('bib-toggle-detail');
   if(bibToggle)bibToggle.addEventListener('click',function(){
