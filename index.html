@@ -604,6 +604,22 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     </div>
   </div>
 
+  <div id="modal-pick-bib" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-hdr">
+        <div class="modal-title">Ajouter des ouvrages</div>
+        <button class="btn btn-secondary" style="padding:8px 12px;" id="pick-bib-close">✕</button>
+      </div>
+      <div class="modal-body" style="padding-bottom:30px;">
+        <input type="text" class="form-input" id="pick-bib-search" placeholder="🔍 Rechercher..." style="margin-bottom:10px;"/>
+        <div style="font-size:12px;color:var(--c-muted);margin-bottom:10px;" id="pick-bib-count">0 ouvrage sélectionné</div>
+        <div id="pick-bib-list" style="max-height:50vh;overflow-y:auto;margin-bottom:14px;"></div>
+        <button class="btn btn-primary" id="pick-bib-add" style="width:100%;">Ajouter au devis</button>
+      </div>
+    </div>
+  </div>
+
   <nav id="nav-bar">
     <button class="nav-btn active" data-view="accueil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
     <button class="nav-btn" data-view="visites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>Visites</button>
@@ -867,6 +883,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div class="card-title" style="margin:0;">Lignes</div>
       <div style="display:flex;gap:6px;">
+        <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" id="btn-pick-bib">📚 Bibliothèque</button>
         <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" id="btn-add-line">+ Ligne</button>
       </div>
     </div>
@@ -2801,6 +2818,57 @@ var regenB=document.getElementById('d-regen-banner');if(regenB)regenB.style.disp
 window._regenVisiteId=d.visiteId||null;
 document.getElementById('modal-devis').classList.add('open');}
 function updateBiosourceUI(){var c=document.getElementById('d-biosource').checked;var t=document.getElementById('biosource-toggle');if(t){t.style.borderColor=c?'var(--c-success)':'var(--c-border)';t.style.background=c?'rgba(34,197,94,0.06)':'var(--c-surface2)';}}
+var _pickBibSel={};
+function openPickBib(){
+  _pickBibSel={};
+  document.getElementById('pick-bib-search').value='';
+  renderPickBib();
+  updatePickBibCount();
+  document.getElementById('modal-pick-bib').classList.add('open');
+}
+function renderPickBib(){
+  var list=document.getElementById('pick-bib-list');if(!list)return;
+  var search=(document.getElementById('pick-bib-search').value||'').toLowerCase().trim();
+  var items=(db.bibliotheque||[]).filter(function(b){
+    return !search||(b.designation||'').toLowerCase().indexOf(search)>=0||(b.categorie||'').toLowerCase().indexOf(search)>=0;
+  });
+  if(!items.length){list.innerHTML='<div class="empty-state" style="padding:20px;"><div style="font-size:14px;">Aucun ouvrage</div></div>';return;}
+  var groups={},order=[];
+  items.forEach(function(b){var c=b.categorie||'Divers';if(!groups[c]){groups[c]=[];order.push(c);}groups[c].push(b);});
+  list.innerHTML=order.map(function(cat){
+    return '<div style="font-size:11px;font-family:var(--font-mono);color:var(--c-accent);letter-spacing:1px;margin:12px 4px 6px;">'+esc(cat).toUpperCase()+'</div>'
+      +groups[cat].map(function(b){
+        var checked=_pickBibSel[b.id]?'checked':'';
+        return '<label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--c-surface2);border-radius:8px;margin-bottom:5px;cursor:pointer;">'
+          +'<input type="checkbox" data-pickid="'+b.id+'" '+checked+' style="width:auto;flex-shrink:0;"/>'
+          +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">'+esc(b.designation)+'</div><div style="font-size:11px;color:var(--c-muted);">'+esc(b.unite)+'</div></div>'
+          +'<div style="font-family:var(--font-mono);font-weight:700;color:var(--c-accent);font-size:13px;">'+fmtMoney(b.prix)+'</div>'
+          +'</label>';
+      }).join('');
+  }).join('');
+}
+function updatePickBibCount(){
+  var n=Object.keys(_pickBibSel).filter(function(k){return _pickBibSel[k];}).length;
+  var el=document.getElementById('pick-bib-count');
+  if(el)el.textContent=n+' ouvrage'+(n>1?'s':'')+' sélectionné'+(n>1?'s':'');
+}
+function pickBibAddToDevis(){
+  var ids=Object.keys(_pickBibSel).filter(function(k){return _pickBibSel[k];});
+  if(!ids.length){showToast('Sélectionnez au moins un ouvrage','error');return;}
+  collectLines();
+  // Retirer une éventuelle ligne vide initiale
+  devisLines=devisLines.filter(function(l){return (l.designation||'').trim()||pN(l.pu)>0;});
+  ids.forEach(function(id){
+    var b=(db.bibliotheque||[]).find(function(x){return x.id===id;});
+    if(b){
+      devisLines.push({id:genId(),lot:guessLot(b.designation||''),designation:b.designation||'',unite:b.unite||'u',qte:'1',pu:String(b.prix||0)});
+    }
+  });
+  renderDevisLines();
+  if(typeof updateTotaux==='function')updateTotaux();
+  document.getElementById('modal-pick-bib').classList.remove('open');
+  showToast(ids.length+' ouvrage'+(ids.length>1?'s ajoutés':' ajouté'),'success');
+}
 function addDevisLine(){devisLines.push({id:genId(),designation:'',unite:'u',qte:'1',pu:'0'});renderDevisLines();}
 function removeDevisLine(id){devisLines=devisLines.filter(function(l){return l.id!==id;});renderDevisLines();}
 function collectLines(){document.querySelectorAll('#devis-lines-container .devis-line').forEach(function(row){var lid=row.dataset.lid;var l=devisLines.find(function(x){return x.id===lid;});if(!l)return;row.querySelectorAll('input[data-f]').forEach(function(inp){l[inp.dataset.f]=inp.value;});});}
@@ -3627,6 +3695,18 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('btn-add-visite').addEventListener('click',function(){openParcours();});
   document.getElementById('close-modal-devis').addEventListener('click',function(){document.getElementById('modal-devis').classList.remove('open');});
   document.getElementById('btn-add-line').addEventListener('click',function(){collectLines();addDevisLine();});
+  var btnPickBib=document.getElementById('btn-pick-bib');
+  if(btnPickBib)btnPickBib.addEventListener('click',openPickBib);
+  var pickClose=document.getElementById('pick-bib-close');
+  if(pickClose)pickClose.addEventListener('click',function(){document.getElementById('modal-pick-bib').classList.remove('open');});
+  var pickAdd=document.getElementById('pick-bib-add');
+  if(pickAdd)pickAdd.addEventListener('click',pickBibAddToDevis);
+  var pickSearch=document.getElementById('pick-bib-search');
+  if(pickSearch)pickSearch.addEventListener('input',renderPickBib);
+  var pickList=document.getElementById('pick-bib-list');
+  if(pickList)pickList.addEventListener('change',function(e){
+    var cb=e.target;if(cb.dataset.pickid!==undefined){_pickBibSel[cb.dataset.pickid]=cb.checked;updatePickBibCount();}
+  });
   document.getElementById('btn-save-devis').addEventListener('click',function(){collectLines();saveDevis();});
   document.getElementById('btn-export-devis').addEventListener('click',function(){collectLines();saveDevis();var lid=editDevisId||(db.devis.length?db.devis[db.devis.length-1].id:null);if(lid)exportDevisPDF(lid);});
   var _bef=document.getElementById('btn-export-fournisseur');
