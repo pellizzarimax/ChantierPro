@@ -625,7 +625,6 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     <button class="nav-btn" data-view="visites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>Visites</button>
     <button class="nav-btn" data-view="devis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Devis</button>
     <button class="nav-btn" data-view="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Docs</button>
-    <button class="nav-btn" data-view="bibliotheque" id="nav-biblio-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Biblio</button>
     <button class="nav-btn nav-more" id="nav-more-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>Plus</button>
   </nav>
 
@@ -963,11 +962,11 @@ var yr=new Date().getFullYear();
 var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],depenses:[],bibliotheque:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
 var db=JSON.parse(JSON.stringify(DFLT));
 function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;if(!db.depenses)db.depenses=[];if(!db.bibliotheque)db.bibliotheque=[];if(!db.bibliotheque.length)db.bibliotheque=defaultBibliotheque();
-    // Migration catalogue v3 : compléter avec les nouveaux ouvrages (préserve ajouts perso et prix modifiés)
-    if(db.bibliotheque.length>0&&!db.settings._bibV3){
+    // Migration catalogue v4 : compléter avec les nouveaux ouvrages (préserve ajouts perso et prix modifiés)
+    if(db.bibliotheque.length>0&&!db.settings._bibV4){
       var existingDesigs={};db.bibliotheque.forEach(function(b){existingDesigs[(b.designation||'').toLowerCase()]=1;});
       defaultBibliotheque().forEach(function(b){if(!existingDesigs[(b.designation||'').toLowerCase()])db.bibliotheque.push(b);});
-      if(!db.settings)db.settings={};db.settings._bibV2=true;db.settings._bibV3=true;
+      if(!db.settings)db.settings={};db.settings._bibV2=true;db.settings._bibV3=true;db.settings._bibV4=true;
     }}}catch(e){db=JSON.parse(JSON.stringify(DFLT));}}
 function defaultBibliotheque(){
   return [
@@ -1353,7 +1352,120 @@ function defaultBibliotheque(){
     {id:'b380',categorie:'Divers / Chantier',designation:'Constat huissier avant travaux',unite:'forfait',prix:350},
     {id:'b381',categorie:'Divers / Chantier',designation:'Coordination SPS',unite:'forfait',prix:800},
     {id:'b382',categorie:'Divers / Chantier',designation:'Plan / DOE',unite:'forfait',prix:300},
-    {id:'b383',categorie:'Divers / Chantier',designation:'Assurance chantier',unite:'forfait',prix:250}
+    {id:'b383',categorie:'Divers / Chantier',designation:'Assurance chantier',unite:'forfait',prix:250},
+    {id:'b384',categorie:'Fondations / Gros œuvre',designation:'Bloc creux béton 15 monté',unite:'m²',prix:48},
+    {id:'b385',categorie:'Fondations / Gros œuvre',designation:'Bloc creux béton 20 monté',unite:'m²',prix:55},
+    {id:'b386',categorie:'Fondations / Gros œuvre',designation:'Bloc creux béton 27 monté',unite:'m²',prix:68},
+    {id:'b387',categorie:'Fondations / Gros œuvre',designation:'Bloc creux béton 10 (cloison)',unite:'m²',prix:42},
+    {id:'b388',categorie:'Fondations / Gros œuvre',designation:'Bloc à bancher 20 (coffrage + béton)',unite:'m²',prix:95},
+    {id:'b389',categorie:'Fondations / Gros œuvre',designation:'Bloc à bancher 27 (coffrage + béton)',unite:'m²',prix:115},
+    {id:'b390',categorie:'Fondations / Gros œuvre',designation:'Bloc à bancher 15',unite:'m²',prix:85},
+    {id:'b391',categorie:'Fondations / Gros œuvre',designation:'Bloc béton cellulaire 20',unite:'m²',prix:72},
+    {id:'b392',categorie:'Fondations / Gros œuvre',designation:'Bloc béton cellulaire 30',unite:'m²',prix:88},
+    {id:'b393',categorie:'Fondations / Gros œuvre',designation:'Brique creuse terre cuite 20',unite:'m²',prix:62},
+    {id:'b394',categorie:'Fondations / Gros œuvre',designation:'Brique monomur 30',unite:'m²',prix:105},
+    {id:'b395',categorie:'Fondations / Gros œuvre',designation:'Brique monomur 37.5',unite:'m²',prix:128},
+    {id:'b396',categorie:'Fondations / Gros œuvre',designation:'Bloc chaînage / U (linteau coulé)',unite:'ml',prix:42},
+    {id:'b397',categorie:'Fondations / Gros œuvre',designation:'Bloc d\'angle / tableau',unite:'ml',prix:38},
+    {id:'b398',categorie:'Fondations / Gros œuvre',designation:'Ouverture mur parpaing ép.20 + linteau (L≤1m)',unite:'u',prix:850},
+    {id:'b399',categorie:'Fondations / Gros œuvre',designation:'Ouverture mur parpaing ép.20 + linteau (L 1-2m)',unite:'u',prix:1250},
+    {id:'b400',categorie:'Fondations / Gros œuvre',designation:'Ouverture mur parpaing ép.20 + linteau (L 2-3m)',unite:'u',prix:1850},
+    {id:'b401',categorie:'Fondations / Gros œuvre',designation:'Ouverture mur béton ép.20 + linteau (L≤2m)',unite:'u',prix:1650},
+    {id:'b402',categorie:'Fondations / Gros œuvre',designation:'Ouverture mur pierre + linteau (L≤1.5m)',unite:'u',prix:1950},
+    {id:'b403',categorie:'Fondations / Gros œuvre',designation:'Ouverture mur pierre + linteau (L 1.5-3m)',unite:'u',prix:2800},
+    {id:'b404',categorie:'Fondations / Gros œuvre',designation:'Ouverture mur brique + linteau (L≤2m)',unite:'u',prix:1350},
+    {id:'b405',categorie:'Fondations / Gros œuvre',designation:'Pose IPN sur murs porteurs (ouverture large)',unite:'u',prix:2200},
+    {id:'b406',categorie:'Fondations / Gros œuvre',designation:'Étaiement provisoire (ouverture porteur)',unite:'forfait',prix:450},
+    {id:'b407',categorie:'Fondations / Gros œuvre',designation:'Linteau béton préfa ép.15',unite:'ml',prix:38},
+    {id:'b408',categorie:'Fondations / Gros œuvre',designation:'Linteau béton préfa ép.20',unite:'ml',prix:45},
+    {id:'b409',categorie:'Fondations / Gros œuvre',designation:'Linteau métallique (cornière/IPN)',unite:'ml',prix:95},
+    {id:'b410',categorie:'Fondations / Gros œuvre',designation:'Linteau brique précontrainte',unite:'ml',prix:42},
+    {id:'b411',categorie:'Fondations / Gros œuvre',designation:'Enduit ciment traditionnel (3 passes)',unite:'m²',prix:42},
+    {id:'b412',categorie:'Fondations / Gros œuvre',designation:'Enduit monocouche projeté',unite:'m²',prix:35},
+    {id:'b413',categorie:'Fondations / Gros œuvre',designation:'Enduit chaux-chanvre',unite:'m²',prix:58},
+    {id:'b414',categorie:'Fondations / Gros œuvre',designation:'Gobetis / accrochage',unite:'m²',prix:12},
+    {id:'b415',categorie:'Couverture',designation:'Tuile plate petit moule (65/m²)',unite:'m²',prix:58},
+    {id:'b416',categorie:'Couverture',designation:'Tuile plate grand moule',unite:'m²',prix:48},
+    {id:'b417',categorie:'Couverture',designation:'Tuile romane terre cuite',unite:'m²',prix:36},
+    {id:'b418',categorie:'Couverture',designation:'Tuile canal traditionnelle double',unite:'m²',prix:42},
+    {id:'b419',categorie:'Couverture',designation:'Tuile canal sous couvert + courant',unite:'m²',prix:45},
+    {id:'b420',categorie:'Couverture',designation:'Tuile à emboîtement losangée',unite:'m²',prix:35},
+    {id:'b421',categorie:'Couverture',designation:'Tuile mécanique galbée',unite:'m²',prix:34},
+    {id:'b422',categorie:'Couverture',designation:'Tuile vernissée / émaillée',unite:'m²',prix:75},
+    {id:'b423',categorie:'Couverture',designation:'Tuile béton plate',unite:'m²',prix:28},
+    {id:'b424',categorie:'Couverture',designation:'Tuile béton à côtes',unite:'m²',prix:26},
+    {id:'b425',categorie:'Couverture',designation:'Ardoise naturelle pose au crochet',unite:'m²',prix:95},
+    {id:'b426',categorie:'Couverture',designation:'Ardoise naturelle pose au clou',unite:'m²',prix:110},
+    {id:'b427',categorie:'Couverture',designation:'Ardoise fibrociment',unite:'m²',prix:48},
+    {id:'b428',categorie:'Couverture',designation:'Couverture zinc joint debout',unite:'m²',prix:95},
+    {id:'b429',categorie:'Couverture',designation:'Couverture zinc à tasseaux',unite:'m²',prix:105},
+    {id:'b430',categorie:'Couverture',designation:'Couverture bac acier nervuré',unite:'m²',prix:38},
+    {id:'b431',categorie:'Couverture',designation:'Couverture bac acier imitation tuile',unite:'m²',prix:42},
+    {id:'b432',categorie:'Couverture',designation:'Couverture cuivre joint debout',unite:'m²',prix:145},
+    {id:'b433',categorie:'Couverture',designation:'Faîtage à sec (sans mortier)',unite:'ml',prix:32},
+    {id:'b434',categorie:'Couverture',designation:'Faîtage scellé au mortier',unite:'ml',prix:28},
+    {id:'b435',categorie:'Couverture',designation:'Rive à rabat / scellée',unite:'ml',prix:32},
+    {id:'b436',categorie:'Couverture',designation:'Rive avec planche de rive',unite:'ml',prix:38},
+    {id:'b437',categorie:'Couverture',designation:'Tuile de ventilation / chatière',unite:'u',prix:28},
+    {id:'b438',categorie:'Couverture',designation:'Tuile à douille (sortie)',unite:'u',prix:45},
+    {id:'b439',categorie:'Charpente / Ossature bois',designation:'Tuile faîtière à bourrelet',unite:'ml',prix:22},
+    {id:'b440',categorie:'Charpente / Ossature bois',designation:'Chevron 63×75',unite:'ml',prix:9},
+    {id:'b441',categorie:'Charpente / Ossature bois',designation:'Chevron 75×100',unite:'ml',prix:14},
+    {id:'b442',categorie:'Charpente / Ossature bois',designation:'Panne 75×225',unite:'ml',prix:28},
+    {id:'b443',categorie:'Charpente / Ossature bois',designation:'Panne 100×225',unite:'ml',prix:38},
+    {id:'b444',categorie:'Charpente / Ossature bois',designation:'Madrier / bastaing 63×175',unite:'ml',prix:16},
+    {id:'b445',categorie:'Charpente / Ossature bois',designation:'Volige / planche de sous-toiture',unite:'m²',prix:18},
+    {id:'b446',categorie:'Charpente / Ossature bois',designation:'Liteaunage tuiles (pureau variable)',unite:'m²',prix:8},
+    {id:'b447',categorie:'Isolation',designation:'Isolation laine de verre 100mm',unite:'m²',prix:15},
+    {id:'b448',categorie:'Isolation',designation:'Isolation laine de verre 200mm',unite:'m²',prix:24},
+    {id:'b449',categorie:'Isolation',designation:'Isolation laine de verre 300mm',unite:'m²',prix:32},
+    {id:'b450',categorie:'Isolation',designation:'Isolation laine de roche 100mm',unite:'m²',prix:18},
+    {id:'b451',categorie:'Isolation',designation:'Isolation laine de roche 200mm',unite:'m²',prix:28},
+    {id:'b452',categorie:'Isolation',designation:'Isolation polyuréthane projeté',unite:'m²',prix:42},
+    {id:'b453',categorie:'Isolation',designation:'Isolation polystyrène graphité 100mm',unite:'m²',prix:28},
+    {id:'b454',categorie:'Isolation',designation:'Isolation liège expansé',unite:'m²',prix:55},
+    {id:'b455',categorie:'Isolation',designation:'Isolation combles perdus soufflée',unite:'m²',prix:22},
+    {id:'b456',categorie:'Plâtrerie / Cloisons',designation:'Cloison placo 48mm',unite:'m²',prix:32},
+    {id:'b457',categorie:'Plâtrerie / Cloisons',designation:'Cloison placo 98mm (renforcée)',unite:'m²',prix:45},
+    {id:'b458',categorie:'Plâtrerie / Cloisons',designation:'Cloison double peau / haute performance',unite:'m²',prix:68},
+    {id:'b459',categorie:'Plâtrerie / Cloisons',designation:'Doublage placo 13+40',unite:'m²',prix:38},
+    {id:'b460',categorie:'Plâtrerie / Cloisons',designation:'Doublage placo 13+100',unite:'m²',prix:52},
+    {id:'b461',categorie:'Plâtrerie / Cloisons',designation:'Carreau de plâtre 70mm',unite:'m²',prix:45},
+    {id:'b462',categorie:'Plâtrerie / Cloisons',designation:'Carreau de plâtre hydro 70mm',unite:'m²',prix:52},
+    {id:'b463',categorie:'Carrelage / Faïence',designation:'Carrelage 20×20',unite:'m²',prix:48},
+    {id:'b464',categorie:'Carrelage / Faïence',designation:'Carrelage 45×45',unite:'m²',prix:52},
+    {id:'b465',categorie:'Carrelage / Faïence',designation:'Carrelage 60×60 rectifié',unite:'m²',prix:62},
+    {id:'b466',categorie:'Carrelage / Faïence',designation:'Carrelage 60×120',unite:'m²',prix:78},
+    {id:'b467',categorie:'Carrelage / Faïence',designation:'Carrelage pose droite',unite:'m²',prix:42},
+    {id:'b468',categorie:'Carrelage / Faïence',designation:'Carrelage pose diagonale (+ découpes)',unite:'m²',prix:55},
+    {id:'b469',categorie:'Carrelage / Faïence',designation:'Carrelage pose chevrons',unite:'m²',prix:68},
+    {id:'b470',categorie:'Carrelage / Faïence',designation:'Tomette ancienne / terre cuite',unite:'m²',prix:72},
+    {id:'b471',categorie:'Menuiserie extérieure',designation:'Fenêtre PVC 3 vantaux',unite:'u',prix:680},
+    {id:'b472',categorie:'Menuiserie extérieure',designation:'Fenêtre bois alu',unite:'u',prix:950},
+    {id:'b473',categorie:'Menuiserie extérieure',designation:'Porte-fenêtre alu 2 vantaux',unite:'u',prix:1100},
+    {id:'b474',categorie:'Menuiserie extérieure',designation:'Coulissant alu 3 rails',unite:'u',prix:1950},
+    {id:'b475',categorie:'Menuiserie extérieure',designation:'Châssis fixe alu',unite:'u',prix:450},
+    {id:'b476',categorie:'Menuiserie extérieure',designation:'Fenêtre de toit manuelle',unite:'u',prix:480},
+    {id:'b477',categorie:'Menuiserie extérieure',designation:'Fenêtre de toit électrique',unite:'u',prix:850},
+    {id:'b478',categorie:'Plomberie / Sanitaire',designation:'WC suspendu sans bride',unite:'u',prix:620},
+    {id:'b479',categorie:'Plomberie / Sanitaire',designation:'WC lavant / japonais',unite:'u',prix:1200},
+    {id:'b480',categorie:'Plomberie / Sanitaire',designation:'Douche italienne receveur extra-plat',unite:'u',prix:1450},
+    {id:'b481',categorie:'Plomberie / Sanitaire',designation:'Baignoire balnéo',unite:'u',prix:1800},
+    {id:'b482',categorie:'Plomberie / Sanitaire',designation:'Lave-mains compact',unite:'u',prix:220},
+    {id:'b483',categorie:'Électricité',designation:'Rénovation électrique complète (par m²)',unite:'m²',prix:95},
+    {id:'b484',categorie:'Électricité',designation:'Mise en sécurité tableau',unite:'forfait',prix:650},
+    {id:'b485',categorie:'Électricité',designation:'Point lumineux supplémentaire',unite:'u',prix:75},
+    {id:'b486',categorie:'Électricité',designation:'Circuit spécialisé (plaque/four)',unite:'u',prix:180},
+    {id:'b487',categorie:'Électricité',designation:'Prise commandée',unite:'u',prix:110},
+    {id:'b488',categorie:'Extérieur / Aménagement',designation:'Clôture grillage rigide H1.5m',unite:'ml',prix:75},
+    {id:'b489',categorie:'Extérieur / Aménagement',designation:'Clôture grillage rigide H2m',unite:'ml',prix:95},
+    {id:'b490',categorie:'Extérieur / Aménagement',designation:'Clôture grillage souple H1.2m',unite:'ml',prix:28},
+    {id:'b491',categorie:'Extérieur / Aménagement',designation:'Clôture grillage souple H1.75m',unite:'ml',prix:38},
+    {id:'b492',categorie:'Extérieur / Aménagement',designation:'Portail battant 3m',unite:'u',prix:1650},
+    {id:'b493',categorie:'Extérieur / Aménagement',designation:'Portail coulissant 4m',unite:'u',prix:2600},
+    {id:'b494',categorie:'Extérieur / Aménagement',designation:'Dalle béton désactivé',unite:'m²',prix:75},
+    {id:'b495',categorie:'Extérieur / Aménagement',designation:'Dalle béton balayé',unite:'m²',prix:55},
+    {id:'b496',categorie:'Extérieur / Aménagement',designation:'Pavage pierre naturelle',unite:'m²',prix:110}
   ];
 }
 function saveDB(){
@@ -3081,31 +3193,84 @@ function updateBiosourceUI(){var c=document.getElementById('d-biosource').checke
 var _pickBibSel={};
 function openPickBib(){
   _pickBibSel={};
+  _pickNav={metier:null,categorie:null};
   document.getElementById('pick-bib-search').value='';
   renderPickBib();
   updatePickBibCount();
   document.getElementById('modal-pick-bib').classList.add('open');
 }
+var _pickNav={metier:null,categorie:null};
 function renderPickBib(){
   var list=document.getElementById('pick-bib-list');if(!list)return;
   var search=(document.getElementById('pick-bib-search').value||'').toLowerCase().trim();
-  var items=(db.bibliotheque||[]).filter(function(b){
-    return !search||(b.designation||'').toLowerCase().indexOf(search)>=0||(b.categorie||'').toLowerCase().indexOf(search)>=0;
-  });
-  if(!items.length){list.innerHTML='<div class="empty-state" style="padding:20px;"><div style="font-size:14px;">Aucun ouvrage</div></div>';return;}
-  var groups={},order=[];
-  items.forEach(function(b){var c=b.categorie||'Divers';if(!groups[c]){groups[c]=[];order.push(c);}groups[c].push(b);});
-  list.innerHTML=order.map(function(cat){
-    return '<div style="font-size:11px;font-family:var(--font-mono);color:var(--c-accent);letter-spacing:1px;margin:12px 4px 6px;">'+esc(cat).toUpperCase()+'</div>'
-      +groups[cat].map(function(b){
-        var checked=_pickBibSel[b.id]?'checked':'';
-        return '<label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--c-surface2);border-radius:8px;margin-bottom:5px;cursor:pointer;">'
-          +'<input type="checkbox" data-pickid="'+b.id+'" '+checked+' style="width:auto;flex-shrink:0;"/>'
-          +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">'+esc(b.designation)+'</div><div style="font-size:11px;color:var(--c-muted);">'+esc(b.unite)+'</div></div>'
-          +'<div style="font-family:var(--font-mono);font-weight:700;color:var(--c-accent);font-size:13px;">'+fmtMoney(b.prix)+'</div>'
-          +'</label>';
-      }).join('');
+
+  // RECHERCHE : vue plate globale avec cases à cocher
+  if(search){
+    var items=(db.bibliotheque||[]).filter(function(b){
+      return (b.designation||'').toLowerCase().indexOf(search)>=0||(b.categorie||'').toLowerCase().indexOf(search)>=0;
+    });
+    if(!items.length){list.innerHTML='<div class="empty-state" style="padding:20px;"><div style="font-size:14px;">Aucun ouvrage</div></div>';return;}
+    list.innerHTML=items.map(pickOuvrageRow).join('');
+    return;
+  }
+
+  // NIVEAU 3 : ouvrages d'une catégorie (cochables)
+  if(_pickNav.categorie){
+    var ouvrages=(db.bibliotheque||[]).filter(function(b){return b.categorie===_pickNav.categorie;});
+    list.innerHTML=pickBreadcrumb()+ouvrages.map(pickOuvrageRow).join('');
+    return;
+  }
+
+  // NIVEAU 2 : catégories d'un métier
+  if(_pickNav.metier){
+    var cats=METIERS[_pickNav.metier]||[];
+    list.innerHTML=pickBreadcrumb()+cats.map(function(cat){
+      var n=(db.bibliotheque||[]).filter(function(b){return b.categorie===cat;}).length;
+      var sel=(db.bibliotheque||[]).filter(function(b){return b.categorie===cat&&_pickBibSel[b.id];}).length;
+      return '<div class="card" style="margin-bottom:6px;cursor:pointer;padding:12px;" data-pickcat="'+esc(cat)+'">'
+        +'<div style="display:flex;align-items:center;gap:10px;"><span>📂</span>'
+        +'<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;">'+esc(cat)+'</div>'
+        +'<div style="font-size:11px;color:var(--c-muted);">'+n+' ouvrage'+(n>1?'s':'')+(sel>0?' · '+sel+' ✓':'')+'</div></div>'
+        +'<span style="color:var(--c-accent);">›</span></div></div>';
+    }).join('');
+    return;
+  }
+
+  // NIVEAU 1 : métiers
+  var metiers=Object.keys(METIERS);
+  list.innerHTML=metiers.map(function(m){
+    var cats=METIERS[m]||[];
+    var n=(db.bibliotheque||[]).filter(function(b){return cats.indexOf(b.categorie)>=0;}).length;
+    if(n===0)return '';
+    var sel=(db.bibliotheque||[]).filter(function(b){return cats.indexOf(b.categorie)>=0&&_pickBibSel[b.id];}).length;
+    return '<div class="card" style="margin-bottom:6px;cursor:pointer;padding:12px;" data-pickmetier="'+esc(m)+'">'
+      +'<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:18px;">'+(typeof metierIcon==='function'?metierIcon(m):'📁')+'</span>'
+      +'<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;">'+esc(m)+'</div>'
+      +'<div style="font-size:11px;color:var(--c-muted);">'+n+' ouvrage'+(n>1?'s':'')+(sel>0?' · '+sel+' ✓':'')+'</div></div>'
+      +'<span style="color:var(--c-accent);">›</span></div></div>';
   }).join('');
+}
+function pickBreadcrumb(){
+  var html='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;font-size:13px;">';
+  html+='<span data-pickhome="1" style="cursor:pointer;color:var(--c-accent);">📚 Métiers</span>';
+  if(_pickNav.metier){
+    html+='<span style="color:var(--c-muted);">›</span>';
+    html+='<span data-pickmetier-bc="'+esc(_pickNav.metier)+'" style="cursor:pointer;color:'+(_pickNav.categorie?'var(--c-accent)':'var(--c-text)')+';">'+esc(_pickNav.metier)+'</span>';
+  }
+  if(_pickNav.categorie){
+    html+='<span style="color:var(--c-muted);">›</span>';
+    html+='<span style="color:var(--c-text);">'+esc(_pickNav.categorie)+'</span>';
+  }
+  html+='</div>';
+  return html;
+}
+function pickOuvrageRow(b){
+  var checked=_pickBibSel[b.id]?'checked':'';
+  return '<label style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--c-surface2);border-radius:8px;margin-bottom:5px;cursor:pointer;">'
+    +'<input type="checkbox" data-pickid="'+b.id+'" '+checked+' style="width:auto;flex-shrink:0;"/>'
+    +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">'+esc(b.designation)+'</div><div style="font-size:11px;color:var(--c-muted);">'+esc(b.unite)+(b.categorie&&!_pickNav.categorie?' · '+esc(b.categorie):'')+'</div></div>'
+    +'<div style="font-family:var(--font-mono);font-weight:700;color:var(--c-accent);font-size:13px;">'+fmtMoney(b.prix)+'</div>'
+    +'</label>';
 }
 function updatePickBibCount(){
   var n=Object.keys(_pickBibSel).filter(function(k){return _pickBibSel[k];}).length;
@@ -3182,21 +3347,23 @@ function buildDevisLotsHTML(d){
     var lotTot=items.reduce(function(a,l){return a+(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);},0);
     html+='<div class="lot-sec">'
       +'<div class="lot-head"><span>'+esc(lot)+'</span><span class="lot-badge">LOT '+lotNum+' · '+fmtMoney(lotTot)+'</span></div>'
-      +'<table class="lot-table">';
+      +'<table class="lot-table"><colgroup><col style="width:46%"/><col style="width:18%"/><col style="width:18%"/><col style="width:18%"/></colgroup>'
+      +'<thead><tr><th class="h-desig">Désignation</th><th>Qté</th><th>PU HT</th><th>Total HT</th></tr></thead><tbody>';
     items.forEach(function(l){
       var tot=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);
       html+='<tr><td class="ld">'+esc(l.designation||'')+'</td>'
-        +'<td class="ln">'+esc(l.qte||'')+' '+esc(l.unite||'')+' × '+fmtMoney(l.pu)+'</td>'
+        +'<td class="lq">'+esc(l.qte||'')+' '+esc(l.unite||'')+'</td>'
+        +'<td class="lpu">'+fmtMoney(l.pu)+'</td>'
         +'<td class="lt">'+fmtMoney(tot)+'</td></tr>';
     });
-    html+='</table></div>';
+    html+='</tbody></table></div>';
   });
   return html;
 }
 function exportDevisPDF(id){var d=db.devis.find(function(x){return x.id===id;});if(!d){showToast('Introuvable','error');return;}var s=db.settings;var ht=(d.lignes||[]).reduce(function(a,l){return a+(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);},0);var tva=ht*(d.tva||10)/100;var ttc=ht+tva;
 var planSection=d.planSVG?'<div style="page-break-before:always;padding:10mm;background:#f5f0e8;">'+d.planSVG+'</div>':'';
-var html='<!DOCTYPE html><html><head><meta charset="UTF-8"/><meta name="color-scheme" content="light only"/><title>Devis '+d.numero+'</title><style>html,body{background:#fff !important;-webkit-text-fill-color:#1a1a1a;}body{font-family:Arial,sans-serif;padding:20mm;color:#1a1a1a;font-size:10pt;}h1{font-size:20pt;color:#15347a;margin-bottom:4px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;}.lot-sec{margin-bottom:18px;page-break-inside:avoid;}.lot-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #15347a;padding-bottom:5px;margin-bottom:2px;font-weight:bold;font-size:12pt;color:#15347a;}.lot-badge{font-size:8.5pt;font-family:Courier New,monospace;color:#15347a;background:#e6eaf4;padding:2px 8px;border-radius:4px;font-weight:bold;}.lot-table{width:100%;border-collapse:collapse;margin-bottom:0;}.lot-table td{padding:6px 2px;border-bottom:1px dotted #ccc;font-size:9.5pt;vertical-align:top;}.lot-table .ld{color:#222;}.lot-table .ln{text-align:right;font-family:Courier New,monospace;color:#666;white-space:nowrap;font-size:8.5pt;padding-left:10px;}.lot-table .lt{text-align:right;font-family:Courier New,monospace;color:#1a1a1a;font-weight:bold;white-space:nowrap;padding-left:12px;}.tot{margin-left:auto;width:240px;margin-top:14px;}.tr{display:flex;justify-content:space-between;padding:4px 0;}.ttc{font-size:13pt;font-weight:bold;color:#15347a;border-top:2px solid #15347a;padding-top:8px;margin-top:6px;}.bio{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:8px;font-size:9pt;color:#166534;margin-bottom:16px;}@media print{body{padding:10mm;}.noprint{display:none;}}</style></head><body>';
-html+='<div class="noprint" style="position:sticky;top:0;display:flex;gap:10px;justify-content:space-between;align-items:center;background:#0f1c38;padding:12px 16px;margin:-20mm -20mm 20px;border-bottom:1px solid #1f3358;">'
+var html='<!DOCTYPE html><html><head><meta charset="UTF-8"/><meta name="color-scheme" content="light only"/><title>Devis '+d.numero+'</title><style>*{-webkit-text-size-adjust:100%;text-size-adjust:100%;}html,body{background:#fff !important;-webkit-text-fill-color:#1a1a1a;}body{font-family:Arial,sans-serif;padding:20mm;color:#1a1a1a;font-size:10pt;}h1{font-size:20pt;color:#15347a;margin-bottom:4px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;}.lot-sec{margin-bottom:16px;page-break-inside:avoid;}.lot-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #15347a;padding-bottom:5px;margin-bottom:0;font-weight:bold;font-size:12pt;color:#15347a;}.lot-badge{font-size:8.5pt;font-family:Courier New,monospace;color:#15347a;background:#e6eaf4;padding:2px 8px;border-radius:4px;font-weight:bold;}.lot-table{width:100%;border-collapse:collapse;margin-bottom:0;table-layout:fixed;}.lot-table th{font-size:7.5pt;font-weight:bold;color:#15347a;text-transform:uppercase;letter-spacing:.3px;padding:5px 6px;border-bottom:1px solid #15347a;text-align:right;}.lot-table th.h-desig{text-align:left;}.lot-table td{padding:6px;border-bottom:1px solid #e8e8e8;font-size:9pt;vertical-align:top;}.lot-table .ld{color:#222;width:46%;word-wrap:break-word;}.lot-table .lq,.lot-table .lpu{text-align:right;font-family:Courier New,monospace;color:#555;white-space:nowrap;font-size:8.5pt;border-left:1px solid #e0e0e0;width:18%;}.lot-table .lt{text-align:right;font-family:Courier New,monospace;color:#1a1a1a;font-weight:bold;white-space:nowrap;border-left:1px solid #e0e0e0;width:18%;}.tot{margin-left:auto;width:240px;margin-top:14px;}.tr{display:flex;justify-content:space-between;padding:4px 0;}.ttc{font-size:13pt;font-weight:bold;color:#15347a;border-top:2px solid #15347a;padding-top:8px;margin-top:6px;}.bio{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:8px;font-size:9pt;color:#166534;margin-bottom:16px;}@media print{body{padding:10mm;}.noprint{display:none !important;visibility:hidden !important;height:0 !important;overflow:hidden !important;}}</style></head><body>';
+html+='<div class="noprint" style="display:flex;gap:10px;justify-content:space-between;align-items:center;background:#0f1c38;padding:12px 16px;margin:-20mm -20mm 20px;border-bottom:1px solid #1f3358;">'
   +'<button onclick="try{window.close();}catch(e){}; setTimeout(function(){history.length>1?history.back():(location.href=document.referrer||\'about:blank\');},100);" style="background:#16294a;color:#eaf2ff;border:1px solid #1f3358;border-radius:8px;padding:10px 18px;font-size:15px;font-family:Arial;cursor:pointer;">← Fermer</button>'
   +'<button onclick="window.print()" style="background:#2d8cf0;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:15px;font-family:Arial;cursor:pointer;">🖨 Imprimer / PDF</button>'
   +'</div>';
@@ -3975,9 +4142,21 @@ document.addEventListener('DOMContentLoaded',function(){
   var pickSearch=document.getElementById('pick-bib-search');
   if(pickSearch)pickSearch.addEventListener('input',renderPickBib);
   var pickList=document.getElementById('pick-bib-list');
-  if(pickList)pickList.addEventListener('change',function(e){
-    var cb=e.target;if(cb.dataset.pickid!==undefined){_pickBibSel[cb.dataset.pickid]=cb.checked;updatePickBibCount();}
-  });
+  if(pickList){
+    pickList.addEventListener('change',function(e){
+      var cb=e.target;if(cb.dataset.pickid!==undefined){_pickBibSel[cb.dataset.pickid]=cb.checked;updatePickBibCount();}
+    });
+    pickList.addEventListener('click',function(e){
+      var met=e.target.closest('[data-pickmetier]');
+      if(met){_pickNav.metier=met.dataset.pickmetier;_pickNav.categorie=null;renderPickBib();return;}
+      var cat=e.target.closest('[data-pickcat]');
+      if(cat){_pickNav.categorie=cat.dataset.pickcat;renderPickBib();return;}
+      var home=e.target.closest('[data-pickhome]');
+      if(home){_pickNav.metier=null;_pickNav.categorie=null;renderPickBib();return;}
+      var metBc=e.target.closest('[data-pickmetier-bc]');
+      if(metBc){_pickNav.metier=metBc.dataset.pickmetierBc;_pickNav.categorie=null;renderPickBib();return;}
+    });
+  }
   document.getElementById('btn-save-devis').addEventListener('click',function(){collectLines();saveDevis();});
   document.getElementById('btn-export-devis').addEventListener('click',function(){collectLines();saveDevis();var lid=editDevisId||(db.devis.length?db.devis[db.devis.length-1].id:null);if(lid)exportDevisPDF(lid);});
   var _bef=document.getElementById('btn-export-fournisseur');
