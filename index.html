@@ -625,6 +625,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     <button class="nav-btn" data-view="visites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>Visites</button>
     <button class="nav-btn" data-view="devis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Devis</button>
     <button class="nav-btn" data-view="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Docs</button>
+    <button class="nav-btn" data-view="bibliotheque" id="nav-biblio-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Biblio</button>
     <button class="nav-btn nav-more" id="nav-more-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>Plus</button>
   </nav>
 
@@ -640,7 +641,6 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <button class="sm-item" data-menu="banque"><svg viewBox="0 0 24 24"><line x1="3" y1="22" x2="21" y2="22"/><path d="M3 10h18M5 10v12M19 10v12M12 2L3 10h18z"/></svg>Banque <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="depenses"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Dépenses <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="bibliotheque"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Bibliothèque de prix <span class="sm-badge">NOUVEAU</span></button>
-      <button class="sm-item" data-menu="ossature"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>Ossature bois <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="plans"><svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>Édition de plans</button>
       <button class="sm-item" data-menu="clients"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Clients</button>
       <button class="sm-item" data-menu="planning"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Planning</button>
@@ -1592,7 +1592,7 @@ function handleMenuNav(action){
   switch(action){
     case 'banque': showView('banque'); break;
     case 'depenses': showView('depenses'); renderDepenses(); break;
-    case 'bibliotheque': showView('bibliotheque'); renderBibliotheque(); break;
+    case 'bibliotheque': showView('bibliotheque'); _bibNav={metier:null,categorie:null}; renderBibliotheque(); break;
     case 'ossature': showView('ossature'); if(typeof obRenderOuvertures==='function')obRenderOuvertures(); break;
     case 'plans': showView('plans'); _plParcoursMode=false; var _upb=document.getElementById('pl-use-parcours'); if(_upb)_upb.style.display='none'; plRender(); break;
     case 'clients': showView('clients'); if(typeof renderClients==='function')renderClients(); break;
@@ -1980,27 +1980,91 @@ function bibCollectAndRecalc(){
   if(!tmp.prixForce&&deb>0){document.getElementById('bib-prix').value=pv;}
 }
 var BIB_CATS=['Couverture','Isolation','Maçonnerie','Plâtrerie','Carrelage','Peinture','Plomberie','Électricité','Menuiserie','Divers'];
+var _bibNav={metier:null,categorie:null};
+function metierIcon(m){
+  var icons={'Maçon / Gros œuvre':'🧱','Charpentier':'🪵','Couvreur':'🏠','Isolation / Énergie':'🧊','Menuisier':'🚪','Plaquiste':'📐','Carreleur / Solier':'◻️','Peintre':'🎨','Plombier / Chauffagiste':'🚿','Électricien':'⚡','Paysagiste / Extérieur':'🌳','Tous corps d\'état':'🧰'};
+  return icons[m]||'📁';
+}
+function bibCountForMetier(m){
+  var cats=METIERS[m]||[];
+  return (db.bibliotheque||[]).filter(function(b){return cats.indexOf(b.categorie)>=0;}).length;
+}
+function bibCountForCat(cat){
+  return (db.bibliotheque||[]).filter(function(b){return b.categorie===cat;}).length;
+}
 function renderBibliotheque(){
   var list=document.getElementById('bib-list');if(!list)return;
   var search=(document.getElementById('bib-search')?document.getElementById('bib-search').value:'').toLowerCase().trim();
-  var items=(db.bibliotheque||[]).filter(function(b){
-    return !search||(b.designation||'').toLowerCase().indexOf(search)>=0||(b.categorie||'').toLowerCase().indexOf(search)>=0;
-  });
-  if(!items.length){list.innerHTML='<div class="empty-state" style="padding:30px;"><div class="empty-state-icon">📚</div><div style="font-size:14px;">'+(search?'Aucun ouvrage trouvé':'Bibliothèque vide')+'</div></div>';return;}
-  // Grouper par catégorie
-  var groups={},order=[];
-  items.forEach(function(b){var c=b.categorie||'Divers';if(!groups[c]){groups[c]=[];order.push(c);}groups[c].push(b);});
-  list.innerHTML=order.map(function(cat){
-    return '<div style="font-size:11px;font-family:var(--font-mono);color:var(--c-accent);letter-spacing:1px;margin:14px 4px 8px;">'+esc(cat).toUpperCase()+'</div>'
-      +groups[cat].map(function(b){
-        return '<div class="card" style="margin-bottom:6px;cursor:pointer;padding:12px;" data-bibedit="'+b.id+'">'
-          +'<div style="display:flex;align-items:center;gap:12px;">'
-          +'<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;">'+esc(b.designation)+'</div>'
-          +'<div style="font-size:11px;color:var(--c-muted);">'+esc(b.unite)+'</div></div>'
-          +'<div style="font-family:var(--font-mono);font-weight:700;color:var(--c-accent);">'+fmtMoney(b.prix)+'</div>'
-          +'</div></div>';
-      }).join('');
-  }).join('');
+
+  // RECHERCHE : vue plate globale, ignore l'arborescence
+  if(search){
+    var items=(db.bibliotheque||[]).filter(function(b){
+      return (b.designation||'').toLowerCase().indexOf(search)>=0||(b.categorie||'').toLowerCase().indexOf(search)>=0;
+    });
+    if(!items.length){list.innerHTML='<div class="empty-state" style="padding:30px;"><div class="empty-state-icon">🔍</div><div style="font-size:14px;">Aucun ouvrage trouvé</div></div>';return;}
+    list.innerHTML=items.map(bibOuvrageCard).join('');
+    return;
+  }
+
+  // NIVEAU 3 : ouvrages d'une catégorie
+  if(_bibNav.categorie){
+    var ouvrages=(db.bibliotheque||[]).filter(function(b){return b.categorie===_bibNav.categorie;});
+    list.innerHTML=bibBreadcrumb()+ouvrages.map(bibOuvrageCard).join('');
+    return;
+  }
+
+  // NIVEAU 2 : catégories d'un métier
+  if(_bibNav.metier){
+    var cats=METIERS[_bibNav.metier]||[];
+    list.innerHTML=bibBreadcrumb()+cats.map(function(cat){
+      var n=bibCountForCat(cat);
+      return '<div class="card" style="margin-bottom:8px;cursor:pointer;padding:14px;" data-bibcat="'+esc(cat)+'">'
+        +'<div style="display:flex;align-items:center;gap:12px;">'
+        +'<span style="font-size:20px;">📂</span>'
+        +'<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;">'+esc(cat)+'</div>'
+        +'<div style="font-size:11px;color:var(--c-muted);">'+n+' ouvrage'+(n>1?'s':'')+'</div></div>'
+        +'<span style="color:var(--c-accent);font-size:18px;">›</span>'
+        +'</div></div>';
+    }).join('');
+    return;
+  }
+
+  // NIVEAU 1 : métiers
+  var metiers=Object.keys(METIERS);
+  list.innerHTML='<div style="font-size:11px;font-family:var(--font-mono);color:var(--c-muted);letter-spacing:1px;margin:4px 4px 10px;">PAR MÉTIER</div>'
+    +metiers.map(function(m){
+      var n=bibCountForMetier(m);
+      if(n===0)return '';
+      return '<div class="card" style="margin-bottom:8px;cursor:pointer;padding:14px;" data-bibmetier="'+esc(m)+'">'
+        +'<div style="display:flex;align-items:center;gap:12px;">'
+        +'<span style="font-size:22px;">'+metierIcon(m)+'</span>'
+        +'<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:15px;">'+esc(m)+'</div>'
+        +'<div style="font-size:11px;color:var(--c-muted);">'+n+' ouvrage'+(n>1?'s':'')+'</div></div>'
+        +'<span style="color:var(--c-accent);font-size:18px;">›</span>'
+        +'</div></div>';
+    }).join('');
+}
+function bibBreadcrumb(){
+  var html='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;">';
+  html+='<span data-bibhome="1" style="cursor:pointer;color:var(--c-accent);">📚 Métiers</span>';
+  if(_bibNav.metier){
+    html+='<span style="color:var(--c-muted);">›</span>';
+    html+='<span data-bibmetier-bc="'+esc(_bibNav.metier)+'" style="cursor:pointer;color:'+(_bibNav.categorie?'var(--c-accent)':'var(--c-text)')+';">'+esc(_bibNav.metier)+'</span>';
+  }
+  if(_bibNav.categorie){
+    html+='<span style="color:var(--c-muted);">›</span>';
+    html+='<span style="color:var(--c-text);">'+esc(_bibNav.categorie)+'</span>';
+  }
+  html+='</div>';
+  return html;
+}
+function bibOuvrageCard(b){
+  return '<div class="card" style="margin-bottom:6px;cursor:pointer;padding:12px;" data-bibedit="'+b.id+'">'
+    +'<div style="display:flex;align-items:center;gap:12px;">'
+    +'<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;">'+esc(b.designation)+'</div>'
+    +'<div style="font-size:11px;color:var(--c-muted);">'+esc(b.unite)+(b.categorie&&!_bibNav.categorie?' · '+esc(b.categorie):'')+'</div></div>'
+    +'<div style="font-family:var(--font-mono);font-weight:700;color:var(--c-accent);">'+fmtMoney(b.prix)+'</div>'
+    +'</div></div>';
 }
 function openBib(id){
   editBibId=id||null;
@@ -3648,7 +3712,7 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('header-sync-btn').addEventListener('click',function(){syncToFS();});
 
   // NAV
-  document.querySelectorAll('.nav-btn').forEach(function(b){b.addEventListener('click',function(){if(b.dataset.view)showView(b.dataset.view);});});
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.addEventListener('click',function(){if(b.dataset.view){if(b.dataset.view==='bibliotheque'){showView('bibliotheque');_bibNav={metier:null,categorie:null};renderBibliotheque();}else{showView(b.dataset.view);}}});});
   // Menu latéral
   var moreBtn=document.getElementById('nav-more-btn');
   if(moreBtn)moreBtn.addEventListener('click',openSideMenu);
@@ -3708,7 +3772,18 @@ document.addEventListener('DOMContentLoaded',function(){
   var bibSearch=document.getElementById('bib-search');
   if(bibSearch)bibSearch.addEventListener('input',renderBibliotheque);
   var bibList=document.getElementById('bib-list');
-  if(bibList)bibList.addEventListener('click',function(e){var row=e.target.closest('[data-bibedit]');if(row)openBib(row.dataset.bibedit);});
+  if(bibList)bibList.addEventListener('click',function(e){
+    var edit=e.target.closest('[data-bibedit]');
+    if(edit){openBib(edit.dataset.bibedit);return;}
+    var met=e.target.closest('[data-bibmetier]');
+    if(met){_bibNav.metier=met.dataset.bibmetier;_bibNav.categorie=null;renderBibliotheque();return;}
+    var cat=e.target.closest('[data-bibcat]');
+    if(cat){_bibNav.categorie=cat.dataset.bibcat;renderBibliotheque();return;}
+    var home=e.target.closest('[data-bibhome]');
+    if(home){_bibNav.metier=null;_bibNav.categorie=null;renderBibliotheque();return;}
+    var metBc=e.target.closest('[data-bibmetier-bc]');
+    if(metBc){_bibNav.metier=metBc.dataset.bibmetierBc;_bibNav.categorie=null;renderBibliotheque();return;}
+  });
   var bibRestore=document.getElementById('bib-restore');
   if(bibRestore)bibRestore.addEventListener('click',restoreBibliotheque);
   // OSSATURE BOIS
