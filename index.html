@@ -4329,10 +4329,8 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // SCANNER
   document.getElementById('close-modal-scanner').addEventListener('click',function(){document.getElementById('modal-scanner').classList.remove('open');});
-  document.getElementById('btn-open-scanner').addEventListener('click',function(){document.getElementById('scanner-input').click();});
-  document.getElementById('btn-choose-scanner').addEventListener('click',function(){document.getElementById('scanner-input-file').click();});
+  document.getElementById('btn-open-scanner').addEventListener('click',function(){document.getElementById('scanner-input-file').click();});
   document.getElementById('scanner-input-file').addEventListener('change',function(e){if(e.target.files[0])handleScannerFile(e.target.files[0]);});
-  document.getElementById('scanner-input').addEventListener('change',function(e){if(e.target.files[0])handleScannerFile(e.target.files[0]);});
   document.getElementById('btn-scanner-to-devis').addEventListener('click',function(){
     var text=document.getElementById('scanner-text').value.trim();if(!text){showToast('Aucun texte','error');return;}
     document.getElementById('modal-scanner').classList.remove('open');
@@ -4810,10 +4808,8 @@ function validerSignature(){
     <div class="modal-handle"></div>
     <div class="modal-hdr"><div class="modal-title">📷 Scanner notes</div><button class="btn btn-secondary" style="padding:8px 12px;" id="close-modal-scanner">✕</button></div>
     <p style="color:var(--c-muted);font-size:13px;margin-bottom:16px;">Photographiez vos notes manuscrites, ou choisissez un fichier existant.</p>
-    <input type="file" accept="image/*" capture="environment" id="scanner-input" style="display:none;"/>
     <input type="file" accept="image/*,application/pdf" id="scanner-input-file" style="display:none;"/>
-    <button class="btn btn-primary btn-full" id="btn-open-scanner">📸 Prendre une photo</button>
-    <button class="btn btn-secondary btn-full" id="btn-choose-scanner" style="margin-top:8px;">🖼️ Choisir un fichier ou une photo</button>
+    <button class="btn btn-primary btn-full" id="btn-open-scanner">📷 Photo, galerie ou fichier</button>
     <div id="scanner-preview" style="margin:12px 0;"></div>
     <div id="scanner-ai-output" style="display:none;">
       <div style="display:none;padding:12px;background:rgba(45,140,240,.05);border-radius:8px;margin-bottom:8px;" id="scanner-loading"><div style="display:flex;align-items:center;gap:8px;"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span style="font-size:13px;color:var(--c-muted);">Analyse...</span></div></div>
