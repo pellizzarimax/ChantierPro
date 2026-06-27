@@ -884,6 +884,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <div class="card-title" style="margin:0;">Lignes</div>
       <div style="display:flex;gap:6px;">
         <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" id="btn-pick-bib">📚 Bibliothèque</button>
+        <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" id="btn-refresh-names">⟳ Actualiser noms</button>
         <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" id="btn-add-line">+ Ligne</button>
       </div>
     </div>
@@ -3373,6 +3374,51 @@ function pickBibAddToDevis(){
 }
 function addDevisLine(){devisLines.push({id:genId(),designation:'',unite:'u',qte:'1',pu:'0'});renderDevisLines();}
 function removeDevisLine(id){devisLines=devisLines.filter(function(l){return l.id!==id;});renderDevisLines();}
+function _normWords(s){
+  return (s||'').toLowerCase()
+    .replace(/[()\/.,+]/g,' ')
+    .replace(/[éèê]/g,'e').replace(/[àâ]/g,'a').replace(/[ô]/g,'o').replace(/[ûù]/g,'u').replace(/[î]/g,'i').replace(/ç/g,'c')
+    .split(/\s+/)
+    .filter(function(w){return w.length>2 && ['fourniture','pose','application','des','les','sur','avec','pour','par','sous'].indexOf(w)<0;});
+}
+function matchOuvrageForDesig(desig){
+  var words=_normWords(desig);
+  if(!words.length)return null;
+  var best=null, bestScore=0;
+  (db.bibliotheque||[]).forEach(function(b){
+    var bw=_normWords(b.designation);
+    if(!bw.length)return;
+    var common=0;
+    words.forEach(function(w){if(bw.indexOf(w)>=0)common++;});
+    // score = proportion de mots de l'ancienne désignation retrouvés
+    var score=common/words.length;
+    // bonus si la plupart des mots de l'ouvrage sont aussi couverts (évite les matches trop génériques)
+    if(score>bestScore){bestScore=score;best=b;}
+  });
+  return (bestScore>=0.6)?best:null; // seuil de confiance
+}
+function refreshDevisNames(){
+  if(!devisLines||!devisLines.length){showToast('Aucune ligne à actualiser','error');return;}
+  collectLines();
+  var updated=0, unmatched=0;
+  devisLines.forEach(function(l){
+    if(!l.designation)return;
+    var b=matchOuvrageForDesig(l.designation);
+    if(b && b.designation && b.designation!==l.designation){
+      l._oldDesig=l.designation;
+      l.designation=b.designation;
+      updated++;
+    } else if(!b){
+      unmatched++;
+    }
+  });
+  renderDevisLines();
+  if(updated>0){
+    showToast(updated+' désignation'+(updated>1?'s':'')+' actualisée'+(updated>1?'s':'')+(unmatched>0?' · '+unmatched+' non reconnue'+(unmatched>1?'s':''):''),'success');
+  } else {
+    showToast('Aucune correspondance trouvée'+(unmatched>0?' ('+unmatched+' lignes)':''),'error');
+  }
+}
 function collectLines(){document.querySelectorAll('#devis-lines-container .devis-line').forEach(function(row){var lid=row.dataset.lid;var l=devisLines.find(function(x){return x.id===lid;});if(!l)return;row.querySelectorAll('input[data-f]').forEach(function(inp){l[inp.dataset.f]=inp.value;});});}
 function renderDevisLines(){var cont=document.getElementById('devis-lines-container');cont.innerHTML=devisLines.map(function(l){var tot=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);return '<div class="devis-line" data-lid="'+l.id+'"><div class="dl-grid"><input type="text" placeholder="Désignation" value="'+esc(l.designation||'')+'" data-f="designation"/><input type="text" placeholder="m²" value="'+esc(l.unite||'')+'" data-f="unite"/><input type="number" placeholder="Qté" value="'+esc(l.qte||'')+'" data-f="qte" step="0.01"/><input type="number" placeholder="PU" value="'+esc(l.pu||'')+'" data-f="pu" step="0.01"/><button class="devis-remove" data-rem="'+l.id+'">✕</button></div><div class="devis-line-total">= '+fmtMoney(tot)+'</div></div>';}).join('');updateTotaux();}
 function updateTotaux(){var tvr=parseFloat(document.getElementById('d-tva').value)||10;var ht=0;devisLines.forEach(function(l){ht+=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);});var tva=ht*tvr/100;document.getElementById('total-ht').textContent=fmtMoney(ht);document.getElementById('total-tva-amount').textContent=fmtMoney(tva)+' ('+tvr+'%)';document.getElementById('total-ttc').textContent=fmtMoney(ht+tva);}
@@ -4245,6 +4291,8 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('btn-add-line').addEventListener('click',function(){collectLines();addDevisLine();});
   var btnPickBib=document.getElementById('btn-pick-bib');
   if(btnPickBib)btnPickBib.addEventListener('click',openPickBib);
+  var btnRefreshNames=document.getElementById('btn-refresh-names');
+  if(btnRefreshNames)btnRefreshNames.addEventListener('click',refreshDevisNames);
   var pickClose=document.getElementById('pick-bib-close');
   if(pickClose)pickClose.addEventListener('click',function(){document.getElementById('modal-pick-bib').classList.remove('open');});
   var pickAdd=document.getElementById('pick-bib-add');
