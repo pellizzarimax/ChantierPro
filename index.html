@@ -82,9 +82,10 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 .list-item-title{font-weight:600;font-size:14px;}
 .list-item-sub{font-size:12px;color:var(--c-muted);}
 .list-item-amount{font-family:var(--font-mono);font-size:14px;font-weight:500;color:var(--c-accent);}
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:flex-end;justify-content:center;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:flex-end;justify-content:center;overscroll-behavior:contain;}
+body.modal-open{overflow:hidden;position:fixed;width:100%;}
 .modal-overlay.open{display:flex;}
-.modal{background:var(--c-surface);border-radius:20px 20px 0 0;width:100%;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px;padding-bottom:calc(36px + var(--safe-bottom));}
+.modal{background:var(--c-surface);border-radius:20px 20px 0 0;width:100%;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:20px;padding-bottom:calc(36px + var(--safe-bottom));}
 .modal-handle{width:36px;height:4px;background:var(--c-border);border-radius:2px;margin:0 auto 16px;}
 .modal-title{font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:16px;}
 .modal-full{max-height:98vh;-webkit-overflow-scrolling:touch;}
@@ -674,7 +675,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     </div>
 
     <!-- CONTENU SCROLLABLE -->
-    <div style="flex:1;overflow-y:auto;padding:16px;">
+    <div style="flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:16px;">
 
       <!-- ÉTAPE 1 : RDV CLIENT -->
       <div id="step-1">
@@ -4125,6 +4126,30 @@ function toggleKeyVis(id, btn){
 }
 document.addEventListener('DOMContentLoaded',function(){
   initFB();
+  // Verrouillage du scroll de fond quand un modal est ouvert (anti scroll-through iOS)
+  (function(){
+    var savedScrollY=0;
+    function anyModalOpen(){
+      return !!document.querySelector('.modal-overlay.open');
+    }
+    function syncBodyLock(){
+      var open=anyModalOpen();
+      var locked=document.body.classList.contains('modal-open');
+      if(open&&!locked){
+        savedScrollY=window.scrollY||window.pageYOffset||0;
+        document.body.style.top=(-savedScrollY)+'px';
+        document.body.classList.add('modal-open');
+      } else if(!open&&locked){
+        document.body.classList.remove('modal-open');
+        document.body.style.top='';
+        window.scrollTo(0,savedScrollY);
+      }
+    }
+    var obs=new MutationObserver(syncBodyLock);
+    document.querySelectorAll('.modal-overlay').forEach(function(m){
+      obs.observe(m,{attributes:true,attributeFilter:['class']});
+    });
+  })();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});
   function upd(){var off=!navigator.onLine;document.getElementById('offline-banner').classList.toggle('show',off);document.getElementById('app-offline-spacer').style.display=off?'block':'none';}
   window.addEventListener('online',upd);window.addEventListener('offline',upd);upd();
