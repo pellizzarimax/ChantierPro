@@ -524,8 +524,8 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
           <button class="btn btn-secondary" style="padding:8px 12px;" id="dep-close">✕</button>
         </div>
         <div class="modal-body" style="-webkit-overflow-scrolling:touch;padding-bottom:36px;">
-          <button class="btn btn-secondary" id="dep-scan" style="width:100%;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px;">📷 Scanner le ticket / la facture</button>
-          <input type="file" id="dep-scan-input" accept="image/*" capture="environment" style="display:none;"/>
+          <button class="btn btn-secondary" id="dep-scan" style="width:100%;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px;">📷 Scanner ou choisir le ticket / la facture</button>
+          <input type="file" id="dep-scan-input" accept="image/*" style="display:none;"/>
           <div id="dep-scan-status" style="display:none;font-size:12px;text-align:center;padding:10px;border-radius:8px;background:rgba(45,140,240,.1);color:var(--c-info);margin-bottom:14px;"></div>
           <div class="form-group"><label class="form-label">Libellé *</label><input type="text" class="form-input" id="dep-libelle" placeholder="Ex: Carrelage Point P"/></div>
           <div class="form-row">
@@ -583,7 +583,14 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
             <button class="btn btn-secondary" id="bib-toggle-detail" style="padding:4px 10px;font-size:11px;">Afficher</button>
           </div>
           <div id="bib-detail-section" style="display:none;">
-            <div style="font-size:11px;color:var(--c-muted);margin-bottom:8px;">Fournitures (matériaux)</div>
+            <div style="font-size:11px;color:var(--c-muted);background:rgba(45,140,240,.06);border:1px solid var(--c-border);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.5;">Le déboursé décompose le coût pour <b>1 unité</b> de l'ouvrage. <b>Qté</b> = quantité de matériau par unité · <b>PU achat</b> = ton prix d'achat HT. Déboursé sec = (Σ fournitures) + (temps × taux). Prix de vente = déboursé + marge.</div>
+            <div style="font-size:11px;color:var(--c-muted);margin-bottom:4px;">Fournitures (matériaux)</div>
+            <div style="display:grid;grid-template-columns:2fr 1fr 1fr 20px;gap:6px;margin-bottom:6px;padding:0 2px;">
+              <div style="font-size:10px;color:var(--c-accent);font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Matériau</div>
+              <div style="font-size:10px;color:var(--c-accent);font-weight:600;text-transform:uppercase;letter-spacing:.3px;text-align:center;">Qté</div>
+              <div style="font-size:10px;color:var(--c-accent);font-weight:600;text-transform:uppercase;letter-spacing:.3px;text-align:center;">PU achat €</div>
+              <div></div>
+            </div>
             <div id="bib-fournitures-list"></div>
             <button class="btn btn-secondary" id="bib-add-fourniture" style="width:100%;font-size:12px;margin-bottom:14px;">+ Ajouter une fourniture</button>
             <div style="font-size:11px;color:var(--c-muted);margin-bottom:8px;">Main d'œuvre</div>
@@ -715,8 +722,8 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
         </div>
         <div class="form-group">
           <label class="form-label">Photos état des lieux</label>
-          <input type="file" accept="image/*" multiple capture="environment" id="v-photos" style="display:none;"/>
-          <button class="btn btn-secondary btn-full" id="btn-take-photos">📷 Prendre des photos</button>
+          <input type="file" accept="image/*" multiple id="v-photos" style="display:none;"/>
+          <button class="btn btn-secondary btn-full" id="btn-take-photos">📷 Photo ou photothèque</button>
           <div class="photo-grid" id="photos-preview"></div>
         </div>
       </div>
