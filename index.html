@@ -1771,6 +1771,7 @@ function renderDocs(){
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">'
       +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;" data-fedit="'+f.id+'"><span>✏️</span><span style="font-size:9px;">Modifier</span></button>'
       +'<button class="btn btn-primary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;" data-fpdf="'+f.id+'"><span>📄</span><span style="font-size:9px;">PDF</span></button>'
+      +(f.type!=='avoir'?'<button class="btn btn-secondary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;" data-favoir="'+f.id+'"><span>↩️</span><span style="font-size:9px;">Avoir</span></button>':'')
       +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--c-danger);" data-fdel="'+f.id+'"><span>🗑</span><span style="font-size:9px;">Suppr.</span></button>'
       +'</div></div>';
   });
@@ -4440,6 +4441,28 @@ document.addEventListener('DOMContentLoaded',function(){
   // HEADER
   document.getElementById('header-settings-btn').addEventListener('click',function(){openSettings();});
   document.getElementById('header-sync-btn').addEventListener('click',function(){syncToFS();});
+  // Choix du type de facture
+  document.getElementById('fact-type-close').addEventListener('click',function(){document.getElementById('modal-fact-type').classList.remove('open');});
+  document.querySelectorAll('[data-facttype]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var t=b.dataset.facttype;
+      if(t==='acompte'||t==='situation'){
+        _factChooserType=t;
+        document.getElementById('fact-pct-label').textContent=(t==='acompte')?'Pourcentage d\'acompte (%)':'Avancement global des travaux (%)';
+        document.getElementById('fact-pct').value=(t==='acompte')?'30':'50';
+        document.getElementById('fact-pct-row').style.display='block';
+      } else {
+        document.getElementById('modal-fact-type').classList.remove('open');
+        createFactureFromDevis(_factChooserDevisId,t);
+      }
+    });
+  });
+  document.getElementById('fact-pct-go').addEventListener('click',function(){
+    var pct=parseFloat(document.getElementById('fact-pct').value)||0;
+    if(pct<=0||pct>100){showToast('Pourcentage entre 1 et 100','error');return;}
+    document.getElementById('modal-fact-type').classList.remove('open');
+    createFactureFromDevis(_factChooserDevisId,_factChooserType,pct);
+  });
 
   // NAV
   document.querySelectorAll('.nav-btn').forEach(function(b){b.addEventListener('click',function(){if(b.dataset.view){if(b.dataset.view==='bibliotheque'){showView('bibliotheque');_bibNav={metier:null,categorie:null};renderBibliotheque();}else{showView(b.dataset.view);}}});});
@@ -4747,7 +4770,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var plan=e.target.closest('[data-dplan]');if(plan){showPlanFromDevis(plan.dataset.dplan);return;}
     var pdf=e.target.closest('[data-dpdf]');if(pdf){exportDevisPDF(pdf.dataset.dpdf);return;}
     var bat=e.target.closest('[data-dbat]');if(bat){exportBatappli(bat.dataset.dbat);return;}
-    var fact=e.target.closest('[data-dfact]');if(fact){createFactureFromDevis(fact.dataset.dfact);return;}
+    var fact=e.target.closest('[data-dfact]');if(fact){openFactTypeChooser(fact.dataset.dfact);return;}
     var del=e.target.closest('[data-ddel]');if(del){recordTombstone('devis',del.dataset.ddel);db.devis=db.devis.filter(function(d){return d.id!==del.dataset.ddel;});saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();}
   });
 
@@ -4787,10 +4810,11 @@ document.addEventListener('DOMContentLoaded',function(){
   });
   // Docs — factures actions
   document.getElementById('docs-list').addEventListener('click',function(e){
-    var gf=e.target.closest('[data-gen-facture]');if(gf){createFactureFromDevis(gf.dataset.genFacture);return;}
+    var gf=e.target.closest('[data-gen-facture]');if(gf){openFactTypeChooser(gf.dataset.genFacture);return;}
     var fe=e.target.closest('[data-fedit]');if(fe){openEditFacture(fe.dataset.fedit);return;}
     var fp=e.target.closest('[data-fpdf]');if(fp){exportFacturePDF(fp.dataset.fpdf);return;}
-    var fd=e.target.closest('[data-fdel]');if(fd){recordTombstone('factures',fd.dataset.fdel);db.factures=db.factures.filter(function(f){return f.id!==fd.dataset.fdel;});saveDB();renderDocs();return;}
+    var av=e.target.closest('[data-favoir]');if(av){if(confirm('Créer un avoir annulant cette facture ?'))createAvoirFromFacture(av.dataset.favoir);return;}
+     var fd=e.target.closest('[data-fdel]');if(fd){recordTombstone('factures',fd.dataset.fdel);db.factures=db.factures.filter(function(f){return f.id!==fd.dataset.fdel;});saveDB();renderDocs();return;}
     var ed=e.target.closest('[data-dedit]');if(ed){openEditDevis(ed.dataset.dedit);return;}
     var pl=e.target.closest('[data-dplan]');if(pl){showPlanFromDevis(pl.dataset.dplan);return;}
     var pdf=e.target.closest('[data-dpdf]');if(pdf){exportDevisPDF(pdf.dataset.dpdf);return;}
@@ -4891,33 +4915,75 @@ function calcEcheance(dateStr){
 }
 
 // Créer facture depuis devis
-function createFactureFromDevis(devisId){
+// ===== FACTURATION AVANCÉE : acompte / situation / solde / avoir =====
+function devisTotalHT(d){return (d.lignes||[]).reduce(function(a,l){return a+(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);},0);}
+function factureTotalHT(f){return (f.lignes||[]).reduce(function(a,l){return a+(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);},0);}
+function totalDejaFactureSurDevis(devisNumero){
+  return (db.factures||[]).filter(function(f){return f.devisRef===devisNumero;})
+    .reduce(function(a,f){return a+factureTotalHT(f);},0);
+}
+function countSituationsSurDevis(devisNumero){
+  return (db.factures||[]).filter(function(f){return f.devisRef===devisNumero&&f.type==='situation';}).length;
+}
+function _newFactureBase(d,type){
+  var today=new Date().toISOString().split('T')[0];
+  return {id:genId(),numero:genFactNum(),type:type||'complete',devisRef:d.numero,client:d.client,objet:d.objet||'',adresse:d.adresse||'',date:today,echeance:calcEcheance(today),tva:d.tva||10,lignes:[],acompte:0,notes:'',paiementStatut:'en_attente',planSVG:'',biosource:d.biosource||false,createdAt:new Date().toISOString()};
+}
+function createFactureFromDevis(devisId,type,pct){
   var d=db.devis.find(function(x){return x.id===devisId;});
   if(!d){showToast('Devis introuvable','error');return;}
-  var today=new Date().toISOString().split('T')[0];
-  var f={
-    id:genId(),
-    numero:genFactNum(),
-    devisRef:d.numero,
-    client:d.client,
-    objet:d.objet||'',
-    adresse:d.adresse||'',
-    date:today,
-    echeance:calcEcheance(today),
-    tva:d.tva||10,
-    lignes:(d.lignes||[]).map(function(l){return Object.assign({},l);}),
-    acompte:0,
-    notes:d.notes||'',
-    paiementStatut:'en_attente',
-    planSVG:d.planSVG||'',
-    biosource:d.biosource||false,
-    createdAt:new Date().toISOString()
-  };
+  type=type||'complete';
+  var ht=devisTotalHT(d);
+  var deja=totalDejaFactureSurDevis(d.numero);
+  var f=_newFactureBase(d,type);
+  if(type==='acompte'){
+    var p=parseFloat(pct)||30;
+    f.lignes=[{id:genId(),designation:'Acompte de '+p+'% à la commande — devis n°'+d.numero,unite:'forfait',qte:'1',pu:String(+(ht*p/100).toFixed(2))}];
+  } else if(type==='situation'){
+    var pav=parseFloat(pct)||0;
+    if(pav<=0){showToast('Indique le % d\'avancement','error');return;}
+    var num=countSituationsSurDevis(d.numero)+1;
+    f.situationNum=num;
+    f.avancement=pav;
+    f.lignes=[
+      {id:genId(),designation:'Situation n°'+num+' — avancement des travaux à '+pav+'% — devis n°'+d.numero,unite:'forfait',qte:'1',pu:String(+(ht*pav/100).toFixed(2))}
+    ];
+    if(deja>0)f.lignes.push({id:genId(),designation:'À déduire : montants déjà facturés (acomptes et situations précédentes)',unite:'forfait',qte:'1',pu:String(-(+deja.toFixed(2)))});
+  } else if(type==='solde'){
+    f.lignes=(d.lignes||[]).filter(function(l){return l.type!=='titre';}).map(function(l){return Object.assign({},l,{id:genId()});});
+    if(deja>0)f.lignes.push({id:genId(),designation:'À déduire : montants déjà facturés (acomptes et situations)',unite:'forfait',qte:'1',pu:String(-(+deja.toFixed(2)))});
+  } else {
+    f.lignes=(d.lignes||[]).map(function(l){return Object.assign({},l,{id:genId()});});
+    f.notes=d.notes||'';f.planSVG=d.planSVG||'';
+  }
   db.settings.factNextNum=(db.settings.factNextNum||1)+1;
   db.factures.push(f);
   saveDB();
   openEditFacture(f.id);
-  showToast('Facture '+f.numero+' créée ✓','success');
+  var labels={complete:'Facture',acompte:'Facture d\'acompte',situation:'Situation',solde:'Facture de solde'};
+  showToast((labels[type]||'Facture')+' '+f.numero+' créée ✓','success');
+}
+var _factChooserDevisId=null,_factChooserType=null;
+function openFactTypeChooser(devisId){
+  var d=db.devis.find(function(x){return x.id===devisId;});
+  if(!d){showToast('Devis introuvable','error');return;}
+  _factChooserDevisId=devisId;_factChooserType=null;
+  var ht=devisTotalHT(d);var deja=totalDejaFactureSurDevis(d.numero);
+  var info='Devis n°'+d.numero+' — '+fmtMoney(ht)+' HT';
+  if(deja>0)info+=' · déjà facturé : '+fmtMoney(deja)+' HT';
+  document.getElementById('fact-type-info').textContent=info;
+  document.getElementById('fact-pct-row').style.display='none';
+  document.getElementById('modal-fact-type').classList.add('open');
+}
+function createAvoirFromFacture(factureId){
+  var src=db.factures.find(function(x){return x.id===factureId;});
+  if(!src){showToast('Facture introuvable','error');return;}
+  var f={id:genId(),numero:genFactNum(),type:'avoir',avoirRef:src.numero,devisRef:src.devisRef||'',client:src.client,objet:'Avoir sur facture n°'+src.numero+(src.objet?' — '+src.objet:''),adresse:src.adresse||'',date:new Date().toISOString().split('T')[0],echeance:'',tva:src.tva||10,lignes:(src.lignes||[]).map(function(l){return Object.assign({},l,{id:genId(),pu:String(-(parseFloat(l.pu)||0))});}),acompte:0,notes:'Avoir annulant/corrigeant la facture n°'+src.numero,paiementStatut:'en_attente',planSVG:'',biosource:false,createdAt:new Date().toISOString()};
+  db.settings.factNextNum=(db.settings.factNextNum||1)+1;
+  db.factures.push(f);
+  saveDB();
+  openEditFacture(f.id);
+  showToast('Avoir '+f.numero+' créé ✓','success');
 }
 
 // Lignes facture
@@ -5080,7 +5146,7 @@ function exportFacturePDF(id){
     +(s.siret?'<div style="font-size:9pt;color:#555;">SIRET : '+esc(s.siret)+'</div>':'')
     +'<div style="font-size:9pt;color:#555;">'+esc(s.tel||'')+' · '+esc(s.email||'')+'<br/>'+esc(s.adresse||'')+'</div>'
     +'</div><div style="text-align:right;">'
-    +'<div class="facture-num">FACTURE</div>'
+    +'<div class="facture-num">'+(f.type==='avoir'?'AVOIR':f.type==='acompte'?'FACTURE D\'ACOMPTE':f.type==='situation'?'SITUATION N°'+(f.situationNum||1):f.type==='solde'?'FACTURE DE SOLDE':'FACTURE')+'</div>'
     +'<div style="font-size:14pt;font-weight:600;font-family:monospace;">'+esc(f.numero)+'</div>'
     +(f.devisRef?'<div style="font-size:9pt;color:#888;">Réf. devis : '+esc(f.devisRef)+'</div>':'')
     +'<div style="font-size:9pt;color:#555;margin-top:3px;">Émise le : '+fmtDate(f.date)+'</div>'
@@ -5370,6 +5436,24 @@ function validerSignature(){
   </div>
 </div>
 <!-- MODAL SIGNATURE -->
+<div class="modal-overlay" id="modal-fact-type">
+  <div class="modal" style="max-height:80vh;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-size:16px;font-weight:700;">Créer une facture</div>
+      <button class="btn btn-secondary" style="padding:8px 12px;" id="fact-type-close">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--c-muted);margin-bottom:12px;" id="fact-type-info"></div>
+    <button class="btn btn-secondary btn-full" style="margin-bottom:8px;text-align:left;" data-facttype="complete">📄 <b>Facture complète</b><br/><span style="font-size:11px;color:var(--c-muted);">Toutes les lignes du devis</span></button>
+    <button class="btn btn-secondary btn-full" style="margin-bottom:8px;text-align:left;" data-facttype="acompte">💰 <b>Facture d'acompte</b><br/><span style="font-size:11px;color:var(--c-muted);">Pourcentage à la commande</span></button>
+    <button class="btn btn-secondary btn-full" style="margin-bottom:8px;text-align:left;" data-facttype="situation">📊 <b>Situation d'avancement</b><br/><span style="font-size:11px;color:var(--c-muted);">Facturation à l'avancement, déduit le déjà facturé</span></button>
+    <button class="btn btn-secondary btn-full" style="margin-bottom:8px;text-align:left;" data-facttype="solde">✅ <b>Facture de solde</b><br/><span style="font-size:11px;color:var(--c-muted);">Détail complet moins le déjà facturé</span></button>
+    <div id="fact-pct-row" style="display:none;margin-top:10px;">
+      <label class="form-label" id="fact-pct-label">Pourcentage</label>
+      <input type="number" class="form-input" id="fact-pct" value="30" min="1" max="100" step="1"/>
+      <button class="btn btn-primary btn-full" style="margin-top:10px;" id="fact-pct-go">Créer</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-signature">
   <div class="modal modal-full" style="display:flex;flex-direction:column;height:92vh;">
     <div class="modal-handle"></div>
