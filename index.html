@@ -978,11 +978,11 @@ var yr=new Date().getFullYear();
 var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],depenses:[],bibliotheque:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
 var db=JSON.parse(JSON.stringify(DFLT));
 function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;if(!db.depenses)db.depenses=[];if(!db.bibliotheque)db.bibliotheque=[];if(!db.bibliotheque.length)db.bibliotheque=defaultBibliotheque();
-    // Migration catalogue v5 : compléter avec les nouveaux ouvrages (préserve ajouts perso et prix modifiés)
-    if(db.bibliotheque.length>0&&!db.settings._bibV5){
+    // Migration catalogue v6 : compléter avec les nouveaux ouvrages (préserve ajouts perso et prix modifiés)
+    if(db.bibliotheque.length>0&&!db.settings._bibV6){
       var existingDesigs={};db.bibliotheque.forEach(function(b){existingDesigs[(b.designation||'').toLowerCase()]=1;});
       defaultBibliotheque().forEach(function(b){if(!existingDesigs[(b.designation||'').toLowerCase()])db.bibliotheque.push(b);});
-      if(!db.settings)db.settings={};db.settings._bibV2=true;db.settings._bibV3=true;db.settings._bibV4=true;db.settings._bibV5=true;
+      if(!db.settings)db.settings={};db.settings._bibV2=true;db.settings._bibV3=true;db.settings._bibV4=true;db.settings._bibV5=true;db.settings._bibV6=true;
     }}}catch(e){db=JSON.parse(JSON.stringify(DFLT));}}
 function defaultBibliotheque(){
   return [
@@ -1544,12 +1544,106 @@ function defaultBibliotheque(){
     {id:'b556',categorie:'Fondations / Gros œuvre',designation:'Dalle béton sur terre-plein + isolant',unite:'m²',prix:74.44,fournitures:[{nom:'Béton',qte:0.12,pu:130},{nom:'Isolant',qte:1.05,pu:12},{nom:'Treillis',qte:1.1,pu:3.5}],moTemps:0.5,moTaux:55,marge:25,prixForce:false},
     {id:'b557',categorie:'Fondations / Gros œuvre',designation:'Ravoirage / forme',unite:'m²',prix:23.13,fournitures:[{nom:'Mortier/sable',qte:0.05,pu:40}],moTemps:0.3,moTaux:55,marge:25,prixForce:false},
     {id:'b559',categorie:'Fondations / Gros œuvre',designation:'Scellement / calage divers',unite:'forfait',prix:78.75,fournitures:[{nom:'Mortier/scellement',qte:1,pu:8}],moTemps:1,moTaux:55,marge:25,prixForce:false},
-    {id:'b560',categorie:'Fondations / Gros œuvre',designation:'Reprise de niveau sol (ragréage épais)',unite:'m²',prix:30.19,fournitures:[{nom:'Ragréage épais',qte:8,pu:1.3}],moTemps:0.25,moTaux:55,marge:25,prixForce:false}
+    {id:'b560',categorie:'Fondations / Gros œuvre',designation:'Reprise de niveau sol (ragréage épais)',unite:'m²',prix:30.19,fournitures:[{nom:'Ragréage épais',qte:8,pu:1.3}],moTemps:0.25,moTaux:55,marge:25,prixForce:false},
+    {id:'b561',categorie:'Plomberie / Sanitaire',designation:'Fourniture et pose de barre d\'appui PMR',unite:'u',prix:111.25,fournitures:[{nom:'Barre d\'appui inox',qte:1,pu:45}],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b562',categorie:'Plomberie / Sanitaire',designation:'Fourniture et pose de siège de douche rabattable PMR',unite:'u',prix:307.5,fournitures:[{nom:'Siège rabattable',qte:1,pu:180}],moTemps:1.2,moTaux:55,marge:25,prixForce:false},
+    {id:'b563',categorie:'Plomberie / Sanitaire',designation:'Rehausse WC PMR',unite:'u',prix:115.63,fournitures:[{nom:'Rehausse WC',qte:1,pu:65}],moTemps:0.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b564',categorie:'Plomberie / Sanitaire',designation:'Fourniture et pose de miroir de salle de bain',unite:'u',prix:177.5,fournitures:[{nom:'Miroir',qte:1,pu:90},{nom:'Fixations',qte:1,pu:8}],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b565',categorie:'Plomberie / Sanitaire',designation:'Fourniture et pose de sèche-mains électrique',unite:'u',prix:388.75,fournitures:[{nom:'Sèche-mains',qte:1,pu:220},{nom:'Raccordement',qte:1,pu:25}],moTemps:1.2,moTaux:55,marge:25,prixForce:false},
+    {id:'b566',categorie:'Plomberie / Sanitaire',designation:'Remplacement de joint silicone sanitaire',unite:'ml',prix:19.19,fournitures:[{nom:'Silicone sanitaire',qte:0.2,pu:8}],moTemps:0.25,moTaux:55,marge:25,prixForce:false},
+    {id:'b567',categorie:'Plomberie / Sanitaire',designation:'Fourniture et pose de colonne de lavabo / meuble suspendu',unite:'u',prix:518.75,fournitures:[{nom:'Meuble suspendu',qte:1,pu:280},{nom:'Fixations renforcées',qte:1,pu:25}],moTemps:2,moTaux:55,marge:25,prixForce:false},
+    {id:'b568',categorie:'Menuiserie intérieure',designation:'Pose de cuisine en kit (le ml de meubles)',unite:'ml',prix:138.75,fournitures:[{nom:'Quincaillerie/fixations',qte:1,pu:12}],moTemps:1.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b569',categorie:'Menuiserie intérieure',designation:'Fourniture et pose de plan de travail stratifié',unite:'ml',prix:166.56,fournitures:[{nom:'Plan stratifié',qte:1.05,pu:65},{nom:'Fixations/joint',qte:1,pu:10}],moTemps:1,moTaux:55,marge:25,prixForce:false},
+    {id:'b570',categorie:'Menuiserie intérieure',designation:'Fourniture et pose de plan de travail bois massif',unite:'ml',prix:258.75,fournitures:[{nom:'Plan bois massif',qte:1.05,pu:120},{nom:'Huile/fixations',qte:1,pu:15}],moTemps:1.2,moTaux:55,marge:25,prixForce:false},
+    {id:'b571',categorie:'Menuiserie intérieure',designation:'Découpe plan de travail (évier/plaque)',unite:'u',prix:65,fournitures:[{nom:'Consommables découpe',qte:1,pu:8}],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b572',categorie:'Plomberie / Sanitaire',designation:'Raccordement évier + électroménager cuisine',unite:'forfait',prix:240.63,fournitures:[{nom:'Flexibles/siphon/raccords',qte:1,pu:55}],moTemps:2.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b573',categorie:'Électricité',designation:'Raccordement électroménager (four/plaque/hotte)',unite:'u',prix:100,fournitures:[{nom:'Raccords/protection',qte:1,pu:25}],moTemps:1,moTaux:55,marge:25,prixForce:false},
+    {id:'b574',categorie:'Menuiserie intérieure',designation:'Fourniture et pose de crédence stratifiée/alu',unite:'ml',prix:135.31,fournitures:[{nom:'Crédence',qte:1.05,pu:55},{nom:'Colle/profilés',qte:1,pu:12}],moTemps:0.7,moTaux:55,marge:25,prixForce:false},
+    {id:'b575',categorie:'Menuiserie extérieure',designation:'Fourniture et pose de grille de défense fenêtre',unite:'u',prix:359.38,fournitures:[{nom:'Grille acier',qte:1,pu:180},{nom:'Scellement/fixations',qte:1,pu:25}],moTemps:1.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b576',categorie:'Menuiserie extérieure',designation:'Remplacement de serrure / cylindre',unite:'u',prix:136.25,fournitures:[{nom:'Cylindre sécurité',qte:1,pu:65}],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b577',categorie:'Menuiserie extérieure',designation:'Fourniture et pose de serrure multipoints',unite:'u',prix:521.88,fournitures:[{nom:'Serrure 3 points',qte:1,pu:280}],moTemps:2.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b578',categorie:'Menuiserie extérieure',designation:'Blindage de porte existante',unite:'u',prix:1087.5,fournitures:[{nom:'Kit blindage',qte:1,pu:650}],moTemps:4,moTaux:55,marge:25,prixForce:false},
+    {id:'b579',categorie:'Extérieur / Aménagement',designation:'Fourniture et pose de garde-corps alu extérieur',unite:'ml',prix:388.75,fournitures:[{nom:'Garde-corps alu',qte:1.05,pu:220},{nom:'Platines/scellement',qte:1,pu:25}],moTemps:1,moTaux:55,marge:25,prixForce:false},
+    {id:'b580',categorie:'Extérieur / Aménagement',designation:'Fourniture et pose de main courante murale',unite:'ml',prix:100.94,fournitures:[{nom:'Main courante',qte:1.05,pu:45},{nom:'Supports',qte:0.5,pu:12}],moTemps:0.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b581',categorie:'Menuiserie extérieure',designation:'Remplacement de vitrage simple',unite:'m²',prix:154.06,fournitures:[{nom:'Vitrage simple',qte:1.05,pu:45},{nom:'Parcloses/mastic',qte:1,pu:10}],moTemps:1.2,moTaux:55,marge:25,prixForce:false},
+    {id:'b582',categorie:'Menuiserie extérieure',designation:'Remplacement de double vitrage (sur menuiserie existante)',unite:'m²',prix:275.63,fournitures:[{nom:'Double vitrage',qte:1.05,pu:120},{nom:'Joints/cales',qte:1,pu:12}],moTemps:1.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b583',categorie:'Menuiserie intérieure',designation:'Fourniture et pose de miroir sur mesure',unite:'m²',prix:271.25,fournitures:[{nom:'Miroir sur mesure',qte:1.05,pu:140},{nom:'Fixations/colle',qte:1,pu:15}],moTemps:1,moTaux:55,marge:25,prixForce:false},
+    {id:'b584',categorie:'Peinture / Revêtements',designation:'Nettoyage façade haute pression',unite:'m²',prix:10.13,fournitures:[{nom:'Consommables/produit',qte:1,pu:1.5}],moTemps:0.12,moTaux:55,marge:25,prixForce:false},
+    {id:'b585',categorie:'Peinture / Revêtements',designation:'Traitement anti-mousse toiture/façade',unite:'m²',prix:10.63,fournitures:[{nom:'Produit anti-mousse',qte:0.25,pu:12}],moTemps:0.1,moTaux:55,marge:25,prixForce:false},
+    {id:'b586',categorie:'Peinture / Revêtements',designation:'Peinture de volets (la paire)',unite:'u',prix:186.88,fournitures:[{nom:'Peinture/lasure',qte:0.5,pu:14},{nom:'Préparation',qte:1,pu:5}],moTemps:2.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b587',categorie:'Peinture / Revêtements',designation:'Réparation fissure façade (traitement + calicot)',unite:'ml',prix:35,fournitures:[{nom:'Mastic/calicot/enduit',qte:1,pu:6}],moTemps:0.4,moTaux:55,marge:25,prixForce:false},
+    {id:'b588',categorie:'Fondations / Gros œuvre',designation:'Rejointoiement façade pierre',unite:'m²',prix:87.75,fournitures:[{nom:'Mortier chaux',qte:0.03,pu:140}],moTemps:1.2,moTaux:55,marge:25,prixForce:false},
+    {id:'b589',categorie:'Fondations / Gros œuvre',designation:'Arase étanche sur soubassement',unite:'ml',prix:19.47,fournitures:[{nom:'Bande arase',qte:1.05,pu:3.5},{nom:'Mortier',qte:0.01,pu:90}],moTemps:0.2,moTaux:55,marge:25,prixForce:false},
+    {id:'b590',categorie:'Fondations / Gros œuvre',designation:'Fourniture et pose de coffre de volet roulant (rénovation)',unite:'u',prix:393.75,fournitures:[{nom:'Coffre VR',qte:1,pu:180},{nom:'Fixations/habillage',qte:1,pu:25}],moTemps:2,moTaux:55,marge:25,prixForce:false},
+    {id:'b591',categorie:'Fondations / Gros œuvre',designation:'Carottage béton (Ø100-200mm)',unite:'u',prix:125,fournitures:[{nom:'Location carotteuse (réparti)',qte:1,pu:45}],moTemps:1,moTaux:55,marge:25,prixForce:false},
+    {id:'b592',categorie:'Fondations / Gros œuvre',designation:'Sciage de béton (mur/dalle)',unite:'ml',prix:77.5,fournitures:[{nom:'Disque/location (réparti)',qte:1,pu:18}],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b593',categorie:'Fondations / Gros œuvre',designation:'Fourniture et pose de ventilation de vide sanitaire (courette)',unite:'u',prix:108.75,fournitures:[{nom:'Grille/courette',qte:1,pu:35},{nom:'Scellement',qte:1,pu:8}],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b594',categorie:'Fondations / Gros œuvre',designation:'Cuvelage / enduit hydrofuge sous-sol',unite:'m²',prix:66.25,fournitures:[{nom:'Enduit cuvelage',qte:0.05,pu:180}],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b595',categorie:'Couverture',designation:'Fourniture et pose de gouttière aluminium laqué',unite:'ml',prix:46.5,fournitures:[{nom:'Gouttière alu',qte:1.05,pu:14},{nom:'Crochets/naissances',qte:2,pu:3}],moTemps:0.3,moTaux:55,marge:25,prixForce:false},
+    {id:'b596',categorie:'Couverture',designation:'Fourniture et pose de dauphin fonte',unite:'u',prix:171.25,fournitures:[{nom:'Dauphin fonte',qte:1,pu:85},{nom:'Colliers',qte:2,pu:4}],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b597',categorie:'Couverture',designation:'Fourniture et pose de crapaudine / protection descente',unite:'u',prix:16.88,fournitures:[{nom:'Crapaudine',qte:1,pu:8}],moTemps:0.1,moTaux:55,marge:25,prixForce:false},
+    {id:'b598',categorie:'Couverture',designation:'Remaniement de toiture (repositionnement tuiles)',unite:'m²',prix:27.06,fournitures:[{nom:'Tuiles remplacement',qte:2,pu:1.2}],moTemps:0.35,moTaux:55,marge:25,prixForce:false},
+    {id:'b599',categorie:'Couverture',designation:'Recherche et réparation de fuite toiture',unite:'forfait',prix:296.88,fournitures:[{nom:'Consommables/tuiles',qte:1,pu:45}],moTemps:3.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b600',categorie:'Couverture',designation:'Fourniture et pose de filet anti-volatiles',unite:'ml',prix:27.69,fournitures:[{nom:'Filet/pics',qte:1.05,pu:8}],moTemps:0.25,moTaux:55,marge:25,prixForce:false},
+    {id:'b601',categorie:'Zinguerie / Évacuation EP',designation:'Fourniture et pose de récupérateur d\'eau sur descente',unite:'u',prix:111.25,fournitures:[{nom:'Collecteur récupérateur',qte:1,pu:45}],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b602',categorie:'Isolation',designation:'Isolation de coffre de volet roulant',unite:'u',prix:72.5,fournitures:[{nom:'Kit isolation coffre',qte:1,pu:25}],moTemps:0.6,moTaux:55,marge:25,prixForce:false},
+    {id:'b603',categorie:'Isolation',designation:'Calorifugeage tuyauterie (manchons)',unite:'ml',prix:15.56,fournitures:[{nom:'Manchons isolants',qte:1.05,pu:4}],moTemps:0.15,moTaux:55,marge:25,prixForce:false},
+    {id:'b604',categorie:'Isolation',designation:'Isolation de porte de garage (kit)',unite:'u',prix:209.38,fournitures:[{nom:'Kit isolation porte',qte:1,pu:85}],moTemps:1.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b605',categorie:'Isolation',designation:'Détalonnage / joint isolation menuiserie',unite:'u',prix:56.88,fournitures:[{nom:'Joints/bas de porte',qte:1,pu:18}],moTemps:0.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b606',categorie:'Chauffage / Ventilation',designation:'Désinstallation ancien chauffage (radiateur/chaudière)',unite:'u',prix:168.75,fournitures:[{nom:'Évacuation',qte:1,pu:25}],moTemps:2,moTaux:55,marge:25,prixForce:false},
+    {id:'b607',categorie:'Chauffage / Ventilation',designation:'Purge et équilibrage réseau radiateurs',unite:'forfait',prix:190.63,fournitures:[{nom:'Consommables',qte:1,pu:15}],moTemps:2.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b608',categorie:'Chauffage / Ventilation',designation:'Remplacement de robinet thermostatique radiateur',unite:'u',prix:111.25,fournitures:[{nom:'Tête+corps thermostatique',qte:1,pu:45}],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b609',categorie:'Chauffage / Ventilation',designation:'Tubage de conduit de cheminée',unite:'ml',prix:123.44,fournitures:[{nom:'Tubage inox flexible',qte:1.05,pu:45},{nom:'Accessoires',qte:0.3,pu:25}],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b610',categorie:'Chauffage / Ventilation',designation:'Ramonage conduit (fumisterie)',unite:'u',prix:95,fournitures:[{nom:'Consommables',qte:1,pu:10}],moTemps:1.2,moTaux:55,marge:25,prixForce:false},
+    {id:'b611',categorie:'Électricité',designation:'Remplacement appareillage (prise/inter) à l\'identique',unite:'u',prix:31.88,fournitures:[{nom:'Appareillage',qte:1,pu:9}],moTemps:0.3,moTaux:55,marge:25,prixForce:false},
+    {id:'b612',categorie:'Électricité',designation:'Fourniture et pose de luminaire (plafonnier/suspension)',unite:'u',prix:47.5,fournitures:[{nom:'Raccordement/fixation',qte:1,pu:5}],moTemps:0.6,moTaux:55,marge:25,prixForce:false},
+    {id:'b613',categorie:'Électricité',designation:'Fourniture et pose de projecteur LED extérieur détection',unite:'u',prix:141.25,fournitures:[{nom:'Projecteur LED détection',qte:1,pu:55},{nom:'Câblage',qte:3,pu:1}],moTemps:1,moTaux:55,marge:25,prixForce:false},
+    {id:'b614',categorie:'Électricité',designation:'Recherche de panne électrique',unite:'h',prix:68.75,fournitures:[],moTemps:1,moTaux:55,marge:25,prixForce:false},
+    {id:'b615',categorie:'Électricité',designation:'Fourniture et pose de sonnette / carillon sans fil',unite:'u',prix:78.13,fournitures:[{nom:'Kit sonnette',qte:1,pu:35}],moTemps:0.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b616',categorie:'Électricité',designation:'Alimentation électrique abri/dépendance (enterrée)',unite:'ml',prix:35.38,fournitures:[{nom:'Câble armé',qte:1.05,pu:4},{nom:'Gaine TPC',qte:1.05,pu:2}],moTemps:0.4,moTaux:55,marge:25,prixForce:false},
+    {id:'b617',categorie:'Terrassement / VRD',designation:'Pose de regard de compteur d\'eau',unite:'u',prix:209.38,fournitures:[{nom:'Regard+tampon',qte:1,pu:85}],moTemps:1.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b618',categorie:'Terrassement / VRD',designation:'Curage / débouchage canalisation',unite:'forfait',prix:193.75,fournitures:[{nom:'Location furet/consommables',qte:1,pu:45}],moTemps:2,moTaux:55,marge:25,prixForce:false},
+    {id:'b619',categorie:'Terrassement / VRD',designation:'Inspection caméra canalisation',unite:'forfait',prix:215.63,fournitures:[{nom:'Location caméra (réparti)',qte:1,pu:90}],moTemps:1.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b620',categorie:'Extérieur / Aménagement',designation:'Fourniture et pose de boîte aux lettres sur pied',unite:'u',prix:237.5,fournitures:[{nom:'Boîte+pied',qte:1,pu:120},{nom:'Scellement',qte:1,pu:15}],moTemps:1,moTaux:55,marge:25,prixForce:false},
+    {id:'b621',categorie:'Extérieur / Aménagement',designation:'Scellement de piquet / poteau divers',unite:'u',prix:39.25,fournitures:[{nom:'Béton/scellement',qte:0.03,pu:130}],moTemps:0.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b622',categorie:'Extérieur / Aménagement',designation:'Fourniture et pose de dalle de propreté climatiseur/PAC',unite:'u',prix:137.5,fournitures:[{nom:'Dalle/plots antivibratiles',qte:1,pu:55}],moTemps:1,moTaux:55,marge:25,prixForce:false},
+    {id:'b623',categorie:'Extérieur / Aménagement',designation:'Taille de haie (au ml)',unite:'ml',prix:12.19,fournitures:[{nom:'Évacuation déchets verts',qte:1,pu:1.5}],moTemps:0.15,moTaux:55,marge:25,prixForce:false},
+    {id:'b624',categorie:'Extérieur / Aménagement',designation:'Abattage de petit arbre (h<5m) + évacuation',unite:'u',prix:262.5,fournitures:[{nom:'Évacuation',qte:1,pu:45}],moTemps:3,moTaux:55,marge:25,prixForce:false},
+    {id:'b625',categorie:'Extérieur / Aménagement',designation:'Dessouchage / rognage de souche',unite:'u',prix:215.63,fournitures:[{nom:'Location rogneuse (réparti)',qte:1,pu:90}],moTemps:1.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b626',categorie:'Divers / Chantier',designation:'Heure de main d\'œuvre aide / manœuvre',unite:'h',prix:68.75,fournitures:[],moTemps:1,moTaux:55,marge:25,prixForce:false},
+    {id:'b627',categorie:'Divers / Chantier',designation:'Forfait petites fournitures / consommables',unite:'forfait',prix:43.75,fournitures:[{nom:'Visserie/consommables',qte:1,pu:35}],moTemps:0,moTaux:55,marge:25,prixForce:false},
+    {id:'b628',categorie:'Divers / Chantier',designation:'Nettoyage de fin de chantier (au m²)',unite:'m²',prix:7.38,fournitures:[{nom:'Produits',qte:1,pu:0.4}],moTemps:0.1,moTaux:55,marge:25,prixForce:false},
+    {id:'b629',categorie:'Divers / Chantier',designation:'Manutention / approvisionnement étage sans ascenseur',unite:'forfait',prix:171.88,fournitures:[],moTemps:2.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b630',categorie:'Préparation / Démolition',designation:'Dépose de radiateur (conservation)',unite:'u',prix:55,fournitures:[],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
+    {id:'b631',categorie:'Préparation / Démolition',designation:'Dépose de faux plafond',unite:'m²',prix:20.31,fournitures:[{nom:'Évacuation',qte:1,pu:2.5}],moTemps:0.25,moTaux:55,marge:25,prixForce:false},
+    {id:'b632',categorie:'Préparation / Démolition',designation:'Dépose de parquet collé',unite:'m²',prix:34.69,fournitures:[{nom:'Évacuation',qte:1,pu:3}],moTemps:0.45,moTaux:55,marge:25,prixForce:false},
+    {id:'b633',categorie:'Préparation / Démolition',designation:'Ouverture de trémie plancher bois',unite:'u',prix:481.25,fournitures:[{nom:'Renforts bois',qte:1,pu:90},{nom:'Évacuation',qte:1,pu:20}],moTemps:5,moTaux:55,marge:25,prixForce:false}
   ];
 }
 function saveDB(){
   try{localStorage.setItem(SK,JSON.stringify(db));}catch(e){}
   pushToCloud();
+}
+function recordTombstone(coll,id){
+  if(!id)return;
+  if(!db._tombstones)db._tombstones={};
+  if(!db._tombstones[coll])db._tombstones[coll]=[];
+  if(!db._tombstones[coll].some(function(t){return t.id===id;}))db._tombstones[coll].push({id:id,at:Date.now()});
+}
+function applyTombstones(){
+  if(!db._tombstones)return;
+  Object.keys(db._tombstones).forEach(function(c){
+    if(!db[c]||!db[c].filter)return;
+    var dead={};(db._tombstones[c]||[]).forEach(function(t){dead[t.id]=1;});
+    db[c]=db[c].filter(function(it){return !it||!it.id||!dead[it.id];});
+  });
+}
+function purgeTombstones(){
+  if(!db._tombstones)return;
+  var cutoff=Date.now()-60*24*3600*1000;
+  Object.keys(db._tombstones).forEach(function(c){
+    db._tombstones[c]=(db._tombstones[c]||[]).filter(function(t){return (t.at||0)>cutoff;});
+  });
 }
 var _cloudTimer=null;
 function pushToCloud(){
@@ -1564,6 +1658,7 @@ function pushToCloud(){
         col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(e){console.warn('Sync '+c,e);});
       });
       col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(e){console.warn('Sync settings',e);});
+      col.doc('_tombstones').set({data:db._tombstones||{},updatedAt:ts}).catch(function(){});
     }catch(e){console.warn('pushToCloud',e);}
   },1200);
 }
@@ -1621,7 +1716,7 @@ function initFB(){
 }
 function showApp(){document.getElementById('auth-screen').classList.add('hidden');document.getElementById('app').style.display='flex';}
 function hideApp(){document.getElementById('auth-screen').classList.remove('hidden');document.getElementById('app').style.display='none';}
-function afterLogin(){renderGreeting();renderRecentActivity();renderDevisList();renderVisitesList();renderClientsList();renderPlanningList();renderDocs();renderFactures();populateSettings();if(fbReady&&currentUser)syncFromFS();}
+function afterLogin(){try{purgeTombstones();applyTombstones();}catch(e){}renderGreeting();renderRecentActivity();renderDevisList();renderVisitesList();renderClientsList();renderPlanningList();renderDocs();renderFactures();populateSettings();if(fbReady&&currentUser){syncFromFS();setTimeout(function(){try{flushToCloudNow();}catch(e){}},8000);}}
 // Sauvegarde immédiate quand l'app passe en arrière-plan (évite de perdre une écriture débouncée)
 function flushToCloudNow(){
   if(typeof fbReady==='undefined'||!fbReady||typeof currentUser==='undefined'||!currentUser)return;
@@ -1633,6 +1728,7 @@ function flushToCloudNow(){
       col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(){});
     });
     col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(){});
+    col.doc('_tombstones').set({data:db._tombstones||{},updatedAt:ts}).catch(function(){});
   }catch(e){}
 }
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')flushToCloudNow();});
@@ -1736,6 +1832,22 @@ function doAuth(){
 function doForgot(){var email=document.getElementById('auth-email').value.trim();if(!email){document.getElementById('auth-error').textContent='Entrez votre email.';return;}if(fbReady)fbAuth.sendPasswordResetEmail(email).then(function(){showToast('Email envoyé !','success');}).catch(function(e){document.getElementById('auth-error').textContent=fbErr(e.code);});}
 function fbErr(c){var m={'auth/user-not-found':'Utilisateur introuvable.','auth/wrong-password':'Mot de passe incorrect.','auth/invalid-credential':'Identifiants invalides.','auth/email-already-in-use':'Email déjà utilisé.','auth/invalid-email':'Email invalide.','auth/weak-password':'Mot de passe trop court.'};return m[c]||'Erreur: '+c;}
 function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');
+  // Fusion des registres de suppression (tombstones) : une suppression sur un appareil vaut partout
+  col.doc('_tombstones').get().then(function(doc){
+    if(doc.exists&&doc.data()&&doc.data().data){
+      var remoteT=doc.data().data||{};
+      if(!db._tombstones)db._tombstones={};
+      Object.keys(remoteT).forEach(function(c){
+        if(!db._tombstones[c])db._tombstones[c]=[];
+        var have={};db._tombstones[c].forEach(function(t){have[t.id]=1;});
+        (remoteT[c]||[]).forEach(function(t){if(t&&t.id&&!have[t.id])db._tombstones[c].push(t);});
+      });
+      purgeTombstones();applyTombstones();saveDB();
+      if(typeof renderDevisList==='function')renderDevisList();
+      if(typeof renderVisitesList==='function')renderVisitesList();
+      if(typeof renderGreeting==='function')renderGreeting();
+    }
+  }).catch(function(){});
   // Charger settings (clé API etc.) depuis Firebase
   col.doc('_settings').get().then(function(doc){
     if(doc.exists&&doc.data()&&doc.data().data){
@@ -1754,9 +1866,11 @@ function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;v
     var byId={};
     local.forEach(function(it){if(it&&it.id)byId[it.id]=it;});
     remote.forEach(function(it){if(it&&it.id&&!byId[it.id])byId[it.id]=it;});
-    var merged=Object.keys(byId).map(function(k){return byId[k];});
+    var dead={};if(db._tombstones&&db._tombstones[c])db._tombstones[c].forEach(function(t){dead[t.id]=1;});
+    var merged=Object.keys(byId).filter(function(k){return !dead[k];}).map(function(k){return byId[k];});
     // Si pas d'id (anciennes données), prendre le plus grand ensemble
-    db[c]=merged.length>=local.length?merged:local;
+    var localAlive=local.filter(function(it){return !it||!it.id||!dead[it.id];});
+    db[c]=merged.length>=localAlive.length?merged:localAlive;
     saveDB();
     if(c==='devis'&&typeof renderDevisList==='function')renderDevisList();
     if(c==='visites'&&typeof renderVisitesList==='function')renderVisitesList();
@@ -1765,7 +1879,7 @@ function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;v
     if(c==='depenses'&&typeof renderDepenses==='function')renderDepenses();
     if(typeof renderGreeting==='function')renderGreeting();
   }}}).catch(function(){});});}
-function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');Promise.all(['clients','devis','visites','planning','factures'].map(function(c){return col.doc(c).set({items:db[c],updatedAt:firebase.firestore.FieldValue.serverTimestamp()});})).then(function(){showToast('Synchronisé !','success');}).catch(function(){showToast('Erreur sync','error');});}
+function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');var ts=firebase.firestore.FieldValue.serverTimestamp();var jobs=['clients','devis','visites','planning','factures','depenses','bibliotheque'].map(function(c){return col.doc(c).set({items:db[c]||[],updatedAt:ts});});jobs.push(col.doc('_settings').set({data:db.settings,updatedAt:ts}));jobs.push(col.doc('_tombstones').set({data:db._tombstones||{},updatedAt:ts}));Promise.all(jobs).then(function(){showToast('Synchronisé !','success');}).catch(function(){showToast('Erreur sync','error');});}
 
 // NAV/TOAST/UTILS
 function showView(n){document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});var el=document.getElementById('view-'+n);if(el)el.classList.add('active');document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===n);});}
@@ -2106,6 +2220,7 @@ function saveDepense(){
 }
 function deleteDepense(){
   if(!editDepId)return;
+  recordTombstone('depenses',editDepId);
   db.depenses=db.depenses.filter(function(x){return x.id!==editDepId;});
   saveDB();renderDepenses();renderGreeting();
   document.getElementById('modal-depense').classList.remove('open');
@@ -2307,6 +2422,7 @@ function saveBib(){
 }
 function deleteBib(){
   if(!editBibId)return;
+  recordTombstone('bibliotheque',editBibId);
   db.bibliotheque=db.bibliotheque.filter(function(x){return x.id!==editBibId;});
   saveDB();renderBibliotheque();
   document.getElementById('modal-bib').classList.remove('open');
@@ -3931,9 +4047,17 @@ function exportBatappli(id){
   rows.push(['TOTAL_HT',ht.toFixed(2),'EUR','']);
   rows.push(['TVA_MONTANT',(ht*(d.tva||10)/100).toFixed(2),'EUR','']);
   rows.push(['TOTAL_TTC',(ht+ht*(d.tva||10)/100).toFixed(2),'EUR','']);
-  var csv=rows.map(function(r){return r.map(function(c){var v=String(c).replace(/"/g,'""');return v.indexOf(',')>=0||v.indexOf('"')>=0||v.indexOf('\n')>=0?'"'+v+'"':v;}).join(',');}).join('\r\n');
-  var bom='\uFEFF';
-  var blob=new Blob([bom+csv],{type:'text/csv;charset=utf-8;'});
+  var csv=rows.map(function(r){return r.map(function(c){var v=String(c).replace(/"/g,'""');return v.indexOf(';')>=0||v.indexOf('"')>=0||v.indexOf('\n')>=0?'"'+v+'"':v;}).join(';');}).join('\r\n');
+  // Encodage Windows-1252 (ANSI) : requis par Batappli qui ne lit pas l'UTF-8
+  var w1252Map={8364:128,8218:130,402:131,8222:132,8230:133,8224:134,8225:135,710:136,8240:137,352:138,8249:139,338:140,381:142,8216:145,8217:146,8220:147,8221:148,8226:149,8211:150,8212:151,732:152,8482:153,353:154,8250:155,339:156,382:158,376:159};
+  var bytes=new Uint8Array(csv.length);
+  for(var bi=0;bi<csv.length;bi++){
+    var code=csv.charCodeAt(bi);
+    if(code<256)bytes[bi]=code;
+    else if(w1252Map[code])bytes[bi]=w1252Map[code];
+    else bytes[bi]=63; // '?' pour caractère non représentable
+  }
+  var blob=new Blob([bytes],{type:'text/csv;charset=windows-1252;'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');a.href=url;a.download='devis-'+d.numero+'-batappli.csv';a.click();URL.revokeObjectURL(url);
   showToast('Export Batappli téléchargé','success');
@@ -4624,17 +4748,17 @@ document.addEventListener('DOMContentLoaded',function(){
     var pdf=e.target.closest('[data-dpdf]');if(pdf){exportDevisPDF(pdf.dataset.dpdf);return;}
     var bat=e.target.closest('[data-dbat]');if(bat){exportBatappli(bat.dataset.dbat);return;}
     var fact=e.target.closest('[data-dfact]');if(fact){createFactureFromDevis(fact.dataset.dfact);return;}
-    var del=e.target.closest('[data-ddel]');if(del){db.devis=db.devis.filter(function(d){return d.id!==del.dataset.ddel;});saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();}
+    var del=e.target.closest('[data-ddel]');if(del){recordTombstone('devis',del.dataset.ddel);db.devis=db.devis.filter(function(d){return d.id!==del.dataset.ddel;});saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();}
   });
 
   // VISITES
-  document.getElementById('visites-list').addEventListener('click',function(e){var ai=e.target.closest('[data-vai]');if(ai){document.getElementById('modal-parcours').classList.remove('open');}var del=e.target.closest('[data-vdel]');if(del){db.visites=db.visites.filter(function(v){return v.id!==del.dataset.vdel;});saveDB();renderVisitesList();renderGreeting();}});
+  document.getElementById('visites-list').addEventListener('click',function(e){var ai=e.target.closest('[data-vai]');if(ai){document.getElementById('modal-parcours').classList.remove('open');}var del=e.target.closest('[data-vdel]');if(del){recordTombstone('visites',del.dataset.vdel);db.visites=db.visites.filter(function(v){return v.id!==del.dataset.vdel;});saveDB();renderVisitesList();renderGreeting();}});
 
   // CLIENTS
   document.getElementById('btn-add-client').addEventListener('click',function(){openNewClient();});
   document.getElementById('close-modal-client').addEventListener('click',function(){document.getElementById('modal-client').classList.remove('open');});
   document.getElementById('btn-save-client').addEventListener('click',function(){saveClient();});
-  document.getElementById('clients-list').addEventListener('click',function(e){var d=e.target.closest('[data-cdel]');if(d){db.clients=db.clients.filter(function(c){return c.id!==d.dataset.cdel;});saveDB();renderClientsList();}});
+  document.getElementById('clients-list').addEventListener('click',function(e){var d=e.target.closest('[data-cdel]');if(d){recordTombstone('clients',d.dataset.cdel);db.clients=db.clients.filter(function(c){return c.id!==d.dataset.cdel;});saveDB();renderClientsList();}});
 
   // PLANNING
   document.getElementById('btn-add-planning').addEventListener('click',function(){openNewPlanning();});
@@ -4666,7 +4790,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var gf=e.target.closest('[data-gen-facture]');if(gf){createFactureFromDevis(gf.dataset.genFacture);return;}
     var fe=e.target.closest('[data-fedit]');if(fe){openEditFacture(fe.dataset.fedit);return;}
     var fp=e.target.closest('[data-fpdf]');if(fp){exportFacturePDF(fp.dataset.fpdf);return;}
-    var fd=e.target.closest('[data-fdel]');if(fd){db.factures=db.factures.filter(function(f){return f.id!==fd.dataset.fdel;});saveDB();renderDocs();return;}
+    var fd=e.target.closest('[data-fdel]');if(fd){recordTombstone('factures',fd.dataset.fdel);db.factures=db.factures.filter(function(f){return f.id!==fd.dataset.fdel;});saveDB();renderDocs();return;}
     var ed=e.target.closest('[data-dedit]');if(ed){openEditDevis(ed.dataset.dedit);return;}
     var pl=e.target.closest('[data-dplan]');if(pl){showPlanFromDevis(pl.dataset.dplan);return;}
     var pdf=e.target.closest('[data-dpdf]');if(pdf){exportDevisPDF(pdf.dataset.dpdf);return;}
@@ -4690,7 +4814,7 @@ document.addEventListener('DOMContentLoaded',function(){
   });
   document.getElementById('close-modal-planning').addEventListener('click',function(){document.getElementById('modal-planning').classList.remove('open');});
   document.getElementById('btn-save-planning').addEventListener('click',function(){savePlanning();});
-  document.getElementById('planning-list').addEventListener('click',function(e){var d=e.target.closest('[data-pdel]');if(d){db.planning=db.planning.filter(function(p){return p.id!==d.dataset.pdel;});saveDB();renderPlanningList();}});
+  document.getElementById('planning-list').addEventListener('click',function(e){var d=e.target.closest('[data-pdel]');if(d){recordTombstone('planning',d.dataset.pdel);db.planning=db.planning.filter(function(p){return p.id!==d.dataset.pdel;});saveDB();renderPlanningList();}});
 
   // VOIX STANDALONE
   document.getElementById('close-modal-voice').addEventListener('click',function(){stopVoiceSA();document.getElementById('modal-voice').classList.remove('open');});
