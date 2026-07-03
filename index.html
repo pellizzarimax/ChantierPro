@@ -336,8 +336,8 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
         <button class="snav-btn" data-docs-filter="factures">Factures</button>
         <button class="snav-btn" data-docs-filter="plan">Plans</button>
         <button class="snav-btn" data-docs-filter="signe">Signés</button>
-        <button class="snav-btn" data-docs-filter="factures">🧾 Factures</button>
       </div>
+      <button class="btn btn-primary btn-full" id="btn-new-facture" style="margin-bottom:14px;">🧾 + Nouvelle facture (sans devis)</button>
       <div id="docs-list"></div>
     </div>
     <div class="view" id="view-planning">
@@ -3421,7 +3421,9 @@ window._regenVisiteId=d.visiteId||null;
 document.getElementById('modal-devis').classList.add('open');}
 function updateBiosourceUI(){var c=document.getElementById('d-biosource').checked;var t=document.getElementById('biosource-toggle');if(t){t.style.borderColor=c?'var(--c-success)':'var(--c-border)';t.style.background=c?'rgba(34,197,94,0.06)':'var(--c-surface2)';}}
 var _pickBibSel={};
-function openPickBib(){
+var _pickBibTarget='devis';
+function openPickBib(target){
+  _pickBibTarget=target||'devis';
   _pickBibSel={};
   _pickNav={metier:null,categorie:null};
   document.getElementById('pick-bib-search').value='';
@@ -3510,19 +3512,24 @@ function updatePickBibCount(){
 function pickBibAddToDevis(){
   var ids=Object.keys(_pickBibSel).filter(function(k){return _pickBibSel[k];});
   if(!ids.length){showToast('Sélectionnez au moins un ouvrage','error');return;}
-  collectLines();
-  // Retirer une éventuelle ligne vide initiale
-  devisLines=devisLines.filter(function(l){return (l.designation||'').trim()||pN(l.pu)>0;});
-  ids.forEach(function(id){
-    var b=(db.bibliotheque||[]).find(function(x){return x.id===id;});
-    if(b){
-      devisLines.push({id:genId(),lot:guessLot(b.designation||''),designation:b.designation||'',unite:b.unite||'u',qte:'1',pu:String(b.prix||0)});
-    }
-  });
-  renderDevisLines();
-  if(typeof updateTotaux==='function')updateTotaux();
+  if(_pickBibTarget==='facture'){
+    factureLines=factureLines.filter(function(l){return (l.designation||l.desig||'').trim()||pN(l.pu)>0;});
+    ids.forEach(function(id){
+      var b=(db.bibliotheque||[]).find(function(x){return x.id===id;});
+      if(b)factureLines.push({id:genId(),designation:b.designation||'',unite:b.unite||'u',qte:'1',pu:String(b.prix||0)});
+    });
+    renderFactureLines();
+  } else {
+    collectLines();
+    devisLines=devisLines.filter(function(l){return (l.designation||'').trim()||pN(l.pu)>0;});
+    ids.forEach(function(id){
+      var b=(db.bibliotheque||[]).find(function(x){return x.id===id;});
+      if(b)devisLines.push({id:genId(),lot:guessLot(b.designation||''),designation:b.designation||'',unite:b.unite||'u',qte:'1',pu:String(b.prix||0)});
+    });
+    renderDevisLines();
+  }
   document.getElementById('modal-pick-bib').classList.remove('open');
-  showToast(ids.length+' ouvrage'+(ids.length>1?'s ajoutés':' ajouté'),'success');
+  showToast(ids.length+' ouvrage'+(ids.length>1?'s':'')+' ajouté'+(ids.length>1?'s':'')+' ✓','success');
 }
 function addDevisLine(){devisLines.push({id:genId(),designation:'',unite:'u',qte:'1',pu:'0'});renderDevisLines();}
 function addDevisTitre(){collectLines();devisLines.push({id:genId(),type:'titre',designation:''});renderDevisLines();}
@@ -4442,6 +4449,10 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('header-settings-btn').addEventListener('click',function(){openSettings();});
   document.getElementById('header-sync-btn').addEventListener('click',function(){syncToFS();});
   // Choix du type de facture
+  var btnFPick=document.getElementById('btn-f-pick-bib');
+  if(btnFPick)btnFPick.addEventListener('click',function(){openPickBib('facture');});
+  var btnNewFact=document.getElementById('btn-new-facture');
+  if(btnNewFact)btnNewFact.addEventListener('click',createFactureVierge);
   document.getElementById('fact-type-close').addEventListener('click',function(){document.getElementById('modal-fact-type').classList.remove('open');});
   document.querySelectorAll('[data-facttype]').forEach(function(b){
     b.addEventListener('click',function(){
@@ -5061,6 +5072,15 @@ function renderSituationPanel(){
   });
   updateSitTotal();
 }
+function createFactureVierge(){
+  var today=new Date().toISOString().split('T')[0];
+  var f={id:genId(),numero:genFactNum(),type:'complete',devisRef:'',client:'',objet:'',adresse:'',date:today,echeance:calcEcheance(today),tva:(db.settings.tarifs&&db.settings.tarifs.tva_defaut)||10,lignes:[],acompte:0,notes:'',paiementStatut:'en_attente',planSVG:'',biosource:false,createdAt:new Date().toISOString()};
+  db.settings.factNextNum=(db.settings.factNextNum||1)+1;
+  db.factures.push(f);
+  saveDB();
+  openEditFacture(f.id);
+  showToast('Facture '+f.numero+' créée — renseigne le client et les lignes','success');
+}
 function createAvoirFromFacture(factureId){
   var src=db.factures.find(function(x){return x.id===factureId;});
   if(!src){showToast('Facture introuvable','error');return;}
@@ -5382,7 +5402,7 @@ function validerSignature(){
     <hr class="divider"/>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div class="card-title" style="margin:0;">Prestations</div>
-      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" id="btn-add-fline">+ Ligne</button>
+      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" id="btn-f-pick-bib" style="margin-right:6px;">📚 Biblio</button><button class="btn btn-secondary" id="btn-add-fline">+ Ligne</button>
     </div>
     <div style="display:grid;grid-template-columns:3fr 1fr 1fr 1fr 24px;gap:6px;margin-bottom:4px;padding:0 4px;">
       <span style="font-size:10px;color:var(--c-muted);">DÉSIGNATION</span><span style="font-size:10px;color:var(--c-muted);">U.</span><span style="font-size:10px;color:var(--c-muted);">QTÉ</span><span style="font-size:10px;color:var(--c-muted);">PU HT</span><span></span>
