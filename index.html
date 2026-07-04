@@ -28,7 +28,7 @@ input,textarea,select,button{font-family:var(--font-body);outline:none;}
 #header-logo{font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--c-accent);letter-spacing:-0.5px;flex:1;}
 #header-logo span{color:var(--c-text);font-weight:700;}
 #header-btns{display:flex;gap:8px;}
-#main{flex:1;overflow-y:auto;padding:0 16px 84px;}
+#main{flex:1;overflow-y:auto;padding:0 16px calc(24px + var(--safe-bottom));}
 #nav-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--c-surface);border-top:1px solid var(--c-border);display:flex;padding:8px 0 calc(8px + var(--safe-bottom));}
 .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 1px;background:none;border:none;color:var(--c-muted);font-size:8.5px;cursor:pointer;transition:color .2s;min-width:0;}
 .nav-btn.active{color:var(--c-accent);}
@@ -140,8 +140,8 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
 .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--c-border);font-size:13px;}
 .kv:last-child{border-bottom:none;}
 .kv label{color:var(--c-muted);}
-.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
-.photo-thumb{aspect-ratio:1;border-radius:8px;object-fit:cover;}
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;max-width:100%;}
+.photo-thumb{width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;display:block;min-width:0;}
 /* ÉTAPES PARCOURS */
 .step-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
 .step-dot.done{background:var(--c-success);color:#000;}
@@ -247,6 +247,7 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
 <div id="app" style="display:none;">
   <div id="app-offline-spacer" style="display:none;height:28px;"></div>
   <div id="header">
+    <button class="topbar-burger" id="header-burger" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
     <div id="header-logo">Chantiers<span>Pro</span></div>
     <div id="header-btns">
       <button class="btn btn-secondary" id="header-sync-btn" style="padding:8px 12px;font-size:12px;">☁️</button>
@@ -305,7 +306,12 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
 
     <!-- DEVIS -->
     <div class="view" id="view-devis">
-      <div class="section-title">Devis</div><div class="section-sub">Propositions commerciales</div>
+      <div class="section-title">Devis & Factures</div><div class="section-sub">Commercial et facturation</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="btn btn-primary" id="tab-devis" style="flex:1;">📋 Devis</button>
+        <button class="btn btn-secondary" id="tab-factures" style="flex:1;">🧾 Factures</button>
+      </div>
+      <div id="subview-devis">
       <button class="btn btn-primary btn-full" id="btn-add-devis">+ Nouveau devis</button>
       <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;">
         <button class="snav-btn active" data-filter="all">Tous</button>
@@ -315,6 +321,20 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
         <button class="snav-btn" data-filter="refusé">Refuses</button>
       </div>
       <div id="devis-list"><div class="empty-state"><div class="empty-state-icon">📄</div><div style="font-size:14px;">Aucun devis</div></div></div>
+      </div>
+      <div id="subview-factures" style="display:none;">
+        <button class="btn btn-primary btn-full" id="btn-new-facture" style="margin-bottom:12px;">🧾 + Nouvelle facture (sans devis)</button>
+        <div id="fact-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;"></div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;">
+          <button class="snav-btn active" data-ffilter="all">Toutes</button>
+          <button class="snav-btn" data-ffilter="en_attente">En attente</button>
+          <button class="snav-btn" data-ffilter="payee">Payées</button>
+          <button class="snav-btn" data-ffilter="acompte">Acomptes</button>
+          <button class="snav-btn" data-ffilter="situation">Situations</button>
+          <button class="snav-btn" data-ffilter="avoir">Avoirs</button>
+        </div>
+        <div id="factpage-list"></div>
+      </div>
     </div>
 
     <!-- CLIENTS -->
@@ -333,11 +353,9 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
       <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;">
         <button class="snav-btn active" data-docs-filter="all">Tous</button>
         <button class="snav-btn" data-docs-filter="devis">Devis</button>
-        <button class="snav-btn" data-docs-filter="factures">Factures</button>
         <button class="snav-btn" data-docs-filter="plan">Plans</button>
         <button class="snav-btn" data-docs-filter="signe">Signés</button>
       </div>
-      <button class="btn btn-primary btn-full" id="btn-new-facture" style="margin-bottom:14px;">🧾 + Nouvelle facture (sans devis)</button>
       <div id="docs-list"></div>
     </div>
     <div class="view" id="view-planning">
@@ -629,13 +647,7 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
     </div>
   </div>
 
-  <nav id="nav-bar">
-    <button class="nav-btn active" data-view="accueil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
-    <button class="nav-btn" data-view="visites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>Visites</button>
-    <button class="nav-btn" data-view="devis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Devis</button>
-    <button class="nav-btn" data-view="docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Docs</button>
-    <button class="nav-btn nav-more" id="nav-more-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>Plus</button>
-  </nav>
+  
 
   <div id="side-menu">
     <div class="sm-scrim" id="sm-scrim"></div>
@@ -645,6 +657,12 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
         <div class="sm-name" id="sm-name">Mon Entreprise</div>
         <div class="sm-mail" id="sm-mail">EURL · BTP</div>
       </div>
+      <div class="sm-cat">PRINCIPAL</div>
+      <button class="sm-item" data-menu="accueil"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
+      <button class="sm-item" data-menu="visites"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>Visites chantier</button>
+      <button class="sm-item" data-menu="devis"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Devis &amp; Factures</button>
+      <button class="sm-item" data-menu="docs"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Documents</button>
+      <div class="sm-divider"></div>
       <div class="sm-cat">OUTILS</div>
       <button class="sm-item" data-menu="banque"><svg viewBox="0 0 24 24"><line x1="3" y1="22" x2="21" y2="22"/><path d="M3 10h18M5 10v12M19 10v12M12 2L3 10h18z"/></svg>Banque <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="depenses"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Dépenses <span class="sm-badge">NOUVEAU</span></button>
@@ -1735,22 +1753,9 @@ document.addEventListener('visibilitychange',function(){if(document.visibilitySt
 window.addEventListener('pagehide',flushToCloudNow);
 
 var docsFilter='all';
-function renderDocs(){
-  var cont=document.getElementById('docs-list');if(!cont)return;
-  var filter=docsFilter;
-  var factures=(filter==='factures'||filter==='all')?db.factures.slice().reverse():[];
-  var devis=[];
-  if(filter!=='factures'){
-    devis=db.devis.slice().reverse();
-    if(filter==='plan')devis=devis.filter(function(d){return !!d.planSVG;});
-    else if(filter==='signe')devis=devis.filter(function(d){return d.statut==='signé';});
-  }
-  if(!devis.length&&!factures.length){
-    cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📁</div><div style="font-size:14px;">Aucun document</div><div style="font-size:12px;color:var(--c-muted);margin-top:6px;">Vos devis et factures apparaîtront ici</div></div>';
-    return;
-  }
+function factureCardHTML(f){
   var html='';
-  factures.forEach(function(f){
+
     var ht=(f.lignes||[]).reduce(function(a,l){return a+(pN(l.qte))*(pN(l.pu));},0);
     var ttc=ht*(1+(f.tva||10)/100);
     var solde=Math.max(0,ttc-(f.acompte||0));
@@ -1774,7 +1779,25 @@ function renderDocs(){
       +(f.type!=='avoir'?'<button class="btn btn-secondary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;" data-favoir="'+f.id+'"><span>↩️</span><span style="font-size:9px;">Avoir</span></button>':'')
       +'<button class="btn btn-secondary" style="padding:8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--c-danger);" data-fdel="'+f.id+'"><span>🗑</span><span style="font-size:9px;">Suppr.</span></button>'
       +'</div></div>';
-  });
+  
+  return html;
+}
+function renderDocs(){
+  var cont=document.getElementById('docs-list');if(!cont)return;
+  var filter=docsFilter;
+  var factures=[]; // factures déplacées vers la page Devis & Factures
+  var devis=[];
+  if(filter!=='factures'){
+    devis=db.devis.slice().reverse();
+    if(filter==='plan')devis=devis.filter(function(d){return !!d.planSVG;});
+    else if(filter==='signe')devis=devis.filter(function(d){return d.statut==='signé';});
+  }
+  if(!devis.length&&!factures.length){
+    cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">📁</div><div style="font-size:14px;">Aucun document</div><div style="font-size:12px;color:var(--c-muted);margin-top:6px;">Vos devis et factures apparaîtront ici</div></div>';
+    return;
+  }
+  var html='';
+  factures.forEach(function(f){html+=factureCardHTML(f);});
   devis.forEach(function(d){
     var ttc=calcTTC(d);var hasPlan=!!(d.planSVG);
     var statutColor={brouillon:'var(--c-muted)',envoyé:'#60a5fa',signé:'var(--c-success)',refusé:'var(--c-danger)'}[d.statut]||'var(--c-muted)';
@@ -1787,7 +1810,6 @@ function renderDocs(){
       +'<div style="font-size:11px;margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
       +'<span style="color:'+statutColor+';font-weight:600;">'+d.statut+'</span>'
       +(hasPlan?'<span style="color:var(--c-accent);font-size:10px;">+ plan</span>':'')
-      +(d.statut==='signé'?'<button class="btn" style="padding:2px 8px;font-size:10px;background:rgba(34,197,94,.15);color:var(--c-success);border:1px solid var(--c-success);border-radius:6px;" data-gen-facture="'+d.id+'">🧾 Facturer</button>':'')
       +'</div></div>'
       +'<div style="font-family:var(--font-mono);font-size:13px;color:var(--c-accent);flex-shrink:0;">'+fmtMoney(ttc)+'</div>'
       +'</div>'
@@ -1896,6 +1918,10 @@ function closeSideMenu(){var sm=document.getElementById('side-menu');if(sm)sm.cl
 function handleMenuNav(action){
   closeSideMenu();
   switch(action){
+    case 'accueil': showView('accueil'); if(typeof renderRecentActivity==='function')renderRecentActivity(); break;
+    case 'visites': showView('visites'); if(typeof renderVisitesList==='function')renderVisitesList(); break;
+    case 'devis': showView('devis'); if(typeof renderDevisList==='function')renderDevisList(); if(typeof renderFactures==='function')renderFactures(); break;
+    case 'docs': showView('docs'); if(typeof renderDocs==='function')renderDocs(); break;
     case 'banque': showView('banque'); break;
     case 'depenses': showView('depenses'); renderDepenses(); break;
     case 'bibliotheque': showView('bibliotheque'); _bibNav={metier:null,categorie:null}; renderBibliotheque(); break;
@@ -4337,10 +4363,14 @@ async function analyzeImg(b64){document.getElementById('scanner-loading').style.
 async function scannerToDevis(){var text=document.getElementById('scanner-text').value.trim();if(!text){showToast('Aucun texte','error');return;}document.getElementById('modal-scanner').classList.remove('open');await voiceStandaloneToDevis.call(null);/* reuse logic */}
 
 // Settings
-function populateSettings(){var s=db.settings;document.getElementById('s-entreprise').value=s.entreprise||'';document.getElementById('s-siret').value=s.siret||'';document.getElementById('s-tel').value=s.tel||'';document.getElementById('s-email').value=s.email||'';document.getElementById('s-adresse').value=s.adresse||'';document.getElementById('s-prefix').value=s.prefix||'DEV-'+yr+'-';document.getElementById('s-nextnum').value=s.nextNum||1;var t=s.tarifs||{};document.getElementById('t-carreleur').value=t.carreleur_mo||42;document.getElementById('t-peintre').value=t.peintre_mo||38;document.getElementById('t-plombier').value=t.plombier_mo||62;document.getElementById('t-electricien').value=t.electricien_mo||60;document.getElementById('t-menuisier').value=t.menuisier_mo||50;document.getElementById('t-macon').value=t.macon_mo||45;document.getElementById('t-marge').value=t.marge||0;document.getElementById('t-tva').value=t.tva_defaut||10;document.getElementById('t-notes').value=t.notes||'';var ai=s.ai||{};document.getElementById('s-ia-provider').value=ai.provider||'claude';document.getElementById('s-claude-key').value=ai.claudeKey||'';document.getElementById('s-openai-key').value=ai.openaiKey||'';document.getElementById('s-claude-model').value=ai.claudeModel||'claude-sonnet-4-20250514';document.getElementById('s-openai-model').value=ai.openaiModel||'gpt-4o-mini';document.getElementById('s-proxy-url').value=ai.proxyUrl||'';if(s.logo){document.getElementById('logo-preview').innerHTML='<img src="'+s.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>';}updateProviderUI();updateNumPrev();}
+function populateSettings(){var s=db.settings;document.getElementById('s-entreprise').value=s.entreprise||'';document.getElementById('s-siret').value=s.siret||'';document.getElementById('s-tel').value=s.tel||'';document.getElementById('s-email').value=s.email||'';document.getElementById('s-adresse').value=s.adresse||'';
+function _sv(id,val){var el=document.getElementById(id);if(el)el.value=val||'';}
+_sv('s-factRCS',s.factRCS);_sv('s-factAPE',s.factAPE);_sv('s-regimeTVA',s.regimeTVA||'normal');_sv('s-factTVANum',s.factTVANum);_sv('s-factAssurance',s.factAssurance);_sv('s-factIBAN',s.factIBAN);_sv('s-factMediateur',s.factMediateur);_sv('s-factPenalites',s.factPenalites);document.getElementById('s-prefix').value=s.prefix||'DEV-'+yr+'-';document.getElementById('s-nextnum').value=s.nextNum||1;var t=s.tarifs||{};document.getElementById('t-carreleur').value=t.carreleur_mo||42;document.getElementById('t-peintre').value=t.peintre_mo||38;document.getElementById('t-plombier').value=t.plombier_mo||62;document.getElementById('t-electricien').value=t.electricien_mo||60;document.getElementById('t-menuisier').value=t.menuisier_mo||50;document.getElementById('t-macon').value=t.macon_mo||45;document.getElementById('t-marge').value=t.marge||0;document.getElementById('t-tva').value=t.tva_defaut||10;document.getElementById('t-notes').value=t.notes||'';var ai=s.ai||{};document.getElementById('s-ia-provider').value=ai.provider||'claude';document.getElementById('s-claude-key').value=ai.claudeKey||'';document.getElementById('s-openai-key').value=ai.openaiKey||'';document.getElementById('s-claude-model').value=ai.claudeModel||'claude-sonnet-4-20250514';document.getElementById('s-openai-model').value=ai.openaiModel||'gpt-4o-mini';document.getElementById('s-proxy-url').value=ai.proxyUrl||'';if(s.logo){document.getElementById('logo-preview').innerHTML='<img src="'+s.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>';}updateProviderUI();updateNumPrev();}
 function updateProviderUI(){var p=document.getElementById('s-ia-provider').value;document.getElementById('claude-cfg').style.display=p==='claude'?'block':'none';document.getElementById('openai-cfg').style.display=p==='openai'?'block':'none';}
 function updateNumPrev(){var px=document.getElementById('s-prefix').value||'DEV-'+yr+'-';document.getElementById('next-num-preview').textContent=px+String(parseInt(document.getElementById('s-nextnum').value)||1).padStart(3,'0');}
-function saveSettings(){var s=db.settings;s.entreprise=document.getElementById('s-entreprise').value;s.siret=document.getElementById('s-siret').value;s.tel=document.getElementById('s-tel').value;s.email=document.getElementById('s-email').value;s.adresse=document.getElementById('s-adresse').value;s.prefix=document.getElementById('s-prefix').value||'DEV-'+yr+'-';s.nextNum=parseInt(document.getElementById('s-nextnum').value)||1;s.tarifs={carreleur_mo:parseFloat(document.getElementById('t-carreleur').value)||42,peintre_mo:parseFloat(document.getElementById('t-peintre').value)||38,plombier_mo:parseFloat(document.getElementById('t-plombier').value)||62,electricien_mo:parseFloat(document.getElementById('t-electricien').value)||60,menuisier_mo:parseFloat(document.getElementById('t-menuisier').value)||50,macon_mo:parseFloat(document.getElementById('t-macon').value)||45,marge:parseFloat(document.getElementById('t-marge').value)||0,tva_defaut:parseFloat(document.getElementById('t-tva').value)||10,notes:document.getElementById('t-notes').value};s.ai={provider:document.getElementById('s-ia-provider').value,claudeKey:document.getElementById('s-claude-key').value.replace(/[‐‑‒–—―−－]/g,'-').trim(),openaiKey:document.getElementById('s-openai-key').value.replace(/[‐‑‒–—―−－]/g,'-').trim(),claudeModel:document.getElementById('s-claude-model').value,openaiModel:document.getElementById('s-openai-model').value,proxyUrl:document.getElementById('s-proxy-url').value};saveDB();if(typeof flushToCloudNow==='function')flushToCloudNow();renderGreeting();document.getElementById('modal-settings').classList.remove('open');showToast('Paramètres sauvegardés','success');}
+function saveSettings(){var s=db.settings;s.entreprise=document.getElementById('s-entreprise').value;s.siret=document.getElementById('s-siret').value;s.tel=document.getElementById('s-tel').value;s.email=document.getElementById('s-email').value;s.adresse=document.getElementById('s-adresse').value;
+  function _gv(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+  s.factRCS=_gv('s-factRCS');s.factAPE=_gv('s-factAPE');s.regimeTVA=_gv('s-regimeTVA')||'normal';s.factTVANum=_gv('s-factTVANum');s.factAssurance=_gv('s-factAssurance');s.factIBAN=_gv('s-factIBAN');s.factMediateur=_gv('s-factMediateur');s.factPenalites=_gv('s-factPenalites');s.prefix=document.getElementById('s-prefix').value||'DEV-'+yr+'-';s.nextNum=parseInt(document.getElementById('s-nextnum').value)||1;s.tarifs={carreleur_mo:parseFloat(document.getElementById('t-carreleur').value)||42,peintre_mo:parseFloat(document.getElementById('t-peintre').value)||38,plombier_mo:parseFloat(document.getElementById('t-plombier').value)||62,electricien_mo:parseFloat(document.getElementById('t-electricien').value)||60,menuisier_mo:parseFloat(document.getElementById('t-menuisier').value)||50,macon_mo:parseFloat(document.getElementById('t-macon').value)||45,marge:parseFloat(document.getElementById('t-marge').value)||0,tva_defaut:parseFloat(document.getElementById('t-tva').value)||10,notes:document.getElementById('t-notes').value};s.ai={provider:document.getElementById('s-ia-provider').value,claudeKey:document.getElementById('s-claude-key').value.replace(/[‐‑‒–—―−－]/g,'-').trim(),openaiKey:document.getElementById('s-openai-key').value.replace(/[‐‑‒–—―−－]/g,'-').trim(),claudeModel:document.getElementById('s-claude-model').value,openaiModel:document.getElementById('s-openai-model').value,proxyUrl:document.getElementById('s-proxy-url').value};saveDB();if(typeof flushToCloudNow==='function')flushToCloudNow();renderGreeting();document.getElementById('modal-settings').classList.remove('open');showToast('Paramètres sauvegardés','success');}
 function handleLogoUpload(file){if(!file)return;var canvas=document.createElement('canvas');var img=new Image();img.onload=function(){var max=256;var r=Math.min(max/img.width,max/img.height);canvas.width=img.width*r;canvas.height=img.height*r;canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);var b64=canvas.toDataURL('image/jpeg',0.8);db.settings.logo=b64;saveDB();document.getElementById('logo-preview').innerHTML='<img src="'+b64+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>';};img.src=URL.createObjectURL(file);}
 function openSettings(){populateSettings();document.getElementById('modal-settings').classList.add('open');}
 // ============================================================
@@ -4451,6 +4481,36 @@ document.addEventListener('DOMContentLoaded',function(){
   // Choix du type de facture
   var btnFPick=document.getElementById('btn-f-pick-bib');
   if(btnFPick)btnFPick.addEventListener('click',function(){openPickBib('facture');});
+  // Onglets Devis / Factures
+  function switchDevisTab(tab){
+    var sd=document.getElementById('subview-devis'),sf=document.getElementById('subview-factures');
+    var td=document.getElementById('tab-devis'),tf=document.getElementById('tab-factures');
+    if(tab==='factures'){sd.style.display='none';sf.style.display='block';td.className='btn btn-secondary';tf.className='btn btn-primary';renderFactures();}
+    else{sd.style.display='block';sf.style.display='none';td.className='btn btn-primary';tf.className='btn btn-secondary';}
+  }
+  var tabD=document.getElementById('tab-devis'),tabF=document.getElementById('tab-factures');
+  if(tabD)tabD.addEventListener('click',function(){switchDevisTab('devis');});
+  if(tabF)tabF.addEventListener('click',function(){switchDevisTab('factures');});
+  tabD.style.flex='1';tabF.style.flex='1';
+  // Filtres factures
+  document.querySelectorAll('[data-ffilter]').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('[data-ffilter]').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active');
+      factPageFilter=b.dataset.ffilter;
+      renderFactures();
+    });
+  });
+  // Actions sur les cartes factures de la page dédiée (mêmes actions que Docs)
+  var fpl=document.getElementById('factpage-list');
+  if(fpl)fpl.addEventListener('click',function(e){
+    var gf=e.target.closest('[data-gen-facture]');if(gf){openFactTypeChooser(gf.dataset.genFacture);return;}
+    var fe=e.target.closest('[data-fedit]');if(fe){openEditFacture(fe.dataset.fedit);return;}
+    var fp=e.target.closest('[data-fpdf]');if(fp){exportFacturePDF(fp.dataset.fpdf);return;}
+    var av=e.target.closest('[data-favoir]');if(av){if(confirm('Créer un avoir annulant cette facture ?'))createAvoirFromFacture(av.dataset.favoir);return;}
+    var fd=e.target.closest('[data-fdel]');if(fd){if(!confirm('Supprimer cette facture ?'))return;recordTombstone('factures',fd.dataset.fdel);db.factures=db.factures.filter(function(f){return f.id!==fd.dataset.fdel;});saveDB();renderFactures();renderDocs();showToast('Facture supprimée','success');return;}
+    var fs2=e.target.closest('[data-fstatut]');if(fs2){var f=db.factures.find(function(x){return x.id===fs2.dataset.fstatut;});if(f){var cycle={en_attente:'payee',payee:'retard',retard:'en_attente'};f.paiementStatut=cycle[f.paiementStatut]||'en_attente';saveDB();renderFactures();}return;}
+  });
   var btnNewFact=document.getElementById('btn-new-facture');
   if(btnNewFact)btnNewFact.addEventListener('click',createFactureVierge);
   document.getElementById('fact-type-close').addEventListener('click',function(){document.getElementById('modal-fact-type').classList.remove('open');});
@@ -4483,6 +4543,8 @@ document.addEventListener('DOMContentLoaded',function(){
   // NAV
   document.querySelectorAll('.nav-btn').forEach(function(b){b.addEventListener('click',function(){if(b.dataset.view){if(b.dataset.view==='bibliotheque'){showView('bibliotheque');_bibNav={metier:null,categorie:null};renderBibliotheque();}else{showView(b.dataset.view);}}});});
   // Menu latéral
+  var burgerBtn=document.getElementById('header-burger');
+  if(burgerBtn)burgerBtn.addEventListener('click',function(){if(typeof openSideMenu==='function')openSideMenu();});
   var moreBtn=document.getElementById('nav-more-btn');
   if(moreBtn)moreBtn.addEventListener('click',openSideMenu);
   var smScrim=document.getElementById('sm-scrim');
@@ -5220,7 +5282,7 @@ function exportFacturePDF(id){
   var f=db.factures.find(function(x){return x.id===id;});if(!f){showToast('Introuvable','error');return;}
   var s=db.settings;
   var ht=f.lignes.reduce(function(a,l){return a+(pN(l.qte))*(pN(l.pu));},0);
-  var tva=ht*(f.tva||10)/100;var ttc=ht+tva;var solde=Math.max(0,ttc-(f.acompte||0));
+  var franchiseTVA=(s.regimeTVA==='franchise');var tva=franchiseTVA?0:ht*(f.tva||10)/100;var ttc=ht+tva;var solde=Math.max(0,ttc-(f.acompte||0));
   var statutTxt={en_attente:'En attente de règlement',payee:'PAYÉE',retard:'EN RETARD DE PAIEMENT',partielle:'Paiement partiel reçu'}[f.paiementStatut]||'';
   var rows=(f.lignes||[]).map(function(l){
     var tot=(pN(l.qte))*(pN(l.pu));
@@ -5264,7 +5326,7 @@ function exportFacturePDF(id){
     +'<table><thead><tr><th style="width:46%">Désignation</th><th style="width:8%">Unité</th><th style="width:10%">Qté</th><th style="width:15%">PU HT</th><th style="width:21%">Total HT</th></tr></thead><tbody>'+rows+'</tbody></table>'
     +'<div style="display:flex;justify-content:flex-end;margin-bottom:20px;"><div class="tot">'
     +'<div class="tr"><span>Total HT</span><span>'+fmtMoney(ht)+'</span></div>'
-    +'<div class="tr"><span>TVA '+f.tva+'%</span><span>'+fmtMoney(tva)+'</span></div>'
+    +(franchiseTVA?'<div class="tr" style="font-size:9pt;color:#666;"><span>TVA non applicable (art. 293 B CGI)</span><span>—</span></div>':'<div class="tr"><span>TVA '+f.tva+'%</span><span>'+fmtMoney(tva)+'</span></div>')
     +'<div class="tr"><span>Total TTC</span><span>'+fmtMoney(ttc)+'</span></div>'
     +((f.acompte||0)>0?'<div class="tr"><span>Acompte versé</span><span style="color:#22c55e;">- '+fmtMoney(f.acompte)+'</span></div>':'')
     +'<div class="solde"><span>SOLDE À PAYER</span><span>'+fmtMoney(solde)+'</span></div>'
@@ -5274,9 +5336,12 @@ function exportFacturePDF(id){
     +'<div class="legal">'
     +(s.siret?'SIRET : '+esc(s.siret)+' — ':'')+esc(s.entreprise||'')
     +(s.factRCS?' — '+esc(s.factRCS):'')+(s.factAPE?' — APE '+esc(s.factAPE):'')
-    +(s.factTVANum?' — N° TVA : '+esc(s.factTVANum):'')+'<br/>'
+    +((s.regimeTVA==='franchise')?' — TVA non applicable, art. 293 B du CGI':(s.factTVANum?' — N° TVA : '+esc(s.factTVANum):''))+'<br/>'
     +(s.factAssurance?'Assurance décennale : '+esc(s.factAssurance)+'<br/>':'')
-    +(s.factPenalites?esc(s.factPenalites):'Pénalités de retard : 3× taux légal BCE — Indemnité forfaitaire : 40€ (art. D.441-5 C.com.)')
+    +(s.factIBAN?'Règlement par virement — IBAN : '+esc(s.factIBAN)+'<br/>':'')
+    +'Paiement à '+((f.echeance)?'échéance du '+fmtDate(f.echeance):'réception de facture')+'. '
+    +(s.factPenalites?esc(s.factPenalites):'En cas de retard : pénalités au taux de 3× l\'intérêt légal, indemnité forfaitaire de recouvrement de 40 € (art. L.441-10 et D.441-5 C. com.). Pas d\'escompte pour paiement anticipé.')+'<br/>'
+    +(s.factMediateur?'Médiateur de la consommation : '+esc(s.factMediateur):'')
     +'</div>'
     +'</body></html>';
   var w=window.open('','_blank');
@@ -5285,8 +5350,32 @@ function exportFacturePDF(id){
 }
 
 // Rendu liste factures (utilisé dans renderDocs)
+var factPageFilter='all';
 function renderFactures(){
-  // Utilisé dans renderDocs via le filtre 'factures'
+  var cont=document.getElementById('factpage-list');if(!cont)return;
+  var stats=document.getElementById('fact-stats');
+  var all=db.factures.slice().reverse();
+  // Indicateurs : total TTC facturé (net des avoirs) + en attente
+  var totalTTC=0, attente=0;
+  all.forEach(function(f){
+    var ht=(f.lignes||[]).reduce(function(a,l){return a+(pN(l.qte))*(pN(l.pu));},0);
+    var ttc=ht*(1+(f.tva||10)/100);
+    totalTTC+=ttc;
+    if(f.paiementStatut!=='payee'&&f.type!=='avoir')attente+=ttc;
+  });
+  if(stats)stats.innerHTML=
+    '<div style="background:var(--c-surface2);border-radius:10px;padding:10px;"><div style="font-size:10px;color:var(--c-muted);text-transform:uppercase;">Facturé (net TTC)</div><div style="font-family:var(--font-mono);font-weight:700;font-size:16px;color:var(--c-accent);">'+fmtMoney(totalTTC)+'</div></div>'
+    +'<div style="background:var(--c-surface2);border-radius:10px;padding:10px;"><div style="font-size:10px;color:var(--c-muted);text-transform:uppercase;">En attente</div><div style="font-family:var(--font-mono);font-weight:700;font-size:16px;color:#f59e0b;">'+fmtMoney(attente)+'</div></div>';
+  var list=all.filter(function(f){
+    if(factPageFilter==='all')return true;
+    if(factPageFilter==='en_attente')return f.paiementStatut!=='payee'&&f.type!=='avoir';
+    if(factPageFilter==='payee')return f.paiementStatut==='payee';
+    return (f.type||'complete')===factPageFilter;
+  });
+  if(!list.length){cont.innerHTML='<div class="empty-state"><div class="empty-state-icon">🧾</div><div style="font-size:14px;">Aucune facture</div><div style="font-size:12px;color:var(--c-muted);margin-top:6px;">Crée une facture depuis un devis ou avec le bouton ci-dessus</div></div>';return;}
+  var html='';
+  list.forEach(function(f){html+=factureCardHTML(f);});
+  cont.innerHTML=html;
 }
 /* ============================================================
    MODULE SIGNATURE
@@ -5507,6 +5596,25 @@ function validerSignature(){
         <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="s-email" placeholder="pro@dupont.fr"/></div>
       </div>
       <div class="form-group"><label class="form-label">Adresse</label><input type="text" class="form-input" id="s-adresse" placeholder="12 rue des Artisans"/></div>
+      <hr class="divider"/>
+      <div class="card-title" style="font-size:13px;">Mentions légales facture</div>
+      <div style="font-size:11px;color:var(--c-muted);margin-bottom:10px;">Ces informations apparaîtront en bas de vos factures (obligations légales BTP).</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">RCS / RM</label><input type="text" class="form-input" id="s-factRCS" placeholder="RCS Toulouse 913 124 079"/></div>
+        <div class="form-group"><label class="form-label">Code APE / NAF</label><input type="text" class="form-input" id="s-factAPE" placeholder="4399C"/></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Régime TVA</label>
+        <select class="form-input" id="s-regimeTVA">
+          <option value="normal">TVA applicable (régime normal)</option>
+          <option value="franchise">Franchise en base (art. 293 B du CGI)</option>
+        </select>
+      </div>
+      <div class="form-group" id="s-tvanum-row"><label class="form-label">N° TVA intracommunautaire</label><input type="text" class="form-input" id="s-factTVANum" placeholder="FR 12 913124079"/></div>
+      <div class="form-group"><label class="form-label">Assurance décennale (assureur + n° police)</label><input type="text" class="form-input" id="s-factAssurance" placeholder="AXA n°123456 — couverture France"/></div>
+      <div class="form-group"><label class="form-label">IBAN (pour paiement par virement)</label><input type="text" class="form-input" id="s-factIBAN" placeholder="FR76 ...."/></div>
+      <div class="form-group"><label class="form-label">Médiateur de la consommation</label><input type="text" class="form-input" id="s-factMediateur" placeholder="Nom + site du médiateur"/></div>
+      <div class="form-group"><label class="form-label">Conditions / pénalités de retard</label><input type="text" class="form-input" id="s-factPenalites" placeholder="Laisser vide = mention légale par défaut"/></div>
     </div>
     <div class="settings-panel" id="stab-tarifs">
       <div class="card-title">Main d'oeuvre (€/h)</div>
