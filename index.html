@@ -207,6 +207,24 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
 .pl-snap:active{background:var(--c-accent);color:#fff;}
 .pl-dial-done{width:100%;}
 </style>
+<script>
+// Chargement à la demande de pdf.js (extraction texte des devis fournisseurs)
+window._loadPdfJs=function(){
+  return new Promise(function(resolve,reject){
+    if(window.pdfjsLib){resolve(window.pdfjsLib);return;}
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload=function(){
+      if(window.pdfjsLib){
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      }else reject(new Error('pdf.js indisponible'));
+    };
+    s.onerror=function(){reject(new Error('Chargement pdf.js échoué'));};
+    document.head.appendChild(s);
+  });
+};
+</script>
 </head>
 <body>
 <div id="offline-banner">📵 MODE HORS LIGNE</div>
@@ -446,6 +464,16 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
       <div id="bib-list"></div>
     </div>
 
+    <div class="view" id="view-fournisseurs">
+      <div class="section-title">Tarifs fournisseurs</div>
+      <div class="section-sub">Importe tes devis fournisseurs (PDF) — l'app extrait les matériaux et leurs prix</div>
+      <input type="file" id="fourn-pdf-input" accept="application/pdf" multiple style="display:none;"/>
+      <button class="btn btn-primary btn-full" id="btn-fourn-import" style="margin-bottom:8px;">📄 Importer un devis fournisseur (PDF)</button>
+      <div id="fourn-loading" style="display:none;text-align:center;padding:16px;color:var(--c-muted);font-size:13px;">⏳ Lecture du PDF et extraction des tarifs…</div>
+      <div style="display:flex;gap:6px;margin:10px 0;overflow-x:auto;scrollbar-width:none;" id="fourn-filter-bar"></div>
+      <div id="fourn-list"></div>
+    </div>
+
     <div class="view" id="view-ossature">
       <div class="section-title">Ossature bois</div>
       <div class="section-sub">Débit de bois + pré-dimensionnement indicatif</div>
@@ -667,6 +695,7 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
       <button class="sm-item" data-menu="banque"><svg viewBox="0 0 24 24"><line x1="3" y1="22" x2="21" y2="22"/><path d="M3 10h18M5 10v12M19 10v12M12 2L3 10h18z"/></svg>Banque <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="depenses"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Dépenses <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="bibliotheque"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Bibliothèque de prix <span class="sm-badge">NOUVEAU</span></button>
+      <button class="sm-item" data-menu="fournisseurs"><svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M9 22V12h6v10"/></svg>Tarifs fournisseurs <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="plans"><svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>Édition de plans</button>
       <button class="sm-item" data-menu="clients"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Clients</button>
       <button class="sm-item" data-menu="planning"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Planning</button>
@@ -1011,9 +1040,9 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
 'use strict';
 var SK='chantierspro_max_v1';
 var yr=new Date().getFullYear();
-var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],depenses:[],bibliotheque:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
+var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],depenses:[],bibliotheque:[],tarifsFournisseurs:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
 var db=JSON.parse(JSON.stringify(DFLT));
-function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;if(!db.depenses)db.depenses=[];if(!db.bibliotheque)db.bibliotheque=[];if(!db.bibliotheque.length)db.bibliotheque=defaultBibliotheque();
+function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;if(!db.depenses)db.depenses=[];if(!db.bibliotheque)db.bibliotheque=[];if(!db.tarifsFournisseurs)db.tarifsFournisseurs=[];if(!db.bibliotheque.length)db.bibliotheque=defaultBibliotheque();
     // Migration catalogue v6 : compléter avec les nouveaux ouvrages (préserve ajouts perso et prix modifiés)
     if(db.bibliotheque.length>0&&!db.settings._bibV6){
       var existingDesigs={};db.bibliotheque.forEach(function(b){existingDesigs[(b.designation||'').toLowerCase()]=1;});
@@ -1690,7 +1719,7 @@ function pushToCloud(){
     try{
       var col=fbDb.collection('users').doc(currentUser.uid).collection('data');
       var ts=firebase.firestore.FieldValue.serverTimestamp();
-      ['clients','devis','visites','planning','factures','depenses','bibliotheque'].forEach(function(c){
+      ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs'].forEach(function(c){
         col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(e){console.warn('Sync '+c,e);});
       });
       col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(e){console.warn('Sync settings',e);});
@@ -1760,7 +1789,7 @@ function flushToCloudNow(){
   try{
     var col=fbDb.collection('users').doc(currentUser.uid).collection('data');
     var ts=firebase.firestore.FieldValue.serverTimestamp();
-    ['clients','devis','visites','planning','factures','depenses','bibliotheque'].forEach(function(c){
+    ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs'].forEach(function(c){
       col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(){});
     });
     col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(){});
@@ -1901,7 +1930,7 @@ function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;v
       }
     }
   }).catch(function(){});
-  ['clients','devis','visites','planning','factures','depenses','bibliotheque'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){
+  ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){
     // Fusion sûre : union par id, sans perdre les données locales non encore synchronisées
     var remote=x.items||[];var local=db[c]||[];
     var byId={};
@@ -1920,7 +1949,7 @@ function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;v
     if(c==='depenses'&&typeof renderDepenses==='function')renderDepenses();
     if(typeof renderGreeting==='function')renderGreeting();
   }}}).catch(function(){});});}
-function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');var ts=firebase.firestore.FieldValue.serverTimestamp();var jobs=['clients','devis','visites','planning','factures','depenses','bibliotheque'].map(function(c){return col.doc(c).set({items:db[c]||[],updatedAt:ts});});jobs.push(col.doc('_settings').set({data:db.settings,updatedAt:ts}));jobs.push(col.doc('_tombstones').set({data:db._tombstones||{},updatedAt:ts}));Promise.all(jobs).then(function(){showToast('Synchronisé !','success');}).catch(function(){showToast('Erreur sync','error');});}
+function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');var ts=firebase.firestore.FieldValue.serverTimestamp();var jobs=['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs'].map(function(c){return col.doc(c).set({items:db[c]||[],updatedAt:ts});});jobs.push(col.doc('_settings').set({data:db.settings,updatedAt:ts}));jobs.push(col.doc('_tombstones').set({data:db._tombstones||{},updatedAt:ts}));Promise.all(jobs).then(function(){showToast('Synchronisé !','success');}).catch(function(){showToast('Erreur sync','error');});}
 
 // NAV/TOAST/UTILS
 function showView(n){document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});var el=document.getElementById('view-'+n);if(el)el.classList.add('active');document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===n);});}
@@ -1933,6 +1962,97 @@ function openSideMenu(){var sm=document.getElementById('side-menu');if(!sm)retur
   sm.classList.add('open');
 }
 function closeSideMenu(){var sm=document.getElementById('side-menu');if(sm)sm.classList.remove('open');}
+// ===== TARIFS FOURNISSEURS =====
+var _fournFilter='all';
+async function extractPdfText(file){
+  var lib=await window._loadPdfJs();
+  var buf=await file.arrayBuffer();
+  var pdf=await lib.getDocument({data:buf}).promise;
+  var txt='';
+  for(var i=1;i<=pdf.numPages;i++){
+    var page=await pdf.getPage(i);
+    var content=await page.getTextContent();
+    txt+=content.items.map(function(it){return it.str;}).join(' ')+'\n';
+  }
+  return txt;
+}
+async function importFournPdf(files){
+  if(!files||!files.length)return;
+  document.getElementById('fourn-loading').style.display='block';
+  var totalAdded=0, fournNames=[];
+  for(var f=0;f<files.length;f++){
+    var file=files[f];
+    try{
+      var txt=await extractPdfText(file);
+      if(!txt||txt.trim().length<20){showToast('PDF illisible : '+file.name+' (peut-être un scan image)','error');continue;}
+      // Limiter la taille envoyée à l'IA
+      txt=txt.slice(0,8000);
+      var prompt='Tu analyses un DEVIS ou une FACTURE FOURNISSEUR de matériaux BTP. Extrais le nom du fournisseur et toutes les lignes de matériaux avec leur prix unitaire HT.\n'
+        +'Réponds UNIQUEMENT en JSON, sans texte ni markdown, format:\n'
+        +'{"fournisseur":"NOM","lignes":[{"designation":"...","unite":"u|m2|ml|m3|sac|palette|kg|L","pu":0.00,"ref":"référence si présente"}]}\n'
+        +'Règles: pu = prix unitaire HT en euros (nombre). Ignore les totaux, TVA, frais de port. Si une remise est indiquée, applique-la au pu. Garde la désignation complète et claire.\n\n'
+        +'Contenu du devis:\n'+txt;
+      var result=await callAI(prompt);
+      if(!result||result.startsWith('LOCAL:')){showToast('IA non disponible — vérifie ta clé/proxy dans Paramètres','error');break;}
+      var data;
+      try{data=JSON.parse(result.replace(/```json|```/g,'').trim());}
+      catch(e){console.error('JSON fournisseur invalide',result.slice(0,200));showToast('Extraction illisible pour '+file.name,'error');continue;}
+      if(!data||!data.lignes||!data.lignes.length){showToast('Aucune ligne trouvée dans '+file.name,'error');continue;}
+      var fourn=(data.fournisseur||'Fournisseur').trim();
+      fournNames.push(fourn);
+      var now=Date.now();
+      data.lignes.forEach(function(l){
+        if(!l.designation||!(parseFloat(l.pu)>0))return;
+        // éviter doublon exact (même fournisseur + même désignation → mise à jour du prix)
+        var existing=db.tarifsFournisseurs.find(function(x){return x.fournisseur===fourn&&(x.designation||'').toLowerCase().trim()===(l.designation||'').toLowerCase().trim();});
+        if(existing){existing.pu=parseFloat(l.pu);existing.unite=l.unite||existing.unite;existing.maj=now;}
+        else{db.tarifsFournisseurs.push({id:genId(),fournisseur:fourn,designation:l.designation.trim(),unite:l.unite||'u',pu:parseFloat(l.pu),ref:l.ref||'',maj:now});totalAdded++;}
+      });
+    }catch(err){console.error('Import PDF',err);showToast('Erreur lecture '+file.name,'error');}
+  }
+  saveDB();
+  document.getElementById('fourn-loading').style.display='none';
+  renderFournisseurs();
+  if(totalAdded>0)showToast(totalAdded+' tarif'+(totalAdded>1?'s':'')+' importé'+(totalAdded>1?'s':'')+(fournNames.length?' ('+[...new Set(fournNames)].join(', ')+')':''),'success');
+}
+function renderFournisseurs(){
+  var list=document.getElementById('fourn-list');
+  var bar=document.getElementById('fourn-filter-bar');
+  if(!list)return;
+  var items=db.tarifsFournisseurs||[];
+  if(!items.length){
+    if(bar)bar.innerHTML='';
+    list.innerHTML='<div style="text-align:center;padding:30px;color:var(--c-muted);"><div style="font-size:38px;margin-bottom:8px;">📦</div>Aucun tarif fournisseur.<br/>Importe un devis PDF pour commencer.</div>';
+    return;
+  }
+  // Filtres par fournisseur
+  var fournisseurs=[...new Set(items.map(function(x){return x.fournisseur;}))].sort();
+  if(bar){
+    bar.innerHTML='<button class="snav-btn'+(_fournFilter==='all'?' active':'')+'" data-fournf="all">Tous</button>'
+      +fournisseurs.map(function(fn){return '<button class="snav-btn'+(_fournFilter===fn?' active':'')+'" data-fournf="'+esc(fn)+'">'+esc(fn)+'</button>';}).join('');
+  }
+  var shown=_fournFilter==='all'?items:items.filter(function(x){return x.fournisseur===_fournFilter;});
+  // Grouper par fournisseur
+  var byF={},order=[];
+  shown.forEach(function(x){if(!byF[x.fournisseur]){byF[x.fournisseur]=[];order.push(x.fournisseur);}byF[x.fournisseur].push(x);});
+  list.innerHTML=order.map(function(fn){
+    var lignes=byF[fn].sort(function(a,b){return (a.designation||'').localeCompare(b.designation||'');});
+    return '<div style="margin-bottom:16px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+      +'<div style="font-weight:700;color:var(--c-accent);font-size:14px;">'+esc(fn)+'</div>'
+      +'<button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" data-fourn-del-supplier="'+esc(fn)+'">Supprimer</button></div>'
+      +lignes.map(function(l){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--c-surface2);border-radius:8px;padding:8px 10px;margin-bottom:4px;">'
+          +'<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;">'+esc(l.designation)+'</div>'
+          +(l.ref?'<div style="font-size:10px;color:var(--c-muted);">réf. '+esc(l.ref)+'</div>':'')+'</div>'
+          +'<div style="text-align:right;white-space:nowrap;"><div style="font-family:var(--font-mono);font-weight:700;font-size:13px;">'+fmtMoney(l.pu)+'</div>'
+          +'<div style="font-size:10px;color:var(--c-muted);">/'+esc(l.unite||'u')+'</div></div>'
+          +'<button class="devis-remove" data-fourn-del="'+l.id+'">✕</button>'
+          +'</div>';
+      }).join('')
+      +'</div>';
+  }).join('');
+}
 function handleMenuNav(action){
   closeSideMenu();
   switch(action){
@@ -1943,6 +2063,7 @@ function handleMenuNav(action){
     case 'banque': showView('banque'); break;
     case 'depenses': showView('depenses'); renderDepenses(); break;
     case 'bibliotheque': showView('bibliotheque'); _bibNav={metier:null,categorie:null}; renderBibliotheque(); break;
+    case 'fournisseurs': showView('fournisseurs'); if(typeof renderFournisseurs==='function')renderFournisseurs(); break;
     case 'ossature': showView('ossature'); if(typeof obRenderOuvertures==='function')obRenderOuvertures(); break;
     case 'plans': showView('plans'); _plParcoursMode=false; var _upb=document.getElementById('pl-use-parcours'); if(_upb)_upb.style.display='none'; plRender(); break;
     case 'clients': showView('clients'); if(typeof renderClients==='function')renderClients(); break;
@@ -4379,7 +4500,7 @@ function backupImport(file){
       var imported=JSON.parse(e.target.result);
       if(!imported||typeof imported!=='object'){showToast('Fichier invalide','error');return;}
       // Fusionner : garder ce qui existe, ajouter l'importé
-      ['clients','devis','visites','planning','factures','depenses','bibliotheque'].forEach(function(c){
+      ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs'].forEach(function(c){
         if(Array.isArray(imported[c])){
           var byId={};
           (db[c]||[]).forEach(function(it){if(it&&it.id)byId[it.id]=it;});
@@ -4886,6 +5007,19 @@ document.addEventListener('DOMContentLoaded',function(){
     var av=e.target.closest('[data-favoir]');if(av){if(confirm('Créer un avoir annulant cette facture ?'))createAvoirFromFacture(av.dataset.favoir);return;}
     var fd=e.target.closest('[data-fdel]');if(fd){if(!confirm('Supprimer cette facture ?'))return;recordTombstone('factures',fd.dataset.fdel);db.factures=db.factures.filter(function(f){return f.id!==fd.dataset.fdel;});saveDB();renderFactures();renderDocs();showToast('Facture supprimée','success');return;}
     var fs2=e.target.closest('[data-fstatut]');if(fs2){var f=db.factures.find(function(x){return x.id===fs2.dataset.fstatut;});if(f){var cycle={en_attente:'payee',payee:'retard',retard:'en_attente'};f.paiementStatut=cycle[f.paiementStatut]||'en_attente';saveDB();renderFactures();}return;}
+  });
+  var btnFournImport=document.getElementById('btn-fourn-import');
+  if(btnFournImport)btnFournImport.addEventListener('click',function(){document.getElementById('fourn-pdf-input').click();});
+  var fournInput=document.getElementById('fourn-pdf-input');
+  if(fournInput)fournInput.addEventListener('change',function(e){importFournPdf(e.target.files);e.target.value='';});
+  var fournBar=document.getElementById('fourn-filter-bar');
+  if(fournBar)fournBar.addEventListener('click',function(e){var b=e.target.closest('[data-fournf]');if(b){_fournFilter=b.dataset.fournf;renderFournisseurs();}});
+  var fournList=document.getElementById('fourn-list');
+  if(fournList)fournList.addEventListener('click',function(e){
+    var d=e.target.closest('[data-fourn-del]');
+    if(d){var id=d.dataset.fournDel;recordTombstone('tarifsFournisseurs',id);db.tarifsFournisseurs=db.tarifsFournisseurs.filter(function(x){return x.id!==id;});saveDB();renderFournisseurs();return;}
+    var ds=e.target.closest('[data-fourn-del-supplier]');
+    if(ds){var fn=ds.dataset.fournDelSupplier;if(confirm('Supprimer tous les tarifs de '+fn+' ?')){db.tarifsFournisseurs.filter(function(x){return x.fournisseur===fn;}).forEach(function(x){recordTombstone('tarifsFournisseurs',x.id);});db.tarifsFournisseurs=db.tarifsFournisseurs.filter(function(x){return x.fournisseur!==fn;});_fournFilter='all';saveDB();renderFournisseurs();}}
   });
   var btnNewFact=document.getElementById('btn-new-facture');
   if(btnNewFact)btnNewFact.addEventListener('click',createFactureVierge);
