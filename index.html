@@ -393,7 +393,13 @@ window._loadPdfJs=function(){
 
     <div class="view" id="view-plans">
       <div class="section-title">Édition de plans</div>
-      <div class="section-sub">Tracez une surface complexe segment par segment</div>
+      <div class="section-sub">Plans et métrés — les mêmes outils que dans le parcours devis</div>
+      <div class="metrer-tab" id="plans-mode-tabs" style="margin-bottom:12px;">
+        <button class="mtab active" data-plmode="poly">📐 Plan (polygone)</button>
+        <button class="mtab" data-plmode="metres">📏 Métrés complets</button>
+      </div>
+      <div id="plans-metres-slot" style="display:none;"></div>
+      <div id="plans-poly-block">
 
       <div style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--r);padding:14px;margin-bottom:14px;">
         <div style="font-size:12px;color:var(--c-muted);margin-bottom:10px;line-height:1.5;">Saisissez chaque côté : sa <b style="color:var(--c-text);">longueur</b> et son <b style="color:var(--c-text);">angle</b> (0°=droite, 90°=haut, 180°=gauche, 270°=bas). L'app calcule la surface.</div>
@@ -431,6 +437,7 @@ window._loadPdfJs=function(){
         <button class="btn btn-primary" id="pl-export">📄 Exporter PDF</button>
       </div>
       <button class="btn btn-primary" id="pl-use-parcours" style="width:100%;margin-top:8px;display:none;">✓ Utiliser cette surface dans le devis</button>
+      </div><!-- /plans-poly-block -->
     </div>
 
     <div class="view" id="view-depenses">
@@ -780,6 +787,7 @@ window._loadPdfJs=function(){
         <div style="background:rgba(45,140,240,.08);border:1px solid rgba(45,140,240,.2);border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--c-muted);">
           📍 Saisissez les cotes sur place. Elles serviront à générer le plan coté.
         </div>
+        <div id="metres-block">
         <div class="metrer-tab" id="cotes-tabs">
           <button class="mtab active" data-ctab="surfaces">Surfaces</button>
           <button class="mtab" data-ctab="murs">Murs pente</button>
@@ -877,6 +885,7 @@ window._loadPdfJs=function(){
           </div>
           <button class="btn btn-primary btn-full" id="btn-draw-toit" style="margin-top:10px;">✏️ Dessiner le toit (contour + arêtes)</button>
         </div>
+        </div><!-- /metres-block -->
       </div>
 
       <!-- ÉTAPE 3 : PLAN COTÉ -->
@@ -2076,7 +2085,7 @@ function handleMenuNav(action){
     case 'bibliotheque': showView('bibliotheque'); _bibNav={metier:null,categorie:null}; renderBibliotheque(); break;
     case 'fournisseurs': showView('fournisseurs'); if(typeof renderFournisseurs==='function')renderFournisseurs(); break;
     case 'ossature': showView('ossature'); if(typeof obRenderOuvertures==='function')obRenderOuvertures(); break;
-    case 'plans': showView('plans'); _plParcoursMode=false; var _upb=document.getElementById('pl-use-parcours'); if(_upb)_upb.style.display='none'; plRender(); break;
+    case 'plans': showView('plans'); _plParcoursMode=false; var _upb=document.getElementById('pl-use-parcours'); if(_upb)_upb.style.display='none'; plRender(); metresAttach('plans'); break;
     case 'clients': showView('clients'); if(typeof renderClients==='function')renderClients(); break;
     case 'planning': showView('planning'); if(typeof renderPlanningList==='function')renderPlanningList(); break;
     case 'parametres':
@@ -2857,6 +2866,7 @@ var parcoursVisite=null;
 var planSVG='';
 
 function openParcours(){
+  metresAttach('parcours');
   parcoursStep=1;parcoursVisite=null;planSVG='';
   cSurfaces=[];cDeductions=[];cVolumes=[];cLineaires=[];cMurs=[];
   // Reset toiture (sinon la toiture du chantier précédent réapparaît)
@@ -2894,6 +2904,7 @@ function openParcours(){
 
 function goToStep(n){
   parcoursStep=n;
+  metresAttach('parcours'); // le bloc de métrés doit être dans le parcours dès qu'on y navigue
   [1,2,3,4].forEach(function(i){
     var el=document.getElementById('step-'+i);if(el)el.style.display=i===n?'block':'none';
     var bar=document.getElementById('sbar'+i);
@@ -2963,6 +2974,27 @@ function reopenParcoursFromVisite(visiteId){
 // ============================================================
 // ÉTAPE 2 : COTES
 // ============================================================
+// Le bloc de métrés (#metres-block) est UNIQUE : il vit dans le parcours (step-2)
+// et se déplace dans la vue « Édition de plans » quand on l'ouvre depuis le menu.
+// Déplacer le nœud DOM conserve ids et écouteurs → zéro duplication de code.
+function metresAttach(where){
+  var block=document.getElementById('metres-block');if(!block)return;
+  if(where==='plans'){
+    var slot=document.getElementById('plans-metres-slot');
+    if(slot&&block.parentNode!==slot)slot.appendChild(block);
+    applyNatureTabs('__libre__'); // nature inconnue → tous les onglets visibles
+  }else{
+    var s2=document.getElementById('step-2');
+    if(s2&&block.parentNode!==s2)s2.appendChild(block);
+  }
+}
+function switchPlansMode(mode){
+  document.querySelectorAll('#plans-mode-tabs .mtab').forEach(function(b){b.classList.toggle('active',b.dataset.plmode===mode);});
+  var poly=document.getElementById('plans-poly-block'),slot=document.getElementById('plans-metres-slot');
+  if(poly)poly.style.display=mode==='poly'?'block':'none';
+  if(slot)slot.style.display=mode==='metres'?'block':'none';
+  if(mode==='metres')metresAttach('plans');
+}
 function switchCotesTab(tab){
   document.querySelectorAll('#cotes-tabs .mtab').forEach(function(b){b.classList.toggle('active',b.dataset.ctab===tab);});
   ['surfaces','murs','volumes','lineaires','toiture'].forEach(function(t){var el=document.getElementById('ctab-'+t);if(el)el.style.display=t===tab?'block':'none';});
@@ -5257,6 +5289,8 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // Cotes tabs
   document.getElementById('cotes-tabs').addEventListener('click',function(e){var b=e.target.closest('.mtab');if(b)switchCotesTab(b.dataset.ctab);});
+  var _pmt=document.getElementById('plans-mode-tabs');
+  if(_pmt)_pmt.addEventListener('click',function(e){var b=e.target.closest('.mtab');if(b)switchPlansMode(b.dataset.plmode);});
 
   // Surfaces
   // SURFACES — input sans re-render
