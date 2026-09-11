@@ -3753,35 +3753,108 @@ function p3dModel(){
   });
   return {faces:faces,segs:segs,nb:nb};
 }
+// Peinture générique d'une scène 3D. cam={yaw,pitch,persp,zoom,panX,panY}. mono=true → fond blanc, traits noirs (impression).
+// Retourne {scale, bbox} (bbox en px, utile pour coter les élévations orthographiques).
+function p3dPaint(c,W,H,m,cam,mono){
+  c.fillStyle=mono?'#ffffff':'transparent';if(mono)c.fillRect(0,0,W,H);else c.clearRect(0,0,W,H);
+  var all=[];m.faces.forEach(function(f){f.pts.forEach(function(p){all.push(p);});});(m.segs||[]).forEach(function(s){all.push(s.a);all.push(s.b);});
+  if(!all.length)return null;
+  var cx=0,cy=0,cz=0;all.forEach(function(p){cx+=p.x;cy+=p.y;cz+=p.z;});cx/=all.length;cy/=all.length;cz/=all.length;
+  var cy_=Math.cos(cam.yaw),sy_=Math.sin(cam.yaw),cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch);
+  var view=function(p){var x=p.x-cx,y=p.y-cy,z=p.z-cz;var x1=x*cy_-y*sy_,y1=x*sy_+y*cy_;return {x:x1,up:y1*sp+z*cp,depth:y1*cp-z*sp};};
+  var vs=all.map(view);var ext=0;vs.forEach(function(v){ext=Math.max(ext,Math.abs(v.x),Math.abs(v.up));});ext=ext||1;
+  var scale=Math.min(W,H)*(mono?0.40:0.42)/ext,dcam=ext*3.2;
+  if(cam.persp){var ext2=0;vs.forEach(function(v){var k=dcam/(dcam+v.depth);ext2=Math.max(ext2,Math.abs(v.x*k),Math.abs(v.up*k));});scale=Math.min(W,H)*0.42/(ext2||1);}
+  scale*=(cam.zoom||1);var ox=W/2+(cam.panX||0),oy=H/2+(cam.panY||0);
+  var proj=function(v){var k=cam.persp?dcam/(dcam+v.depth):1;return {x:ox+v.x*scale*k,y:oy-v.up*scale*k};};
+  var drawn=m.faces.map(function(f){var vv=f.pts.map(view);var d=vv.reduce(function(a,v){return a+v.depth;},0)/vv.length;return {f:f,pp:vv.map(proj),d:d};});
+  drawn.sort(function(a,b){return b.d-a.d;});
+  var minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;
+  drawn.forEach(function(x){
+    c.beginPath();x.pp.forEach(function(p,i){i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y);minx=Math.min(minx,p.x);maxx=Math.max(maxx,p.x);miny=Math.min(miny,p.y);maxy=Math.max(maxy,p.y);});c.closePath();
+    c.fillStyle=mono?'rgba(0,0,0,0.06)':x.f.fill;c.fill();c.strokeStyle=mono?'#000':x.f.stroke;c.lineWidth=mono?1.4:1.2;c.stroke();
+  });
+  (m.segs||[]).forEach(function(s){var pa=proj(view(s.a)),pb=proj(view(s.b));c.strokeStyle=mono?'#000':s.col;c.lineWidth=mono?Math.max(0.8,s.w*0.6):s.w;c.beginPath();c.moveTo(pa.x,pa.y);c.lineTo(pb.x,pb.y);c.stroke();
+    [pa,pb].forEach(function(p){minx=Math.min(minx,p.x);maxx=Math.max(maxx,p.x);miny=Math.min(miny,p.y);maxy=Math.max(maxy,p.y);});});
+  c.font=(mono?'17px':'10px')+' sans-serif';c.textAlign='center';c.fillStyle=mono?'#000':'#dbe4f0';
+  drawn.forEach(function(x){if(!x.f.label)return;var mx=0,my=0;x.pp.forEach(function(p){mx+=p.x;my+=p.y;});mx/=x.pp.length;my/=x.pp.length;c.fillText(x.f.label,mx,my);});
+  return {scale:scale,bbox:{minx:minx,maxx:maxx,miny:miny,maxy:maxy}};
+}
 function p3dRender(){
   var cv=document.getElementById('plan3d-canvas');if(!cv)return;
   var rect=cv.getBoundingClientRect();if(rect.width<10)return;
   cv.width=rect.width;cv.height=rect.height;var c=cv.getContext('2d'),W=cv.width,H=cv.height;
-  c.clearRect(0,0,W,H);
   var m=p3dModel();
-  if(!m.nb){c.fillStyle='#7e8aa0';c.font='13px sans-serif';c.textAlign='center';c.fillText('Saisis des surfaces, une toiture ou des murs pour voir la 3D',W/2,H/2);return;}
-  var all=[];m.faces.forEach(function(f){f.pts.forEach(function(p){all.push(p);});});(m.segs||[]).forEach(function(s){all.push(s.a);all.push(s.b);});
-  var cx=0,cy=0,cz=0;all.forEach(function(p){cx+=p.x;cy+=p.y;cz+=p.z;});cx/=all.length;cy/=all.length;cz/=all.length;
-  var cy_=Math.cos(_p3d.yaw),sy_=Math.sin(_p3d.yaw),cp=Math.cos(_p3d.pitch),sp=Math.sin(_p3d.pitch);
-  var view=function(p){var x=p.x-cx,y=p.y-cy,z=p.z-cz;var x1=x*cy_-y*sy_,y1=x*sy_+y*cy_;return {x:x1,up:y1*sp+z*cp,depth:y1*cp-z*sp};};
-  var vs=all.map(view);var ext=0;vs.forEach(function(v){ext=Math.max(ext,Math.abs(v.x),Math.abs(v.up));});ext=ext||1;
-  var scale=Math.min(W,H)*0.42/ext,dcam=ext*3.2;
-  if(_p3d.persp){var ext2=0;vs.forEach(function(v){var k=dcam/(dcam+v.depth);ext2=Math.max(ext2,Math.abs(v.x*k),Math.abs(v.up*k));});scale=Math.min(W,H)*0.42/(ext2||1);}
-  scale*=_p3d.zoom;var ox=W/2+_p3d.panX,oy=H/2+_p3d.panY;
-  var proj=function(v){var k=_p3d.persp?dcam/(dcam+v.depth):1;return {x:ox+v.x*scale*k,y:oy-v.up*scale*k};};
-  // Peintre : faces les plus lointaines d'abord
-  var drawn=m.faces.map(function(f){var vv=f.pts.map(view);var d=vv.reduce(function(a,v){return a+v.depth;},0)/vv.length;return {f:f,pp:vv.map(proj),d:d};});
-  drawn.sort(function(a,b){return b.d-a.d;});
-  drawn.forEach(function(x){
-    c.beginPath();x.pp.forEach(function(p,i){i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y);});c.closePath();
-    c.fillStyle=x.f.fill;c.fill();c.strokeStyle=x.f.stroke;c.lineWidth=1.2;c.stroke();
-  });
-  (m.segs||[]).forEach(function(s){var pa=proj(view(s.a)),pb=proj(view(s.b));c.strokeStyle=s.col;c.lineWidth=s.w;c.beginPath();c.moveTo(pa.x,pa.y);c.lineTo(pb.x,pb.y);c.stroke();});
-  // Étiquettes sur les faces supérieures
-  c.font='10px sans-serif';c.textAlign='center';c.fillStyle='#dbe4f0';
-  drawn.forEach(function(x){if(!x.f.label)return;var mx=0,my=0;x.pp.forEach(function(p){mx+=p.x;my+=p.y;});mx/=x.pp.length;my/=x.pp.length;c.fillText(x.f.label,mx,my);});
+  if(!m.nb){c.clearRect(0,0,W,H);c.fillStyle='#7e8aa0';c.font='13px sans-serif';c.textAlign='center';c.fillText('Saisis des surfaces, une toiture ou des murs pour voir la 3D',W/2,H/2);return;}
+  p3dPaint(c,W,H,m,_p3d,false);
   var lg=document.getElementById('plan3d-legend');
   if(lg){var vol=typeof calcCSurfVolume==='function'?calcCSurfVolume():0;lg.innerHTML='<span style="color:#2d8cf0;">■</span> Surfaces / dalles &nbsp; <span style="color:#22c55e;">■</span> Toiture &nbsp; <span style="color:#f59e0b;">■</span> Murs en pente'+(vol>0?' &nbsp;·&nbsp; Volume total dalles : <b style="color:var(--c-accent);">'+vol.toFixed(3)+' m³</b>':'')+' &nbsp;·&nbsp; '+(_p3d.persp?'Perspective':'Axonométrie');}
+}
+// ===== PLANCHE IMPRIMABLE : plan, élévations, axonométrie, coupe =====
+function p3dOrthoView(m,yaw,pitch,W,H,dims){
+  var cv=document.createElement('canvas');cv.width=W;cv.height=H;var c=cv.getContext('2d');
+  var r=p3dPaint(c,W,H,m,{yaw:yaw,pitch:pitch,persp:false,zoom:dims?0.78:0.9,panX:dims?-25:0},true);
+  if(r&&dims){ // cotes hors-tout (largeur et hauteur projetées)
+    var b=r.bbox,wM=(b.maxx-b.minx)/r.scale,hM=(b.maxy-b.miny)/r.scale;
+    c.strokeStyle='#000';c.lineWidth=1;c.fillStyle='#000';c.font='bold 18px monospace';c.textAlign='center';
+    var y=b.maxy+30;c.beginPath();c.moveTo(b.minx,y);c.lineTo(b.maxx,y);c.stroke();
+    [b.minx,b.maxx].forEach(function(x){c.beginPath();c.moveTo(x,y-8);c.lineTo(x,y+8);c.stroke();});
+    c.fillText(wM.toFixed(2)+' m',(b.minx+b.maxx)/2,y+24);
+    var x2=b.maxx+30;c.beginPath();c.moveTo(x2,b.miny);c.lineTo(x2,b.maxy);c.stroke();
+    [b.miny,b.maxy].forEach(function(yy){c.beginPath();c.moveTo(x2-8,yy);c.lineTo(x2+8,yy);c.stroke();});
+    c.save();c.translate(x2+24,(b.miny+b.maxy)/2);c.rotate(-Math.PI/2);c.fillText(hM.toFixed(2)+' m',0,0);c.restore();
+  }
+  return cv.toDataURL('image/png');
+}
+function p3dCoupeView(W,H){
+  // Coupe transversale cotée de la toiture (module simple ou 1er corps multi-corps)
+  var t=window._toiture,src=null;
+  if(t&&t.l>0&&t.lar>0)src={type:t.type,l:(t.sens==='larg'?t.l:t.lar)+2*(t.debord||0),pente:t.pente||35,deb:t.debord||0};
+  else if(_ctCorps&&_ctCorps.length&&(_ctCorps[0].l||0)>0)src={type:_ctCorps[0].type,l:_ctCorps[0].l+2*(_ctCorps[0].debord||0),pente:_ctCorps[0].pente||35,deb:_ctCorps[0].debord||0};
+  if(!src)return null;
+  var WALLH=2.6,tanP=Math.tan(src.pente*Math.PI/180),l=src.l,wIn=l-2*src.deb;
+  var hF=(src.type==='1pan'||src.type==='appentis')?l*tanP:(l/2)*tanP;
+  var cv=document.createElement('canvas');cv.width=W;cv.height=H;var c=cv.getContext('2d');
+  c.fillStyle='#fff';c.fillRect(0,0,W,H);
+  var sc=Math.min((W-240)/l,(H-140)/(WALLH+hF));var x0=(W-160-l*sc)/2+40,yG=H-70; // sol (marge droite pour les cotes)
+  var X=function(x){return x0+x*sc;},Y=function(z){return yG-z*sc;};
+  c.strokeStyle='#000';c.lineWidth=1.2;c.fillStyle='rgba(0,0,0,0.06)';
+  // murs (intérieur du débord)
+  c.beginPath();c.rect(X(src.deb),Y(WALLH),wIn*sc,WALLH*sc);c.fill();c.stroke();
+  // toit
+  c.beginPath();
+  if(src.type==='1pan'||src.type==='appentis'){c.moveTo(X(0),Y(WALLH));c.lineTo(X(l),Y(WALLH+hF));}
+  else{c.moveTo(X(0),Y(WALLH));c.lineTo(X(l/2),Y(WALLH+hF));c.lineTo(X(l),Y(WALLH));}
+  c.lineWidth=2;c.stroke();
+  // sol
+  c.lineWidth=0.8;c.beginPath();c.moveTo(X(-0.5),yG);c.lineTo(X(l+0.5),yG);c.stroke();
+  // cotes
+  c.font='bold 18px monospace';c.fillStyle='#000';c.textAlign='center';c.lineWidth=1;
+  var yd=yG+22;c.beginPath();c.moveTo(X(0),yd);c.lineTo(X(l),yd);c.stroke();c.fillText('Largeur hors-tout '+l.toFixed(2)+' m',X(l/2),yd+24);
+  var xd=X(l)+30;c.beginPath();c.moveTo(xd,Y(0));c.lineTo(xd,Y(WALLH));c.stroke();c.save();c.translate(xd+22,Y(WALLH/2));c.rotate(-Math.PI/2);c.fillText('Murs '+WALLH.toFixed(2)+' m',0,0);c.restore();
+  var xd2=X(l)+90;c.beginPath();c.moveTo(xd2,Y(0));c.lineTo(xd2,Y(WALLH+hF));c.stroke();c.save();c.translate(xd2+22,Y((WALLH+hF)/2));c.rotate(-Math.PI/2);c.fillText('Faîte '+(WALLH+hF).toFixed(2)+' m',0,0);c.restore();
+  c.textAlign='left';c.font='bold 20px monospace';c.fillText('Pente '+src.pente+'°  ·  hauteur de toit '+hF.toFixed(2)+' m  ·  '+(typeof ctTypeLabel==='function'?ctTypeLabel(src.type):src.type),12,20);
+  return cv.toDataURL('image/png');
+}
+function printPlan3D(){
+  var m=p3dModel();if(!m.nb){showToast('Rien à imprimer : saisis des surfaces, une toiture ou des murs','error');return;}
+  var W=900,H=640;
+  var views=[
+    {t:'Vue en plan (dessus)',img:p3dOrthoView(m,0,Math.PI/2-0.001,W,H,true)},
+    {t:'Élévation de face',img:p3dOrthoView(m,0,0,W,H,true)},
+    {t:'Élévation de côté',img:p3dOrthoView(m,Math.PI/2,0,W,H,true)},
+    {t:'Vue axonométrique',img:p3dOrthoView(m,-35*Math.PI/180,32*Math.PI/180,W,H,false)}
+  ];
+  var coupe=p3dCoupeView(W,460);if(coupe)views.push({t:'Coupe transversale de la toiture',img:coupe});
+  var ent=(db.settings&&db.settings.entreprise)||'ChantiersPro',client=parcoursVisite?(parcoursVisite.client||''):'',date=new Date().toLocaleDateString('fr-FR');
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Vues 3D — '+esc(client||ent)+'</title><style>'
+    +'body{margin:0;padding:14mm 12mm;background:#fff;color:#000;font-family:Arial,sans-serif;}h1{font-size:16px;margin:0 0 4px;}.meta{font-size:11px;color:#333;margin-bottom:10px;border-bottom:1px solid #000;padding-bottom:6px;}'
+    +'.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}.v{border:1px solid #000;padding:6px;page-break-inside:avoid;}.v h2{font-size:12px;margin:0 0 4px;font-weight:600;}.v img{width:100%;display:block;}'
+    +'.coupe{grid-column:1/-1;}@media print{@page{size:A4 landscape;margin:8mm;}body{padding:0;}}</style></head><body>'
+    +'<h1>Vues techniques — '+esc(client||'Chantier')+'</h1><div class="meta">'+esc(ent)+' · '+date+' · Échelle indicative, cotes hors-tout en mètres · Document généré par ChantiersPro</div>'
+    +'<div class="grid">'+views.map(function(v,i){return '<div class="v'+(i===4?' coupe':'')+'"><h2>'+v.t+'</h2><img src="'+v.img+'"/></div>';}).join('')+'</div>'
+    +'</body></html>';
+  var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},700);}else{showToast('Autorisez les popups','error');}
 }
 function openPlan3D(){_p3d.zoom=1;_p3d.panX=0;_p3d.panY=0;document.getElementById('modal-plan3d').classList.add('open');setTimeout(p3dRender,60);}
 function p3dPtr(e){var t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;return {x:t.clientX,y:t.clientY};}
@@ -5772,6 +5845,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // Plan (étape 3)
   document.getElementById('btn-plan-pdf').addEventListener('click',function(){exportPlanPDF();});
   var _b3=document.getElementById('btn-plan-3d');if(_b3)_b3.addEventListener('click',openPlan3D);
+  var _pr3=document.getElementById('plan3d-print');if(_pr3)_pr3.addEventListener('click',printPlan3D);
   var _c3=document.getElementById('plan3d-close');if(_c3)_c3.addEventListener('click',function(){document.getElementById('modal-plan3d').classList.remove('open');});
   var _p3c=document.getElementById('plan3d-canvas');
   if(_p3c){_p3c.addEventListener('touchstart',p3dDragStart,{passive:false});_p3c.addEventListener('touchmove',p3dDragMove,{passive:false});_p3c.addEventListener('touchend',p3dDragEnd);_p3c.addEventListener('touchcancel',p3dDragEnd);
@@ -6668,7 +6742,7 @@ function validerSignature(){
   <div class="modal modal-full" style="display:flex;flex-direction:column;height:92vh;padding:0;">
     <div style="padding:12px 16px;border-bottom:1px solid var(--c-border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
       <div><div style="font-weight:700;font-size:15px;">Vue 3D du chantier</div><div style="font-size:11px;color:var(--c-muted);">Surfaces extrudées à leur épaisseur · murs pente debout</div></div>
-      <button class="btn btn-secondary" style="padding:8px 12px;" id="plan3d-close">✕</button>
+      <div style="display:flex;gap:6px;"><button class="btn btn-secondary" style="padding:8px 12px;font-size:12px;" id="plan3d-print">🖨 Imprimer</button><button class="btn btn-secondary" style="padding:8px 12px;" id="plan3d-close">✕</button></div>
     </div>
     <div style="flex:1;overflow:hidden;position:relative;background:#0a1428;touch-action:none;">
       <canvas id="plan3d-canvas" style="width:100%;height:100%;display:block;"></canvas>
