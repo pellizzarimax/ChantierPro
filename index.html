@@ -1685,8 +1685,19 @@ function defaultBibliotheque(){
     {id:'b633',categorie:'Préparation / Démolition',designation:'Ouverture de trémie plancher bois',unite:'u',prix:481.25,fournitures:[{nom:'Renforts bois',qte:1,pu:90},{nom:'Évacuation',qte:1,pu:20}],moTemps:5,moTaux:55,marge:25,prixForce:false}
   ];
 }
+var _storageWarned=false,_storageFull=false;
+function storageSizeMB(str){return (str.length*2)/1048576;} // UTF-16 ≈ 2 octets/car
 function saveDB(){
-  try{localStorage.setItem(SK,JSON.stringify(db));}catch(e){}
+  var json=JSON.stringify(db);
+  try{
+    localStorage.setItem(SK,json);
+    if(_storageFull){_storageFull=false;showToast('Sauvegarde locale rétablie ✓','success');}
+    var mb=storageSizeMB(json);
+    if(mb>3.5&&!_storageWarned){_storageWarned=true;showToast('⚠️ Stockage local presque plein ('+mb.toFixed(1)+' Mo). Synchronise ☁️ et exporte tes données (Paramètres → Sauvegarde).','error');}
+  }catch(e){
+    if(!_storageFull){_storageFull=true;showToast('🚨 Stockage local PLEIN : les modifications ne sont plus enregistrées sur cet appareil. Synchronise ☁️ tout de suite et supprime des photos.','error');}
+    console.error('localStorage plein',e);
+  }
   pushToCloud();
 }
 function recordTombstone(coll,id){
@@ -3359,6 +3370,17 @@ function dtGenerate(){
     sk.aretiers.forEach(function(s){aretiers.push(s);});});
   // Noues aux angles rentrants
   var refl=dtReflex(polyM),noues=[];
+  // Un arêtier ne part que d'un angle SAILLANT du contour réel.
+  // Les coins créés par la décomposition (jonctions internes, points sur une arête)
+  // et les angles rentrants (→ noue) n'ont pas d'arêtier.
+  var isReflex=function(p){return refl.some(function(q){return Math.abs(q.x-p.x)<0.01&&Math.abs(q.y-p.y)<0.01;});};
+  var isVertex=function(p){return polyM.some(function(q){return Math.abs(q.x-p.x)<0.01&&Math.abs(q.y-p.y)<0.01;});};
+  var seen={};
+  aretiers=aretiers.filter(function(s){
+    if(!isVertex(s.a)||isReflex(s.a))return false;
+    var k=s.a.x.toFixed(2)+','+s.a.y.toFixed(2);
+    if(seen[k])return false;seen[k]=true;return true;
+  });
   refl.forEach(function(rp){
     var adj=rects.filter(function(r){return rp.x>=r.x-0.01&&rp.x<=r.x+r.w+0.01&&rp.y>=r.y-0.01&&rp.y<=r.y+r.h+0.01;});
     if(!adj.length)return;
@@ -3395,7 +3417,9 @@ function dtCompute(){
     perim=dtPerimeter(_dt.contour)*mpp;
   }
   var toit=sol*slope;
-  var fait=dtLineLen(_dt.faitages),noue=dtLineLen(_dt.noues),aret=dtLineLen(_dt.aretiers);
+  // Faîtage = horizontal → longueur plan. Arêtiers et noues montent à 45° en plan le long de la pente → facteur √(1+0,5·tan²θ)
+  var f45=dtSlopeFactor();
+  var fait=dtLineLen(_dt.faitages),noue=dtLineLen(_dt.noues)*f45,aret=dtLineLen(_dt.aretiers)*f45;
   document.getElementById('dt-r-sol').textContent=sol>0?sol.toFixed(2)+' m²':'—';
   document.getElementById('dt-r-toit').textContent=toit>0?toit.toFixed(2)+' m²':'—';
   document.getElementById('dt-r-fait').textContent=fait>0?fait.toFixed(2)+' ml':'—';
@@ -4861,6 +4885,16 @@ async function scannerToDevis(){var text=document.getElementById('scanner-text')
 
 // Settings
 function populateSettings(){var s=db.settings;document.getElementById('s-entreprise').value=s.entreprise||'';document.getElementById('s-siret').value=s.siret||'';document.getElementById('s-tel').value=s.tel||'';document.getElementById('s-email').value=s.email||'';document.getElementById('s-adresse').value=s.adresse||'';
+(function(){
+  var su=document.getElementById('storage-usage');if(!su)return;
+  var json=JSON.stringify(db);var mb=storageSizeMB(json);var limit=5;
+  var nPhotos=0;(db.visites||[]).forEach(function(v){nPhotos+=(v.photos||[]).length;});
+  var pct=Math.min(100,Math.round(mb/limit*100));
+  var col=pct>80?'var(--c-danger, #ef4444)':pct>60?'#f59e0b':'var(--c-success, #22c55e)';
+  su.innerHTML='<div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span>Stockage local</span><span style="font-family:var(--font-mono);">'+mb.toFixed(2)+' Mo / ~'+limit+' Mo · '+nPhotos+' photo'+(nPhotos>1?'s':'')+'</span></div>'
+    +'<div style="height:6px;background:var(--c-border);border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+col+';"></div></div>'
+    +(pct>70?'<div style="margin-top:6px;color:#f59e0b;">Pense à synchroniser ☁️ et à supprimer les photos des anciens chantiers.</div>':'');
+})();
 function _sv(id,val){var el=document.getElementById(id);if(el)el.value=val||'';}
 _sv('s-factRCS',s.factRCS);_sv('s-factAPE',s.factAPE);_sv('s-regimeTVA',s.regimeTVA||'normal');_sv('s-factTVANum',s.factTVANum);_sv('s-factAssurance',s.factAssurance);_sv('s-factIBAN',s.factIBAN);_sv('s-factMediateur',s.factMediateur);_sv('s-factPenalites',s.factPenalites);document.getElementById('s-prefix').value=s.prefix||'DEV-'+yr+'-';document.getElementById('s-nextnum').value=s.nextNum||1;var t=s.tarifs||{};document.getElementById('t-carreleur').value=t.carreleur_mo||42;document.getElementById('t-peintre').value=t.peintre_mo||38;document.getElementById('t-plombier').value=t.plombier_mo||62;document.getElementById('t-electricien').value=t.electricien_mo||60;document.getElementById('t-menuisier').value=t.menuisier_mo||50;document.getElementById('t-macon').value=t.macon_mo||45;document.getElementById('t-marge').value=t.marge||0;document.getElementById('t-tva').value=t.tva_defaut||10;document.getElementById('t-notes').value=t.notes||'';var ai=s.ai||{};document.getElementById('s-ia-provider').value=ai.provider||'claude';document.getElementById('s-claude-key').value=ai.claudeKey||'';document.getElementById('s-openai-key').value=ai.openaiKey||'';document.getElementById('s-claude-model').value=ai.claudeModel||'claude-sonnet-4-20250514';document.getElementById('s-openai-model').value=ai.openaiModel||'gpt-4o-mini';document.getElementById('s-proxy-url').value=ai.proxyUrl||'';if(s.logo){document.getElementById('logo-preview').innerHTML='<img src="'+s.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>';}updateProviderUI();updateNumPrev();}
 function updateProviderUI(){var p=document.getElementById('s-ia-provider').value;document.getElementById('claude-cfg').style.display=p==='claude'?'block':'none';document.getElementById('openai-cfg').style.display=p==='openai'?'block':'none';}
@@ -6192,6 +6226,7 @@ function validerSignature(){
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--c-border);">
       <div style="font-size:11px;font-family:var(--font-mono);color:var(--c-muted);letter-spacing:1px;margin-bottom:8px;">SAUVEGARDE</div>
       <div style="font-size:12px;color:var(--c-muted);margin-bottom:10px;line-height:1.5;">Avant une mise à jour de l'app, exportez vos données par sécurité. Réimportez-les ensuite si besoin.</div>
+      <div id="storage-usage" style="font-size:12px;margin-bottom:10px;padding:8px 10px;background:var(--c-surface2);border-radius:8px;"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <button class="btn btn-secondary" id="btn-backup-export">⬇️ Exporter</button>
         <button class="btn btn-secondary" id="btn-backup-import">⬆️ Importer</button>
