@@ -3413,10 +3413,10 @@ function dtHandleTap(e){
   if(_dt.closed)return;
   if(_dt.contour.length>=3){
     var f=_dt.contour[0];
-    if(Math.abs(p.x-f.x)<18&&Math.abs(p.y-f.y)<18){_dt.closed=true;dtRedraw();dtCompute();return;}
+    if(Math.abs(p.x-f.x)<18&&Math.abs(p.y-f.y)<18){_dt.closed=true;dtRedraw();dtCompute();dtRenderCotes();return;}
   }
   _dt.contour.push(p);
-  dtRedraw();dtCompute();
+  dtRedraw();dtCompute();dtRenderCotes();
 }
 // ===== MOTEUR SQUELETTE DE TOIT (rectiligne) =====
 function dtSlopeFactor(){var t=Math.tan((parseFloat(document.getElementById('dt-pente').value)||35)*Math.PI/180);return Math.sqrt(1+0.5*t*t);}
@@ -3556,6 +3556,18 @@ function dtRedraw(){
     for(var i=1;i<_dt.contour.length;i++)c.lineTo(_dt.contour[i].x,_dt.contour[i].y);
     if(_dt.closed)c.closePath();
     c.stroke();if(_dt.closed)c.fill();
+    // cotes de chaque côté
+    var mpp=dtScale(),nC=_dt.contour.length,cx0=0,cy0=0;_dt.contour.forEach(function(p){cx0+=p.x/nC;cy0+=p.y/nC;});
+    c.font='bold 11px sans-serif';c.textAlign='center';c.textBaseline='middle';
+    for(var e=0;e<(_dt.closed?nC:nC-1);e++){
+      var a=_dt.contour[e],b=_dt.contour[(e+1)%nC];var len=dtDist(a,b);if(len<6)continue;
+      var mx=(a.x+b.x)/2,my=(a.y+b.y)/2;var nx=-(b.y-a.y)/len,ny=(b.x-a.x)/len;
+      if((mx-cx0)*nx+(my-cy0)*ny<0){nx=-nx;ny=-ny;} // décalage vers l'extérieur
+      var tx=mx+nx*13,ty=my+ny*13,txt=dtFmtLen(len*mpp);
+      var tw=c.measureText(txt).width+8;c.fillStyle='rgba(10,20,40,0.85)';c.fillRect(tx-tw/2,ty-8,tw,16);
+      c.fillStyle='#dbe4f0';c.fillText(txt,tx,ty);
+    }
+    c.textBaseline='alphabetic';
     // points
     _dt.contour.forEach(function(p,idx){
       c.fillStyle=idx===0?'#22c55e':'#2d8cf0';c.beginPath();c.arc(p.x,p.y,idx===0?7:5,0,7);c.fill();
@@ -3663,6 +3675,8 @@ function dt3dDragMove(e){if(v3dPinchMove(_dt3d,e,dt3dRender))return;if(!_dt3d.dr
 function dt3dDragEnd(e){_dt3d.dragging=false;if(!(e&&e.touches&&e.touches.length>=2))_dt3d.pinch=0;}
 // ===== VUE 3D DU PLAN : surfaces en dalles (épaisseur), murs pente en panneaux =====
 var _p3d={yaw:-35*Math.PI/180,pitch:32*Math.PI/180,persp:false,dragging:false,lx:0,ly:0,zoom:1,panX:0,panY:0,pinch:0,pmx:0,pmy:0};
+function p3dInPoly(px,py,poly){var inside=false;for(var i=0,j=poly.length-1;i<poly.length;j=i++){var xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi))inside=!inside;}return inside;}
+function p3dOutward(a,b,poly){var ex=b.x-a.x,ey=b.y-a.y,d=Math.hypot(ex,ey)||1;var nx=ey/d,ny=-ex/d;var mx=(a.x+b.x)/2,my=(a.y+b.y)/2;if(p3dInPoly(mx+nx*0.05,my+ny*0.05,poly)){nx=-nx;ny=-ny;}return {x:nx,y:ny};}
 function p3dModel(){
   // faces : {pts:[{x,y,z}...],fill,stroke} ; segs : arêtes supplémentaires
   var faces=[],gap=1.0,curX=0,maxDepth=0,nb=0;
@@ -3675,7 +3689,8 @@ function p3dModel(){
     var top=c.map(function(p){return {x:p.x,y:p.y,z:z1};}),bot=c.map(function(p){return {x:p.x,y:p.y,z:0};});
     faces.push({pts:bot,fill:col+'.10)',stroke:col+'.35)'});
     for(var i=0;i<c.length;i++){var j=(i+1)%c.length;faces.push({pts:[bot[i],bot[j],top[j],top[i]],fill:col+'.18)',stroke:col+'.5)'});}
-    faces.push({pts:top,fill:col+'.30)',stroke:col+'.95)',label:label,lz:z1});
+    faces.push({pts:top,fill:col+'.30)',stroke:col+'.95)',label:label,lz:z1,dims:'plan'});
+    for(var q=0;q<c.length;q++){var q2=(q+1)%c.length;faces.push({pts:[bot[q],bot[q2],top[q2],top[q]],fill:'rgba(0,0,0,0)',stroke:'rgba(0,0,0,0)',dims:'elev',out:p3dOutward(c[q],c[q2],c)});}
   }
   cSurfaces.forEach(function(s){
     var ep=pN(s.ep)||0,col='rgba(45,140,240,';
@@ -3699,7 +3714,8 @@ function p3dModel(){
   var RC='rgba(34,197,94,',WC='rgba(160,175,200,';
   function wallsBox(x0,y0,L,l,hw){ // murs sous la sablière (z=0 → -hw)
     var c=[{x:x0,y:y0},{x:x0+L,y:y0},{x:x0+L,y:y0+l},{x:x0,y:y0+l}];
-    for(var i=0;i<4;i++){var j=(i+1)%4;faces.push({pts:[{x:c[i].x,y:c[i].y,z:-hw},{x:c[j].x,y:c[j].y,z:-hw},{x:c[j].x,y:c[j].y,z:0},{x:c[i].x,y:c[i].y,z:0}],fill:WC+'.08)',stroke:WC+'.45)'});}
+    for(var i=0;i<4;i++){var j=(i+1)%4;faces.push({pts:[{x:c[i].x,y:c[i].y,z:-hw},{x:c[j].x,y:c[j].y,z:-hw},{x:c[j].x,y:c[j].y,z:0},{x:c[i].x,y:c[i].y,z:0}],fill:WC+'.08)',stroke:WC+'.45)',dims:'elev',out:p3dOutward(c[i],c[j],c)});}
+    faces.push({pts:c.map(function(p){return {x:p.x,y:p.y,z:0};}),fill:'rgba(0,0,0,0)',stroke:'rgba(0,0,0,0)',dims:'plan'});
   }
   function roofRect(x0,y0,L,l,type,pente,label){
     var tanP=Math.tan((pente||35)*Math.PI/180);
@@ -3727,7 +3743,10 @@ function p3dModel(){
     var mdl=dt3dModel();var xs=mdl.pts.map(function(p){return p.x;}),ys=mdl.pts.map(function(p){return p.y;});
     var ox=Math.min.apply(null,xs),oy=Math.min.apply(null,ys),bw=Math.max.apply(null,xs)-ox,bd=Math.max.apply(null,ys)-oy;
     mdl.segs.forEach(function(s){segs.push({a:{x:s.a.x-ox+curX,y:s.a.y-oy,z:s.a.z},b:{x:s.b.x-ox+curX,y:s.b.y-oy,z:s.b.z},col:s.col,w:s.w});});
-    faces.push({pts:mdl.pts.map(function(p){return {x:p.x-ox+curX,y:p.y-oy,z:0};}),fill:RC+'.12)',stroke:RC+'.5)',label:'Toit dessiné · '+tcx.surface.toFixed(1)+' m²'});
+    var fpts=mdl.pts.map(function(p){return {x:p.x-ox+curX,y:p.y-oy,z:0};});
+    faces.push({pts:fpts,fill:RC+'.12)',stroke:RC+'.5)',label:'Toit dessiné · '+tcx.surface.toFixed(1)+' m²',dims:'plan'});
+    var wh=parseFloat(document.getElementById('dt-wallh')?document.getElementById('dt-wallh').value:2.6)||2.6;
+    for(var fi=0;fi<fpts.length;fi++){var fj=(fi+1)%fpts.length;faces.push({pts:[{x:fpts[fi].x,y:fpts[fi].y,z:-wh},{x:fpts[fj].x,y:fpts[fj].y,z:-wh},{x:fpts[fj].x,y:fpts[fj].y,z:0},{x:fpts[fi].x,y:fpts[fi].y,z:0}],fill:WC+'.06)',stroke:'rgba(0,0,0,0)',dims:'elev',out:p3dOutward(fpts[fi],fpts[fj],fpts)});}
     curX+=bw+gap;maxDepth=Math.max(maxDepth,bd);nb++;
   }else if(_ctCorps&&_ctCorps.length&&_ctCorps.some(function(c){return (c.L||0)>0&&(c.l||0)>0;})){
     // Multi-corps : empilés comme sur le schéma (principal puis extensions)
@@ -3776,6 +3795,32 @@ function p3dPaint(c,W,H,m,cam,mono){
   });
   (m.segs||[]).forEach(function(s){var pa=proj(view(s.a)),pb=proj(view(s.b));c.strokeStyle=mono?'#000':s.col;c.lineWidth=mono?Math.max(0.8,s.w*0.6):s.w;c.beginPath();c.moveTo(pa.x,pa.y);c.lineTo(pb.x,pb.y);c.stroke();
     [pa,pb].forEach(function(p){minx=Math.min(minx,p.x);maxx=Math.max(maxx,p.x);miny=Math.min(miny,p.y);maxy=Math.max(maxy,p.y);});});
+  if(cam.dimMode){
+    var seen={};c.font='bold 15px monospace';c.textAlign='center';c.textBaseline='middle';
+    var elevMode=(cam.dimMode==='elev');
+    // Élévation : faces tournées vers la caméra, triées du plus proche au plus loin, pour masquer les murs cachés
+    var frontFaces=elevMode?drawn.filter(function(x){if(x.f.dims!=='elev'||!x.f.out)return false;var n1y=x.f.out.x*sy_+x.f.out.y*cy_;return n1y*cp<-0.2;}).sort(function(u,v){return u.d-v.d;}):[];
+    var inPoly=function(px,py,poly){var ins=false;for(var i=0,j=poly.length-1;i<poly.length;j=i++){var xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi))ins=!ins;}return ins;};
+    drawn.forEach(function(x){if(x.f.dims!==cam.dimMode)return;var pts=x.f.pts,pp=x.pp,np=pts.length;
+      var elev=elevMode;
+      if(elev){
+        if(frontFaces.indexOf(x)<0)return;
+        var mx0=0,my0=0;pp.forEach(function(p){mx0+=p.x/np;my0+=p.y/np;});
+        var hidden=false;for(var fi=0;fi<frontFaces.length&&frontFaces[fi]!==x;fi++){var o=frontFaces[fi];if(o.d<x.d-1e-6&&inPoly(mx0,my0,o.pp)){hidden=true;break;}}
+        if(hidden)return;
+      }
+      var gx=0,gy=0;pp.forEach(function(p){gx+=p.x/np;gy+=p.y/np;});
+      var zmin=Math.min.apply(null,pts.map(function(p){return p.z;}));
+      for(var e=0;e<np;e++){var a=pts[e],b=pts[(e+1)%np],pa=pp[e],pb=pp[(e+1)%np];
+        if(elev&&!(Math.abs(a.z-zmin)<1e-6&&Math.abs(b.z-zmin)<1e-6))continue; // élévation : seulement l'arête basse (largeur)
+        var lm=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z),lp=Math.hypot(pb.x-pa.x,pb.y-pa.y);if(lm<0.1||lp<22)continue;
+        var mx=(pa.x+pb.x)/2,my=(pa.y+pb.y)/2,nx=-(pb.y-pa.y)/lp,ny=(pb.x-pa.x)/lp;if((mx-gx)*nx+(my-gy)*ny<0){nx=-nx;ny=-ny;}
+        var key=Math.round(mx/12)+','+Math.round(my/12)+':'+lm.toFixed(2);if(seen[key])continue;seen[key]=1;
+        var tx=mx+nx*16,ty=my+ny*16,txt=lm.toFixed(2);var tw=c.measureText(txt).width+6;
+        c.fillStyle=mono?'#fff':'rgba(10,20,40,.85)';c.fillRect(tx-tw/2,ty-9,tw,18);c.fillStyle=mono?'#000':'#dbe4f0';c.fillText(txt,tx,ty);}
+    });
+    c.textBaseline='alphabetic';
+  }
   c.font=(mono?'17px':'10px')+' sans-serif';c.textAlign='center';c.fillStyle=mono?'#000':'#dbe4f0';
   drawn.forEach(function(x){if(!x.f.label)return;var mx=0,my=0;x.pp.forEach(function(p){mx+=p.x;my+=p.y;});mx/=x.pp.length;my/=x.pp.length;c.fillText(x.f.label,mx,my);});
   return {scale:scale,bbox:{minx:minx,maxx:maxx,miny:miny,maxy:maxy}};
@@ -3791,9 +3836,9 @@ function p3dRender(){
   if(lg){var vol=typeof calcCSurfVolume==='function'?calcCSurfVolume():0;lg.innerHTML='<span style="color:#2d8cf0;">■</span> Surfaces / dalles &nbsp; <span style="color:#22c55e;">■</span> Toiture &nbsp; <span style="color:#f59e0b;">■</span> Murs en pente'+(vol>0?' &nbsp;·&nbsp; Volume total dalles : <b style="color:var(--c-accent);">'+vol.toFixed(3)+' m³</b>':'')+' &nbsp;·&nbsp; '+(_p3d.persp?'Perspective':'Axonométrie');}
 }
 // ===== PLANCHE IMPRIMABLE : plan, élévations, axonométrie, coupe =====
-function p3dOrthoView(m,yaw,pitch,W,H,dims){
+function p3dOrthoView(m,yaw,pitch,W,H,dims,dimMode){
   var cv=document.createElement('canvas');cv.width=W;cv.height=H;var c=cv.getContext('2d');
-  var r=p3dPaint(c,W,H,m,{yaw:yaw,pitch:pitch,persp:false,zoom:dims?0.78:0.9,panX:dims?-25:0},true);
+  var r=p3dPaint(c,W,H,m,{yaw:yaw,pitch:pitch,persp:false,zoom:dims?0.72:0.9,panX:dims?-25:0,dimMode:dimMode||null},true);
   if(r&&dims){ // cotes hors-tout (largeur et hauteur projetées)
     var b=r.bbox,wM=(b.maxx-b.minx)/r.scale,hM=(b.maxy-b.miny)/r.scale;
     c.strokeStyle='#000';c.lineWidth=1;c.fillStyle='#000';c.font='bold 18px monospace';c.textAlign='center';
@@ -3836,13 +3881,28 @@ function p3dCoupeView(W,H){
   c.textAlign='left';c.font='bold 20px monospace';c.fillText('Pente '+src.pente+'°  ·  hauteur de toit '+hF.toFixed(2)+' m  ·  '+(typeof ctTypeLabel==='function'?ctTypeLabel(src.type):src.type),12,20);
   return cv.toDataURL('image/png');
 }
+function printPageBar(title){
+  return '<style>#cp-bar{position:sticky;top:0;z-index:10;display:flex;gap:8px;align-items:center;padding:10px 12px;background:#0a1428;color:#fff;font-family:Arial,sans-serif;font-size:14px;}#cp-bar button{background:#2d8cf0;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:14px;font-weight:600;}#cp-bar button.sec{background:#24344f;}#cp-bar .t{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}@media print{#cp-bar{display:none !important;}}</style>'
+    +'<div id="cp-bar"><button class="sec" id="cp-back">← Retour</button><span class="t">'+title+'</span><button id="cp-print">🖨 Imprimer / PDF</button><button id="cp-share">↗ Partager</button></div>'
+    +'<script>(function(){'
+    +'document.getElementById("cp-back").onclick=function(){if(window.opener||history.length<=1){window.close();}else{history.back();}setTimeout(function(){window.close();},150);};'
+    +'document.getElementById("cp-print").onclick=function(){window.print();};'
+    +'document.getElementById("cp-share").onclick=async function(){try{'
+    +'var imgs=Array.prototype.slice.call(document.querySelectorAll("img[src^=\'data:image\']"));var files=[];'
+    +'for(var i=0;i<imgs.length;i++){var r=await fetch(imgs[i].src);var b=await r.blob();files.push(new File([b],"vue-"+(i+1)+".png",{type:"image/png"}));}'
+    +'if(!files.length){var svg=document.querySelector("svg");if(svg){var xml=new XMLSerializer().serializeToString(svg);files.push(new File([xml],"plan.svg",{type:"image/svg+xml"}));}}'
+    +'if(navigator.canShare&&navigator.canShare({files:files})){await navigator.share({files:files,title:document.title});}'
+    +'else{alert("Le partage de fichiers n\'est pas disponible ici : utilise Imprimer / PDF puis partage le PDF.");}'
+    +'}catch(e){if(e&&e.name!=="AbortError")alert("Partage impossible : "+e.message);}};'
+    +'})();<\/script>';
+}
 function printPlan3D(){
   var m=p3dModel();if(!m.nb){showToast('Rien à imprimer : saisis des surfaces, une toiture ou des murs','error');return;}
   var W=900,H=640;
   var views=[
-    {t:'Vue en plan (dessus)',img:p3dOrthoView(m,0,Math.PI/2-0.001,W,H,true)},
-    {t:'Élévation de face',img:p3dOrthoView(m,0,0,W,H,true)},
-    {t:'Élévation de côté',img:p3dOrthoView(m,Math.PI/2,0,W,H,true)},
+    {t:'Vue en plan (dessus)',img:p3dOrthoView(m,0,Math.PI/2-0.001,W,H,true,'plan')},
+    {t:'Élévation de face',img:p3dOrthoView(m,0,0,W,H,true,'elev')},
+    {t:'Élévation de côté',img:p3dOrthoView(m,Math.PI/2,0,W,H,true,'elev')},
     {t:'Vue axonométrique',img:p3dOrthoView(m,-35*Math.PI/180,32*Math.PI/180,W,H,false)}
   ];
   var coupe=p3dCoupeView(W,460);if(coupe)views.push({t:'Coupe transversale de la toiture',img:coupe});
@@ -3851,16 +3911,51 @@ function printPlan3D(){
     +'body{margin:0;padding:14mm 12mm;background:#fff;color:#000;font-family:Arial,sans-serif;}h1{font-size:16px;margin:0 0 4px;}.meta{font-size:11px;color:#333;margin-bottom:10px;border-bottom:1px solid #000;padding-bottom:6px;}'
     +'.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}.v{border:1px solid #000;padding:6px;page-break-inside:avoid;}.v h2{font-size:12px;margin:0 0 4px;font-weight:600;}.v img{width:100%;display:block;}'
     +'.coupe{grid-column:1/-1;}@media print{@page{size:A4 landscape;margin:8mm;}body{padding:0;}}</style></head><body>'
+    +printPageBar('Vues techniques — '+esc(client||'Chantier'))
     +'<h1>Vues techniques — '+esc(client||'Chantier')+'</h1><div class="meta">'+esc(ent)+' · '+date+' · Échelle indicative, cotes hors-tout en mètres · Document généré par ChantiersPro</div>'
     +'<div class="grid">'+views.map(function(v,i){return '<div class="v'+(i===4?' coupe':'')+'"><h2>'+v.t+'</h2><img src="'+v.img+'"/></div>';}).join('')+'</div>'
     +'</body></html>';
-  var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},700);}else{showToast('Autorisez les popups','error');}
+  var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();}else{showToast('Autorisez les popups','error');}
 }
 function openPlan3D(){_p3d.zoom=1;_p3d.panX=0;_p3d.panY=0;document.getElementById('modal-plan3d').classList.add('open');setTimeout(p3dRender,60);}
 function p3dPtr(e){var t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;return {x:t.clientX,y:t.clientY};}
 function p3dDragStart(e){e.preventDefault();if(v3dPinchStart(_p3d,e))return;var p=p3dPtr(e);_p3d.dragging=true;_p3d.lx=p.x;_p3d.ly=p.y;}
 function p3dDragMove(e){if(v3dPinchMove(_p3d,e,p3dRender))return;if(!_p3d.dragging)return;e.preventDefault();var p=p3dPtr(e);_p3d.yaw+=(p.x-_p3d.lx)*0.01;_p3d.pitch=Math.max(0,Math.min(Math.PI/2-0.05,_p3d.pitch+(p.y-_p3d.ly)*0.008));_p3d.lx=p.x;_p3d.ly=p.y;p3dRender();}
 function p3dDragEnd(e){_p3d.dragging=false;if(!(e&&e.touches&&e.touches.length>=2))_p3d.pinch=0;}
+var _dtUnit='m';
+function dtFmtLen(m){return _dtUnit==='cm'?Math.round(m*100)+' cm':m.toFixed(2)+' m';}
+function dtRenderCotes(){
+  var panel=document.getElementById('dt-cotes-panel'),list=document.getElementById('dt-cotes-list');if(!panel||!list)return;
+  if(panel.style.display==='none')return;
+  var c=_dt.contour,nC=c.length,mpp=dtScale();
+  if(nC<2){list.innerHTML='<div style="font-size:11px;color:var(--c-muted);">Place au moins 2 points sur le dessin.</div>';return;}
+  var nE=_dt.closed?nC:nC-1,html='';
+  for(var e=0;e<nE;e++){var a=c[e],b=c[(e+1)%nC];var lm=dtDist(a,b)*mpp;var v=_dtUnit==='cm'?Math.round(lm*100):Math.round(lm*100)/100;
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span style="font-size:11px;color:var(--c-muted);width:56px;">Côté '+(e+1)+(e===nC-1?' ↩':'')+'</span>'
+      +'<input type="number" class="form-input" data-dtedge="'+e+'" value="'+v+'" step="'+(_dtUnit==='cm'?'1':'0.01')+'" inputmode="decimal" style="flex:1;padding:6px 8px;font-size:13px;font-family:var(--font-mono);"/><span style="font-size:11px;color:var(--c-muted);width:22px;">'+_dtUnit+'</span></div>';}
+  list.innerHTML=html;
+}
+function dtSetEdgeLength(e,lenM){
+  var c=_dt.contour,nC=c.length,mpp=dtScale();if(e<0||e>=nC||lenM<=0)return;
+  var Lpx=lenM/mpp;
+  var shift=function(from,step,dx,dy,ux,uy){ // décale les points à partir de 'from' jusqu'au premier côté opposé (anti-parallèle), qui absorbe
+    for(var k=from;k>=0&&k<nC;k+=step){
+      c[k]={x:c[k].x+dx,y:c[k].y+dy};
+      var nxt=k+step;if(nxt<0||nxt>=nC)break;
+      var d=dtDist(c[k],c[nxt])||1;var ex=(c[nxt].x-c[k].x)/d,ey=(c[nxt].y-c[k].y)/d;
+      if(ex*ux+ey*uy<-0.7)break; // ce côté est opposé → il absorbe la différence
+    }
+  };
+  if(e===nC-1&&_dt.closed){ // côté de fermeture : dernier → premier
+    var a=c[nC-1],b=c[0];var d=dtDist(a,b)||1;var ux=(b.x-a.x)/d,uy=(b.y-a.y)/d;
+    var na={x:b.x-ux*Lpx,y:b.y-uy*Lpx};shift(nC-1,-1,na.x-a.x,na.y-a.y,-ux,-uy);
+  }else{
+    var a2=c[e],b2=c[e+1];var d2=dtDist(a2,b2)||1;var ux2=(b2.x-a2.x)/d2,uy2=(b2.y-a2.y)/d2;
+    var nb={x:a2.x+ux2*Lpx,y:a2.y+uy2*Lpx};shift(e+1,1,nb.x-b2.x,nb.y-b2.y,ux2,uy2);
+  }
+  _dt.faitages=[];_dt.noues=[];_dt.aretiers=[]; // le squelette doit être regénéré
+  dtRedraw();dtCompute();
+}
 function dtRectify(){
   var c=_dt.contour;if(c.length<3){showToast('Place au moins 3 points','error');return;}
   // Chaque arête est alignée sur l'axe le plus proche (horizontal ou vertical)
@@ -3872,16 +3967,16 @@ function dtRectify(){
   var out=[];for(var k=0;k<c.length;k++){var a=c[k],b=c[(k+1)%c.length];if(!(a.x===b.x&&a.y===b.y))out.push(a);}
   var out2=[];for(var k2=0;k2<out.length;k2++){var p0=out[(k2-1+out.length)%out.length],p1=out[k2],p2=out[(k2+1)%out.length];var col=(p0.x===p1.x&&p1.x===p2.x)||(p0.y===p1.y&&p1.y===p2.y);if(!col)out2.push(p1);}
   _dt.contour=out2.length>=4?out2:out;_dt.closed=true;_dt.faitages=[];_dt.noues=[];_dt.aretiers=[];
-  dtRedraw();dtCompute();showToast('Contour redressé à angles droits — tu peux générer le toit','success');
+  dtRedraw();dtCompute();dtRenderCotes();showToast('Contour redressé à angles droits — tu peux générer le toit','success');
 }
 function dtUndo(){
   if(_dt.closed){_dt.closed=false;}
   else if(_dt.contour.length)_dt.contour.pop();
   // effacer arêtes générées si on modifie le contour
   _dt.faitages=[];_dt.noues=[];_dt.aretiers=[];
-  dtRedraw();dtCompute();
+  dtRedraw();dtCompute();dtRenderCotes();
 }
-function dtClear(){_dt={contour:[],closed:false,faitages:[],noues:[],aretiers:[],mode:_dt.mode,curLine:null};dtRedraw();dtCompute();}
+function dtClear(){_dt={contour:[],closed:false,faitages:[],noues:[],aretiers:[],mode:_dt.mode,curLine:null};dtRedraw();dtCompute();dtRenderCotes();}
 function dtApply(){
   var r=_dt._results;
   if(!r||r.toit<=0){showToast('Ferme d\'abord le contour du toit','error');return;}
@@ -4095,6 +4190,12 @@ function buildAndShowPlan(){
       var cxd=x+w/2,cyd=y+h/2;
       sv.push('<text x="'+cxd+'" y="'+(cyd-6)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#1a4a7a" font-weight="600">'+esc(r.nom)+'</text>');
       sv.push('<text x="'+cxd+'" y="'+(cyd+7)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="#4a7aaa">'+r.surfReelle.toFixed(2)+' m² · pente '+r.pente+'°</text>');
+      (function(){var nP=r.pts.length,gx=0,gy=0;r.pts.forEach(function(p){gx+=p.x/nP;gy+=p.y/nP;});
+        for(var e=0;e<nP;e++){var a=r.pts[e],b=r.pts[(e+1)%nP];var lm=Math.hypot(b.x-a.x,b.y-a.y);if(lm<0.15)continue;
+          var mx=(a.x+b.x)/2,my=(a.y+b.y)/2,nx=-(b.y-a.y)/lm,ny=(b.x-a.x)/lm;if((mx-gx)*nx+(my-gy)*ny<0){nx=-nx;ny=-ny;}
+          var px=x+(mx+nx*0.0)*sc+nx*9,py=y+my*sc+ny*9;
+          sv.push('<text x="'+px.toFixed(1)+'" y="'+(py+2.5).toFixed(1)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="7" fill="#1a4a7a" font-weight="600">'+lm.toFixed(2)+'</text>');}
+      })();
       if(!r.fait.length)sv.push('<text x="'+cxd+'" y="'+(cyd+19)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="7" fill="#b45309">arêtes non générées (contour non rectiligne)</text>');
       sv.push('<line x1="'+x+'" y1="'+(y+h+10)+'" x2="'+(x+w)+'" y2="'+(y+h+10)+'" stroke="#1a4a7a" stroke-width="0.7"/>');
       sv.push('<text x="'+(x+w/2)+'" y="'+(y+h+22)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="#1a4a7a">'+r.l.toFixed(2)+' m</text>');
@@ -4189,8 +4290,8 @@ function buildAndShowPlan(){
 function exportPlanPDF(){
   if(!planSVG){showToast('Pas de plan généré','error');return;}
   var client=parcoursVisite?parcoursVisite.client:'';
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Plan coté — '+esc(client)+'</title><style>body{margin:0;background:#f5f0e8;}svg{width:100vw;height:auto;display:block;}@media print{body{margin:0;}}</style></head><body>'+planSVG+'</body></html>';
-  var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},500);}else{showToast('Autorisez les popups','error');}
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Plan coté — '+esc(client)+'</title><style>body{margin:0;background:#f5f0e8;}svg{width:100vw;height:auto;display:block;}@media print{body{margin:0;}}</style></head><body>'+printPageBar('Plan coté — '+esc(client||'Chantier'))+planSVG+'</body></html>';
+  var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();}else{showToast('Autorisez les popups','error');}
 }
 
 
@@ -5836,6 +5937,11 @@ document.addEventListener('DOMContentLoaded',function(){
   document.querySelectorAll('.dtmode').forEach(function(b){});
   var dtGenBtn=document.getElementById('dt-generate');if(dtGenBtn)dtGenBtn.addEventListener('click',dtGenerate);
   var dtRectBtn=document.getElementById('dt-rectify');if(dtRectBtn)dtRectBtn.addEventListener('click',dtRectify);
+  var dtCotesBtn=document.getElementById('dt-cotes');
+  if(dtCotesBtn)dtCotesBtn.addEventListener('click',function(){var p=document.getElementById('dt-cotes-panel');var on=p.style.display==='none';p.style.display=on?'block':'none';dtCotesBtn.classList.toggle('btn-primary',on);dtCotesBtn.classList.toggle('btn-secondary',!on);if(on)dtRenderCotes();});
+  document.querySelectorAll('input[name="dt-unit"]').forEach(function(r){r.addEventListener('change',function(){if(r.checked){_dtUnit=r.value;dtRenderCotes();dtRedraw();}});});
+  var dtCotesList=document.getElementById('dt-cotes-list');
+  if(dtCotesList)dtCotesList.addEventListener('change',function(ev){var inp=ev.target.closest('[data-dtedge]');if(!inp)return;var v=parseFloat(inp.value);if(!(v>0))return;dtSetEdgeLength(parseInt(inp.dataset.dtedge),_dtUnit==='cm'?v/100:v);dtRenderCotes();});
   var dt3dBtn=document.getElementById('dt-3d');if(dt3dBtn)dt3dBtn.addEventListener('click',function(){dt3dToggle(!_dt.view3d);});
   var dt3dCv=document.getElementById('dt-canvas3d');
   if(dt3dCv){
@@ -6809,6 +6915,7 @@ function validerSignature(){
       <button class="btn btn-primary" id="dt-generate" style="padding:6px 12px;font-size:12px;">⚡ Générer le toit</button>
       <button class="btn btn-secondary" id="dt-3d" style="padding:6px 10px;font-size:12px;">🧊 3D</button>
       <button class="btn btn-secondary" id="dt-rectify" title="Remettre toutes les arêtes à angle droit" style="padding:6px 10px;font-size:12px;">⟂ Redresser</button>
+      <button class="btn btn-secondary" id="dt-cotes" title="Saisir la longueur exacte de chaque côté" style="padding:6px 10px;font-size:12px;">📏 Cotes</button>
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-muted);cursor:pointer;">
         <input type="checkbox" id="dt-uniforme" style="width:15px;height:15px;accent-color:var(--c-accent);"/>Toit uniforme
       </label>
@@ -6825,6 +6932,15 @@ function validerSignature(){
     <div style="flex:1;overflow:hidden;position:relative;background:#0a1428;touch-action:none;">
       <canvas id="dt-canvas" style="width:100%;height:100%;display:block;"></canvas>
       <canvas id="dt-canvas3d" style="width:100%;height:100%;display:none;position:absolute;inset:0;"></canvas>
+      <div id="dt-cotes-panel" style="display:none;position:absolute;left:8px;right:8px;bottom:8px;max-height:46%;overflow:auto;background:rgba(10,20,40,.94);border:1px solid var(--c-border);border-radius:10px;padding:8px 10px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:var(--c-muted);">
+          <b style="color:var(--c-text);">Longueur de chaque côté</b><span style="flex:1;"></span>
+          <label style="cursor:pointer;"><input type="radio" name="dt-unit" value="m" checked style="accent-color:var(--c-accent);"/> m</label>
+          <label style="cursor:pointer;"><input type="radio" name="dt-unit" value="cm" style="accent-color:var(--c-accent);"/> cm</label>
+        </div>
+        <div id="dt-cotes-list"></div>
+        <div style="font-size:10px;color:var(--c-muted);margin-top:6px;">Modifier une longueur déplace le sommet suivant le long du côté et décale la suite du contour. Le dernier côté se referme sur le premier point.</div>
+      </div>
       <div id="dt-3d-controls" style="display:none;position:absolute;bottom:8px;left:8px;right:8px;background:rgba(10,20,40,.88);border-radius:8px;padding:6px 10px;font-size:11px;color:var(--c-muted);align-items:center;gap:10px;flex-wrap:wrap;">
         <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="radio" name="dt-proj" value="axo" checked style="accent-color:var(--c-accent);"/>Axonométrie</label>
         <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="radio" name="dt-proj" value="persp" style="accent-color:var(--c-accent);"/>Perspective</label>
