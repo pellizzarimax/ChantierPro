@@ -3476,10 +3476,11 @@ function dtRectRoof(r,uniforme,globalHoriz){
 // leur partie commune devient un FAÎTAGE et disparaît. Les trajectoires des sommets
 // saillants donnent les ARÊTIERS, celles des sommets rentrants les NOUES.
 // Chaque côté balaye un pan (quadrilatère plan) entre deux événements → faces exactes pour la 3D.
+function skelS(v){return v>1e-7?1:(v<-1e-7?-1:0);} // signe tolérant au bruit d'arrondi
 function skelOrtho(polyIn,tMax){
   var EPS=1e-7;
   var area=0;for(var i=0;i<polyIn.length;i++){var j=(i+1)%polyIn.length;area+=polyIn[i].x*polyIn[j].y-polyIn[j].x*polyIn[i].y;}
-  var P=polyIn.map(function(p){return {x:p.x,y:p.y};});if(area<0)P.reverse();
+  var P=polyIn.map(function(p){return {x:Math.round(p.x*1e6)/1e6,y:Math.round(p.y*1e6)/1e6};});if(area<0)P.reverse();
   P=skelClean(P);
   var loops=P.length>=4?[P]:[];
   var out={ridges:[],hips:[],valleys:[],pans:[],front:null},t=0,guard=0;
@@ -3489,11 +3490,11 @@ function skelOrtho(polyIn,tMax){
     var E=[];
     loops.forEach(function(L,li){var n=L.length;L.forEach(function(p,k){
       var a=L[(k-1+n)%n],b=L[(k+1)%n];
-      var din={x:Math.sign(p.x-a.x),y:Math.sign(p.y-a.y)},dout={x:Math.sign(b.x-p.x),y:Math.sign(b.y-p.y)};
+      var din={x:skelS(p.x-a.x),y:skelS(p.y-a.y)},dout={x:skelS(b.x-p.x),y:skelS(b.y-p.y)};
       p.vx=-din.y-dout.y;p.vy=din.x+dout.x;           // somme des normales gauches (intérieur à gauche)
       p.convex=(din.x*dout.y-din.y*dout.x)>0;
     });
-      L.forEach(function(p,k){var q=L[(k+1)%n];E.push({a:p,b:q,dx:Math.sign(q.x-p.x),dy:Math.sign(q.y-p.y)});});
+      L.forEach(function(p,k){var q=L[(k+1)%n];E.push({a:p,b:q,dx:skelS(q.x-p.x),dy:skelS(q.y-p.y)});});
     });
     // Prochain événement : deux côtés antiparallèles qui se font face et se rejoignent
     var tau=Infinity;
@@ -3520,7 +3521,7 @@ function skelOrtho(polyIn,tMax){
     loops.forEach(function(L){L.forEach(function(p){
       var np={x:p.x+p.vx*tau,y:p.y+p.vy*tau};
       if(tau>EPS)(p.convex?out.hips:out.valleys).push({a:{x:p.x,y:p.y},b:np,za:t,zb:T1});
-      p.x=np.x;p.y=np.y;});});
+      p.x=Math.round(np.x*1e6)/1e6;p.y=Math.round(np.y*1e6)/1e6;});});
     t=T1;
     if(stop){out.front=loops.map(function(L){return L.map(function(p){return {x:p.x,y:p.y};});});break;}
     // Annulation des parties de côtés qui se superposent en sens opposé → faîtages
@@ -3572,13 +3573,15 @@ function skelRelink(segs){
   var used=[],loops=[];
   for(var i=0;i<pieces.length;i++){if(used[i])continue;
     var L=[],cur=i,g=0;
+    var k0=key(pieces[cur].a);
     while(cur!==undefined&&!used[cur]&&g++<1000){used[cur]=true;var s=pieces[cur];L.push({x:s.a.x,y:s.a.y});
+      if(key(s.b)===k0)break; // revenu au point de départ : la boucle est fermée
       var cand=(outg[key(s.b)]||[]).filter(function(j){return !used[j];});
       if(!cand.length)break;
-      if(cand.length>1){ // pincement : prendre le virage le plus à droite (garde les zones séparées)
-        var dx=Math.sign(s.b.x-s.a.x),dy=Math.sign(s.b.y-s.a.y);
+      if(cand.length>1){ // pincement : virage le plus serré à gauche (boucles anti-horaires) → sépare les zones qui se touchent
+        var dx=skelS(s.b.x-s.a.x),dy=skelS(s.b.y-s.a.y);
         cand.sort(function(u,v){var su=pieces[u],sv=pieces[v];
-          var cu=dx*Math.sign(su.b.y-su.a.y)-dy*Math.sign(su.b.x-su.a.x),cv=dx*Math.sign(sv.b.y-sv.a.y)-dy*Math.sign(sv.b.x-sv.a.x);return cu-cv;});
+          var cu=dx*skelS(su.b.y-su.a.y)-dy*skelS(su.b.x-su.a.x),cv=dx*skelS(sv.b.y-sv.a.y)-dy*skelS(sv.b.x-sv.a.x);return cv-cu;});
       }
       cur=cand[0];
     }
@@ -3597,8 +3600,8 @@ function dtComputeWalls(){ // murs = contour érodé du débord (même moteur qu
   var r=skelOrtho(poly,deb);
   if(r.front&&r.front.length)_dt.wallPx=r.front.map(function(L){return L.map(function(p){return {x:p.x/mpp,y:p.y/mpp};});});
 }
-function dtGenerate(){
-  if(!_dt.closed||_dt.contour.length<4){showToast('Ferme d\'abord le contour (min. 4 coins)','error');return;}
+function dtGenerate(silent){
+  if(!_dt.closed||_dt.contour.length<4){if(!silent)showToast('Ferme d\'abord le contour (min. 4 coins)','error');return false;}
   var mpp=dtScale();
   // Contour en mètres
   var polyM=_dt.contour.map(function(p){return {x:p.x*mpp,y:p.y*mpp};});
@@ -3608,12 +3611,13 @@ function dtGenerate(){
     var a=polyM[i],b=polyM[(i+1)%polyM.length];
     if(Math.abs(a.x-b.x)>0.15&&Math.abs(a.y-b.y)>0.15){rectiligne=false;break;}
   }
-  if(!rectiligne){showToast('Contour non rectiligne (au moins une arête oblique). Appuie sur ⟂ Redresser pour aligner les arêtes, ou garde seulement la surface avec « Utiliser ces mesures ».','error');return;}
+  if(!rectiligne){if(silent)return false;showToast('Contour non rectiligne (au moins une arête oblique). Appuie sur ⟂ Redresser pour aligner les arêtes, ou garde seulement la surface avec « Utiliser ces mesures ».','error');return;}
   var tanP=Math.tan((parseFloat(document.getElementById('dt-pente').value)||35)*Math.PI/180);
   // Redresser les micro-écarts (< 15 cm) pour avoir des côtés strictement horizontaux/verticaux
   var polyQ=polyM.map(function(p){return {x:p.x,y:p.y};});
   for(var q=1;q<=polyQ.length;q++){var pa=polyQ[q-1],pb=polyQ[q%polyQ.length];if(Math.abs(pa.x-pb.x)<Math.abs(pa.y-pb.y))pb.x=pa.x;else pb.y=pa.y;}
-  var sk=skelOrtho(polyQ);
+  var sk;try{sk=skelOrtho(polyQ);}catch(err){console.error('Calcul du toit',err);if(!silent)showToast('Le calcul du toit a échoué sur ce contour — vérifie les points ou utilise ⟂ Redresser','error');return false;}
+  if(!sk.pans.length){if(!silent)showToast('Le calcul du toit n\'a produit aucun pan — vérifie le contour','error');return false;}
   var toPx=function(seg){return {a:{x:seg.a.x/mpp,y:seg.a.y/mpp},b:{x:seg.b.x/mpp,y:seg.b.y/mpp},za:(seg.za||0)*tanP,zb:(seg.zb||0)*tanP};};
   _dt.mpp=mpp;_dt.tanP=tanP;
   _dt.faitages=sk.ridges.filter(function(s){return Math.hypot(s.a.x-s.b.x,s.a.y-s.b.y)>1e-4;}).map(toPx);
@@ -3627,7 +3631,8 @@ function dtGenerate(){
   var rects={length:polyQ.length},refl={length:nRefl};
   _dt._genMeta={rects:rects.length,refl:refl.length};
   dtRedraw();dtCompute();if(_dt.view3d)dt3dRender();
-  showToast('Toit généré : '+rects.length+' pans, '+refl.length+' noue(s)','success');
+  if(!silent)showToast('Toit généré : '+rects.length+' pans, '+refl.length+' noue(s)','success');
+  return true;
 }
 function dtDist(a,b){return Math.sqrt(Math.pow(a.x-b.x,2)+Math.pow(a.y-b.y,2));}
 function dtScale(){return (parseFloat(document.getElementById('dt-scale').value)||1)/dtGridSize();} // mètres par pixel
@@ -3747,6 +3752,7 @@ function dt3dToggle(on){
   document.getElementById('dt-3d-controls').style.display=on?'flex':'none';
   var b=document.getElementById('dt-3d');if(b){b.textContent=on?'✏️ 2D':'🧊 3D';b.classList.toggle('btn-primary',on);b.classList.toggle('btn-secondary',!on);}
   var hint=document.getElementById('dt-hint');if(hint)hint.style.display=on?'none':'block';
+  if(on&&_dt.closed&&!(_dt.pans&&_dt.pans.length))dtGenerate(true);
   if(on){_dt3d.zoom=1;_dt3d.panX=0;_dt3d.panY=0;setTimeout(dt3dRender,50);}
 }
 function v3dTouches(e){return e.touches?Array.prototype.slice.call(e.touches):null;}
@@ -4046,7 +4052,7 @@ function printPlan3D(){
     +'</body></html>';
   var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();}else{showToast('Autorisez les popups','error');}
 }
-function openPlan3D(){_p3d.zoom=1;_p3d.panX=0;_p3d.panY=0;document.getElementById('modal-plan3d').classList.add('open');setTimeout(p3dRender,60);}
+function openPlan3D(){var _tc=window._toitureComplexe;if(_tc&&_tc.dessine&&_dt&&_dt.closed&&!(_dt.pans&&_dt.pans.length))dtGenerate(true);_p3d.zoom=1;_p3d.panX=0;_p3d.panY=0;document.getElementById('modal-plan3d').classList.add('open');setTimeout(p3dRender,60);}
 function p3dPtr(e){var t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;return {x:t.clientX,y:t.clientY};}
 function p3dDragStart(e){e.preventDefault();if(v3dPinchStart(_p3d,e))return;var p=p3dPtr(e);_p3d.dragging=true;_p3d.lx=p.x;_p3d.ly=p.y;}
 function p3dDragMove(e){if(v3dPinchMove(_p3d,e,p3dRender))return;if(!_p3d.dragging)return;e.preventDefault();var p=p3dPtr(e);_p3d.yaw+=(p.x-_p3d.lx)*0.01;_p3d.pitch=Math.max(0,Math.min(Math.PI/2-0.05,_p3d.pitch+(p.y-_p3d.ly)*0.008));_p3d.lx=p.x;_p3d.ly=p.y;p3dRender();}
@@ -4107,6 +4113,7 @@ function dtUndo(){
 }
 function dtClear(){_dt={contour:[],closed:false,faitages:[],noues:[],aretiers:[],mode:_dt.mode,curLine:null};dtRedraw();dtCompute();dtRenderCotes();}
 function dtApply(){
+  if(_dt.closed&&!(_dt.pans&&_dt.pans.length))dtGenerate(true); // pans manquants → générer automatiquement
   var r=_dt._results;
   if(!r||r.toit<=0){showToast('Ferme d\'abord le contour du toit','error');return;}
   window._toitureComplexe={surface:r.toit,faitage:r.faitage,aretiers:r.aretier,noues:r.noue,nouesAuto:0,nouesManuel:r.noue,corps:1,dessine:true,perimetre:r.perimetre,sol:r.sol};
