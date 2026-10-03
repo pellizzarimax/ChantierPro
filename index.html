@@ -4910,7 +4910,7 @@ async function doGenerateDevisFromParcours(){
         +(tc.faitage>0?'  Faîtage total: '+tc.faitage.toFixed(2)+' ml\n':'')
         +(tc.aretiers>0?'  Arêtiers total: '+tc.aretiers.toFixed(2)+' ml\n':'')
         +(tc.noues>0?'  Noues (angles rentrants): '+tc.noues.toFixed(2)+' ml — prévoir noues zinc + closoirs\n':'')
-        +(tc.perimetre>0?'  Égout (longueur de gouttière) : '+tc.perimetre.toFixed(2)+' ml — à utiliser pour gouttières, crochets et bandes d\'égout (PAS la longueur des arêtiers)\n':'')
+        +(tc.perimetre>0?'  Égout (longueur de gouttière) : '+tc.perimetre.toFixed(2)+' ml — à utiliser pour gouttières et crochets (PAS la longueur des arêtiers)\n':'')
         +(tc.rives>0?'  Rives (bords rampants aux pignons): '+tc.rives.toFixed(2)+' ml — prévoir bandes de rive / tuiles de rive\n':'')
         +'  (Toiture multi-corps type L/T/U : chiffrer la couverture sur la surface totale, et compter séparément faîtage, arêtiers et noues.)\n';
     })():'');
@@ -4946,7 +4946,8 @@ async function doGenerateDevisFromParcours(){
     +'\n11. PRIORITÉ BIBLIOTHÈQUE : pour chaque ligne, cherche d\'abord un ouvrage CORRESPONDANT dans la BIBLIOTHÈQUE ci-dessus. Si tu en trouves un qui convient, REPRENDS sa désignation EXACTE et son prix EXACT (ne change rien), et mets "fromBib":true. Si AUCUN ouvrage de la bibliothèque ne convient, crée une nouvelle ligne avec une désignation claire au format "Fourniture et pose de..." et un prix réaliste, et mets "fromBib":false. Privilégie TOUJOURS la réutilisation des ouvrages de la bibliothèque.'
     +'\n12. VOCABULAIRE MÉTIER / AUCUN DOUBLON : une même prestation ne doit apparaître qu\'UNE fois. Synonymes à considérer comme identiques : chanlattes = contre-liteaux ; écran sous-toiture = film sous-toiture = pare-pluie (HPV) ; un ouvrage qui regroupe plusieurs éléments (ex. « Contre-liteaux et liteaux », gouttière avec ses crochets) couvre déjà chacun de ces éléments : ne les rajoute pas en lignes séparées.'
     +'\n13. DÉPOSE / DÉMOLITION : toute dépose, démolition, démontage ou évacuation va dans un lot à part nommé exactement "'+LOT_DEPOSE+'", placé EN PREMIER. Sa désignation commence directement par « Dépose… » ou « Démolition… » (jamais « Fourniture et pose de dépose »).'
-    +'\n14. QUANTITÉS DE ZINGUERIE : gouttières, crochets de gouttière et bandes d\'égout = longueur d\'ÉGOUT indiquée dans les métrés ; descentes en unités ou en ml de hauteur ; ne JAMAIS reprendre la longueur des arêtiers ou du faîtage pour les gouttières.';
+    +'\n14. QUANTITÉS DE ZINGUERIE : gouttières et crochets de gouttière = longueur d\'ÉGOUT indiquée dans les métrés ; descentes en unités ou en ml de hauteur ; ne JAMAIS reprendre la longueur des arêtiers ou du faîtage pour les gouttières.'
+    +conceptPromptList();
 
   // Ajouter instruction système stricte en tête du prompt
   var bibPrompt='';
@@ -5028,6 +5029,19 @@ async function doGenerateDevisFromParcours(){
   var dd=dedupeDevisLines(lines);lines=dd.lines;
   if(dd.removed.length)setTimeout(function(){showToast(dd.removed.length+' doublon'+(dd.removed.length>1?'s':'')+' retiré'+(dd.removed.length>1?'s':'')+' : '+dd.removed.join(' · '),'success');},1500);
   lines=lines.filter(function(l){return l.lot===LOT_DEPOSE;}).concat(lines.filter(function(l){return l.lot!==LOT_DEPOSE;}));
+  // Prix constants : même poste → même ouvrage → même prix
+  initConceptMap();
+  var memo=0;
+  lines.forEach(function(l){
+    var c=conceptOf(l.designation),b;
+    if(c&&(b=conceptBib(c,l.unite))){l.designation=b.designation;l.unite=b.unite;l.pu=String(b.prix);l.fromBib=true;l.isNew=false;return;}
+    if(l.fromBib){b=(db.bibliotheque||[]).find(function(x){return x.designation===l.designation;});if(c&&b)setConceptBib(c,b,false);return;}
+    // Nouvel ouvrage : mémorisé tout de suite dans la bibliothèque pour figer son prix
+    var nb={id:genId(),categorie:mapLotToCategorie(l.lot)||'Divers / Chantier',designation:l.designation,unite:l.unite,prix:parseFloat(l.pu)||0,autoIA:true};
+    db.bibliotheque.push(nb);setConceptBib(c,nb,false);l.fromBib=true;l.isNew=false;memo++;
+  });
+  var dd2=dedupeDevisLines(lines);lines=dd2.lines;
+  if(memo)setTimeout(function(){showToast(memo+' nouvel'+(memo>1?'s':'')+' ouvrage'+(memo>1?'s':'')+' mémorisé'+(memo>1?'s':'')+' dans ta bibliothèque : prix figés pour les prochains devis','success');},3200);
   // Mémoriser les nouveaux ouvrages proposés pour validation ultérieure
   window._aiNewOuvrages=lines.filter(function(l){return l.isNew;}).map(function(l){
     return {designation:l.designation,unite:l.unite,prix:parseFloat(l.pu)||0,lot:l.lot};
@@ -5237,13 +5251,72 @@ function _normWords(s){
     .split(/\s+/)
     .filter(function(w){return w.length>2 && ['fourniture','pose','application','des','les','sur','avec','pour','par','sous'].indexOf(w)<0;});
 }
+// ---- Poste de travail (« concept ») d'une désignation : sert à toujours reprendre le même ouvrage / le même prix ----
+var CONCEPTS=[
+  ['dep:couverture',/^(d[ée]pose|d[ée]molition|d[ée]montage).*(couverture|tuile|toiture|liteau)/],
+  ['dep:zinguerie',/^(d[ée]pose|d[ée]montage).*(goutti|zinguerie|descente|crochet|ch[ée]neau)/],
+  ['closoir',/^closoir/],
+  ['aretier',/ar[êe]ti[eè]r/],
+  ['faitage',/fa[îi]tage|fa[îi]ti[eè]re/],
+  ['noue',/\bnoues?\b/],
+  ['bande-egout',/bande (de rive|d.?[ée]gout)|bande d.?[ée]gout/],
+  ['rive',/\brives?\b/],
+  ['ecran',/[ée]cran (de )?sous[- ]?toiture|film sous[- ]?toiture|pare[- ]?pluie/],
+  ['contreliteau',/chanlatte|contre[- ]?litea/],
+  ['liteau',/^(fourniture et pose de )?litea/],
+  ['gouttiere',/goutti[eè]re/],
+  ['crochet-gout',/crochets?.*(queue|goutti)/],
+  ['naissance',/naissance|moignon/],
+  ['echarpe',/[ée]charpe/],
+  ['descente',/descente/],
+  ['tuile-canal',/tuiles? canal/],
+  ['tuile-plate',/tuiles? plate/],
+  ['tuile-meca',/tuiles? m[ée]canique/],
+  ['ardoise',/ardoise/],
+  ['bac-acier',/bac acier/]
+];
+function conceptOf(desig){
+  var d=cleanDesig(String(desig||'')).toLowerCase().trim();if(!d)return null;
+  var dep=isDeposeDesig(d);
+  for(var i=0;i<CONCEPTS.length;i++){var k=CONCEPTS[i][0];
+    if(dep!==(k.indexOf('dep:')===0))continue;
+    if(CONCEPTS[i][1].test(d))return k;}
+  return null;
+}
+function _unitN(u){return String(u||'').toLowerCase().replace('m2','m²').replace(/\s/g,'');}
+function conceptBib(c,unite){ // ouvrage habituel de l'artisan pour ce poste
+  var map=(db.settings&&db.settings.ouvrageConcept)||{};var id=map[c];if(!id)return null;
+  var b=(db.bibliotheque||[]).find(function(x){return x.id===id;});
+  if(!b||(unite&&_unitN(b.unite)!==_unitN(unite)))return null;return b;
+}
+function setConceptBib(c,b,force){
+  if(!c||!b)return;db.settings.ouvrageConcept=db.settings.ouvrageConcept||{};
+  if(force||!conceptBib(c))db.settings.ouvrageConcept[c]=b.id;
+}
+function learnConceptsFromLines(lines){ // le dernier devis enregistré fixe l'ouvrage habituel de chaque poste
+  initConceptMap();var byDes={};(db.bibliotheque||[]).forEach(function(b){byDes[(b.designation||'').toLowerCase().trim()]=b;});
+  (lines||[]).forEach(function(l){var b=byDes[(l.designation||'').toLowerCase().trim()],c=conceptOf(l.designation);if(b&&c)setConceptBib(c,b,true);});
+}
+function initConceptMap(){ // 1re fois : apprendre depuis les devis existants (les plus récents d'abord), sans rien modifier
+  if(!db.settings||db.settings._conceptInit)return;
+  var byDes={};(db.bibliotheque||[]).forEach(function(b){byDes[(b.designation||'').toLowerCase().trim()]=b;});
+  (db.devis||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).forEach(function(d){
+    (d.lignes||[]).forEach(function(l){var b=byDes[(l.designation||'').toLowerCase().trim()];var c=conceptOf(l.designation);if(b&&c)setConceptBib(c,b,false);});});
+  db.settings._conceptInit=true;
+}
+function conceptPromptList(){
+  initConceptMap();var map=(db.settings&&db.settings.ouvrageConcept)||{},out=[];
+  Object.keys(map).forEach(function(c){var b=conceptBib(c);if(b)out.push('- '+b.designation+' = '+b.prix+' €/'+b.unite);});
+  return out.length?'\n15. OUVRAGES HABITUELS DE L\'ARTISAN (prix fixes, à reprendre À L\'IDENTIQUE dès que le poste est concerné, au lieu de toute autre formulation) :\n'+out.join('\n'):'';
+}
 function matchOuvrageForDesig(desig){
   var words=_normWords(desig);
   if(!words.length)return null;
-  var best=null, bestScore=0;
+  var best=null, bestScore=0, cA=conceptOf(desig);
   (db.bibliotheque||[]).forEach(function(b){
     var bw=_normWords(b.designation);
     if(!bw.length)return;
+    var cB=conceptOf(b.designation);if(cA&&cB&&cA!==cB)return; // jamais une dépose pour une pose, ni un faîtage pour un arêtier
     var common=0;
     words.forEach(function(w){if(bw.indexOf(w)>=0)common++;});
     // score = proportion de mots de l'ancienne désignation retrouvés
@@ -5398,7 +5471,7 @@ function renderDevisLines(){
   updateTotaux();
 }
 function updateTotaux(){var tvr=parseFloat(document.getElementById('d-tva').value)||10;var ht=0;devisLines.forEach(function(l){ht+=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);});var tva=ht*tvr/100;document.getElementById('total-ht').textContent=fmtMoney(ht);document.getElementById('total-tva-amount').textContent=fmtMoney(tva)+' ('+tvr+'%)';document.getElementById('total-ttc').textContent=fmtMoney(ht+tva);}
-function saveDevis(){var client=document.getElementById('d-client').value.trim();if(!client){showToast('Nom client requis','error');return;}collectLines();var prev=editDevisId?db.devis.find(function(d){return d.id===editDevisId;}):null;var dv={id:editDevisId||genId(),numero:prev?prev.numero:genNum(),client:client,objet:document.getElementById('d-objet').value,adresse:document.getElementById('d-adresse').value,date:document.getElementById('d-date').value,statut:document.getElementById('d-statut').value,tva:parseFloat(document.getElementById('d-tva').value)||10,biosource:document.getElementById('d-biosource').checked,showTemps:document.getElementById('d-showtemps')?document.getElementById('d-showtemps').checked:false,notes:document.getElementById('d-notes').value,lignes:devisLines.slice(),planSVG:prev?prev.planSVG:'',createdAt:prev?prev.createdAt:new Date().toISOString()};if(!editDevisId)db.settings.nextNum=(db.settings.nextNum||1)+1;if(editDevisId){var i=db.devis.findIndex(function(d){return d.id===editDevisId;});if(i>=0)db.devis[i]=dv;}else{db.devis.push(dv);}saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();document.getElementById('modal-devis').classList.remove('open');showToast('Devis enregistré','success');}
+function saveDevis(){var client=document.getElementById('d-client').value.trim();if(!client){showToast('Nom client requis','error');return;}collectLines();var prev=editDevisId?db.devis.find(function(d){return d.id===editDevisId;}):null;var dv={id:editDevisId||genId(),numero:prev?prev.numero:genNum(),client:client,objet:document.getElementById('d-objet').value,adresse:document.getElementById('d-adresse').value,date:document.getElementById('d-date').value,statut:document.getElementById('d-statut').value,tva:parseFloat(document.getElementById('d-tva').value)||10,biosource:document.getElementById('d-biosource').checked,showTemps:document.getElementById('d-showtemps')?document.getElementById('d-showtemps').checked:false,notes:document.getElementById('d-notes').value,lignes:devisLines.slice(),planSVG:prev?prev.planSVG:'',createdAt:prev?prev.createdAt:new Date().toISOString()};try{learnConceptsFromLines(dv.lignes);}catch(e){}if(!editDevisId)db.settings.nextNum=(db.settings.nextNum||1)+1;if(editDevisId){var i=db.devis.findIndex(function(d){return d.id===editDevisId;});if(i>=0)db.devis[i]=dv;}else{db.devis.push(dv);}saveDB();renderDevisList();renderDocs();renderGreeting();renderRecentActivity();document.getElementById('modal-devis').classList.remove('open');showToast('Devis enregistré','success');}
 
 function renderDevisList(){
   var cont=document.getElementById('devis-list');
