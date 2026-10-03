@@ -4897,6 +4897,7 @@ async function doGenerateDevisFromParcours(){
           }
           return '';
         })()
+        +(function(){var e=roofEgoutML(t);return e>0?'  Égout (longueur de gouttière, débord compris): '+e.toFixed(2)+' ml\n':'';})()
         +'  Pente: '+(t.pente||35)+'°\n'
         +'  Longueur: '+(t.l||0)+'m × Largeur: '+(t.lar||0)+'m\n'
         +(t.debord?'  Débord: '+t.debord+'m\n':'');
@@ -4909,6 +4910,7 @@ async function doGenerateDevisFromParcours(){
         +(tc.faitage>0?'  Faîtage total: '+tc.faitage.toFixed(2)+' ml\n':'')
         +(tc.aretiers>0?'  Arêtiers total: '+tc.aretiers.toFixed(2)+' ml\n':'')
         +(tc.noues>0?'  Noues (angles rentrants): '+tc.noues.toFixed(2)+' ml — prévoir noues zinc + closoirs\n':'')
+        +(tc.perimetre>0?'  Égout (longueur de gouttière) : '+tc.perimetre.toFixed(2)+' ml — à utiliser pour gouttières, crochets et bandes d\'égout (PAS la longueur des arêtiers)\n':'')
         +(tc.rives>0?'  Rives (bords rampants aux pignons): '+tc.rives.toFixed(2)+' ml — prévoir bandes de rive / tuiles de rive\n':'')
         +'  (Toiture multi-corps type L/T/U : chiffrer la couverture sur la surface totale, et compter séparément faîtage, arêtiers et noues.)\n';
     })():'');
@@ -4933,7 +4935,7 @@ async function doGenerateDevisFromParcours(){
       var t=window._toiture||{};
       var fml=parseFloat((document.getElementById('ct-faitag')||{}).textContent)||0;
       var arr=0;if(t.type==='4pentes'&&t.l>0&&t.lar>0){var h2=(t.lar/2)/Math.cos((t.pente||35)*Math.PI/180);arr=Math.sqrt(Math.pow(t.lar/2,2)+Math.pow(h2,2))*4;}
-      return '6. Toiture: surface='+tsurfVal.toFixed(2)+' m²'+(fml>0?', faîtage='+fml.toFixed(2)+' ml':'')+(arr>0?', arêtiers='+arr.toFixed(2)+' ml total':'')+'.\n'
+      return '6. Toiture: surface='+tsurfVal.toFixed(2)+' m²'+(fml>0?', faîtage='+fml.toFixed(2)+' ml':'')+(arr>0?', arêtiers='+arr.toFixed(2)+' ml total':'')+(function(){var tc=window._toitureComplexe,e=(tc&&tc.corps>0&&tc.perimetre>0)?tc.perimetre:roofEgoutML(t);return e>0?', égout (gouttières)='+e.toFixed(2)+' ml':'';})()+'.\n'
         +'   → OBLIGATOIRE: inclure lignes séparées pour couverture (m²), faîtage (ml), arêtiers si 4 pentes (ml), main-d\'œuvre (m²).\n';
     })():'')
     +'7. PU réalistes marché BTP français 2025.\n'
@@ -4941,7 +4943,10 @@ async function doGenerateDevisFromParcours(){
     +'9. Réponds UNIQUEMENT en JSON valide, sans texte ni markdown:\n'
     +'[{"lot":"Corps d\'état/partie adapté aux travaux","designation":"...","unite":"m²|m³|ml|h|forfait|u","qte":"VALEUR_REELLE","pu":"PRIX","fromBib":true}]\n'
     +'10. Regroupe les lignes par "lot" = corps d\'état ou phase, ADAPTÉ aux travaux réels. Choisis parmi (ou similaire) : Démolition/Préparation, Terrassement/VRD, Fondations, Maçonnerie, Charpente, Couverture, Étanchéité, Isolation, Plâtrerie/Cloisons, Menuiserie, Carrelage/Sols, Peinture, Plomberie/Sanitaire, Chauffage/Ventilation, Électricité, Aménagement extérieur (terrasse, piscine, clôture, allée). Ordonne les lots dans l\'ordre logique du chantier. Ne mets PAS une démolition en Plomberie ni une pose de terrasse en Main d\'œuvre : le lot doit refléter la NATURE du travail. Ligne sans partie évidente: lot="Travaux divers".'
-    +'\n11. PRIORITÉ BIBLIOTHÈQUE : pour chaque ligne, cherche d\'abord un ouvrage CORRESPONDANT dans la BIBLIOTHÈQUE ci-dessus. Si tu en trouves un qui convient, REPRENDS sa désignation EXACTE et son prix EXACT (ne change rien), et mets "fromBib":true. Si AUCUN ouvrage de la bibliothèque ne convient, crée une nouvelle ligne avec une désignation claire au format "Fourniture et pose de..." et un prix réaliste, et mets "fromBib":false. Privilégie TOUJOURS la réutilisation des ouvrages de la bibliothèque.';
+    +'\n11. PRIORITÉ BIBLIOTHÈQUE : pour chaque ligne, cherche d\'abord un ouvrage CORRESPONDANT dans la BIBLIOTHÈQUE ci-dessus. Si tu en trouves un qui convient, REPRENDS sa désignation EXACTE et son prix EXACT (ne change rien), et mets "fromBib":true. Si AUCUN ouvrage de la bibliothèque ne convient, crée une nouvelle ligne avec une désignation claire au format "Fourniture et pose de..." et un prix réaliste, et mets "fromBib":false. Privilégie TOUJOURS la réutilisation des ouvrages de la bibliothèque.'
+    +'\n12. VOCABULAIRE MÉTIER / AUCUN DOUBLON : une même prestation ne doit apparaître qu\'UNE fois. Synonymes à considérer comme identiques : chanlattes = contre-liteaux ; écran sous-toiture = film sous-toiture = pare-pluie (HPV) ; un ouvrage qui regroupe plusieurs éléments (ex. « Contre-liteaux et liteaux », gouttière avec ses crochets) couvre déjà chacun de ces éléments : ne les rajoute pas en lignes séparées.'
+    +'\n13. DÉPOSE / DÉMOLITION : toute dépose, démolition, démontage ou évacuation va dans un lot à part nommé exactement "'+LOT_DEPOSE+'", placé EN PREMIER. Sa désignation commence directement par « Dépose… » ou « Démolition… » (jamais « Fourniture et pose de dépose »).'
+    +'\n14. QUANTITÉS DE ZINGUERIE : gouttières, crochets de gouttière et bandes d\'égout = longueur d\'ÉGOUT indiquée dans les métrés ; descentes en unités ou en ml de hauteur ; ne JAMAIS reprendre la longueur des arêtiers ou du faîtage pour les gouttières.';
 
   // Ajouter instruction système stricte en tête du prompt
   var bibPrompt='';
@@ -5000,7 +5005,7 @@ async function doGenerateDevisFromParcours(){
     catch(e){lines=[{designation:'Travaux',unite:'forfait',qte:'1',pu:'0'}];}
   }
   lines=lines.map(function(l){
-    var desig=l.designation||'';
+    var desig=cleanDesig(l.designation||'');
     var fromBib=(l.fromBib===true||l.fromBib==='true');
     var unite=l.unite||'u';
     var pu=String(l.pu||0);
@@ -5016,8 +5021,13 @@ async function doGenerateDevisFromParcours(){
       if(existing){fromBib=true;desig=existing.designation;unite=existing.unite||unite;pu=String(existing.prix||pu);}
       else {isNew=true;}
     }
-    return {id:genId(),lot:(l.lot||guessLot(desig)),designation:desig,unite:unite,qte:String(l.qte||1),pu:pu,fromBib:fromBib,isNew:isNew};
+    var lotL=isDeposeDesig(desig)?LOT_DEPOSE:(l.lot&&!/d.pose|d.molition/i.test(l.lot)?l.lot:guessLot(desig));
+    return {id:genId(),lot:lotL,designation:desig,unite:unite,qte:String(l.qte||1),pu:pu,fromBib:fromBib,isNew:isNew};
   });
+  // Doublons de vocabulaire (chanlatte = contre-liteau…) + dépose en tête
+  var dd=dedupeDevisLines(lines);lines=dd.lines;
+  if(dd.removed.length)setTimeout(function(){showToast(dd.removed.length+' doublon'+(dd.removed.length>1?'s':'')+' retiré'+(dd.removed.length>1?'s':'')+' : '+dd.removed.join(' · '),'success');},1500);
+  lines=lines.filter(function(l){return l.lot===LOT_DEPOSE;}).concat(lines.filter(function(l){return l.lot!==LOT_DEPOSE;}));
   // Mémoriser les nouveaux ouvrages proposés pour validation ultérieure
   window._aiNewOuvrages=lines.filter(function(l){return l.isNew;}).map(function(l){
     return {designation:l.designation,unite:l.unite,prix:parseFloat(l.pu)||0,lot:l.lot};
@@ -5429,7 +5439,7 @@ function _devisSectionTable(titre, items, num){
     +'<thead><tr><th class="h-desig">Désignation</th><th>Qté</th><th>PU HT</th><th>Total HT</th></tr></thead><tbody>';
   items.forEach(function(l){
     var tot=(parseFloat(l.qte)||0)*(parseFloat(l.pu)||0);
-    html+='<tr><td class="ld">'+esc(l.designation||'')+'</td>'
+    html+='<tr><td class="ld">'+esc(cleanDesig(l.designation||''))+'</td>'
       +'<td class="lq">'+esc(l.qte||'')+' '+esc(l.unite||'')+'</td>'
       +'<td class="lpu">'+fmtMoney(l.pu)+'</td>'
       +'<td class="lt">'+fmtMoney(tot)+'</td></tr>';
@@ -5461,10 +5471,11 @@ function buildDevisLotsHTML(d){
     // Regroupement automatique par lot (comportement d'origine)
     var order=[],groups={};
     lignes.forEach(function(l){
-      var lot=l.lot||guessLot(l.designation||'');
+      var lot=lotOfLine(l);
       if(!groups[lot]){groups[lot]=[];order.push(lot);}
       groups[lot].push(l);
     });
+    order.sort(function(a,b){return (b===LOT_DEPOSE?1:0)-(a===LOT_DEPOSE?1:0);}); // dépose / démolition toujours en premier
     order.forEach(function(lot){lotNum++;html+=_devisSectionTable(lot, groups[lot], lotNum);});
   }
   return html;
@@ -5828,8 +5839,59 @@ function bibCompactForPrompt(){
   txt+='=== FIN BIBLIOTHÈQUE ===\n\n';
   return txt;
 }
+function roofEgoutML(t){ // longueur d'égout (gouttières) d'une toiture simple, débord compris
+  t=t||{};var d=+t.debord||0,L=+t.l||0,l=+t.lar||0;if(!(L>0&&l>0))return 0;
+  var par=(t.sens==='larg')?l:L; // longueur parallèle au faîtage
+  if(t.type==='2pentes')return 2*(par+2*d);
+  if(t.type==='1pan'||t.type==='appentis')return L+2*d;
+  return 2*(L+2*d)+2*(l+2*d); // 4 pentes, mansarde… : tout le pourtour
+}
+var LOT_DEPOSE='Dépose / Démolition';
+var DEP_RE=/^\s*(d[ée]pose|d[ée]molition|d[ée]montage|[ée]vacuation|arrachage|purge|curage|d[ée]garnissage|d[ée]cro[uû]tage|bûchage|buchage)/i;
+function isDeposeDesig(d){return DEP_RE.test(String(d||''));}
+function cleanDesig(d){ // « Fourniture et pose de dépose… » → « Dépose… »
+  var s=String(d||'').replace(/^\s*fourniture\s*(et|&|\+)\s*pose\s*(de\s+la\s+|de\s+l'|de\s+|d'|des\s+|du\s+)?(?=(d[ée]pose|d[ée]molition|d[ée]montage|[ée]vacuation|arrachage|purge|curage|d[ée]garnissage))/i,'');
+  return s?s.charAt(0).toUpperCase()+s.slice(1):s;
+}
+function lotOfLine(l){return isDeposeDesig(cleanDesig(l.designation))?LOT_DEPOSE:(l.lot||guessLot(l.designation||''));}
+// Doublons de vocabulaire : chanlatte = contre-liteau, écran HPV = pare-pluie, crochets de gouttière compris dans la gouttière…
+function lineConcepts(desig){
+  var d=String(desig||'').toLowerCase(),c=[];
+  var noCL=d.replace(/contre[- ]?litea(u|ux)/g,' ');
+  if(/chanlatte|contre[- ]?litea/.test(d))c.push('contreliteau');
+  if(/litea(u|ux)/.test(noCL))c.push('liteau');
+  if(/[ée]cran (de )?sous[- ]?toiture|film sous[- ]?toiture|pare[- ]?pluie|\bhpv\b/.test(d))c.push('ecran');
+  if(/goutti[eè]re/.test(d)){c.push('gouttiere');c.push('crochet-gout');}
+  else if(/crochets?\b/.test(d)&&/(queue|goutti|zinc)/.test(d))c.push('crochet-gout');
+  if(/descente/.test(d)&&/(ep|eaux pluviales|zinc|pvc)/.test(d))c.push('descente');
+  if(/closoir/.test(d))c.push('closoir');
+  var dep=isDeposeDesig(cleanDesig(desig));
+  return c.map(function(x){return (dep?'dep:':'')+x;});
+}
+function dedupeDevisLines(lines){
+  var unitN=function(u){return String(u||'').toLowerCase().replace('m2','m²').replace(/\s/g,'');};
+  var info=lines.map(function(l){return {l:l,c:lineConcepts(l.designation),k:String(l.designation||'').toLowerCase().replace(/\s+/g,' ').trim()};});
+  var removed=[];
+  info.forEach(function(a,i){
+    if(a.drop)return;
+    info.forEach(function(b,j){
+      if(i===j||b.drop||a.drop)return;
+      if(unitN(a.l.unite)!==unitN(b.l.unite))return;
+      // désignation identique → doublon
+      if(a.k&&a.k===b.k&&j>i){b.drop=true;removed.push(b.l.designation);return;}
+      if(!a.c.length||!b.c.length)return;
+      // b est entièrement couvert par a ?
+      var covered=b.c.every(function(x){return a.c.indexOf(x)>=0;});
+      if(!covered)return;
+      var strict=a.c.length>b.c.length;
+      if(strict||(a.l.fromBib&&!b.l.fromBib)||(a.l.fromBib===b.l.fromBib&&j>i)){b.drop=true;removed.push(b.l.designation);}
+    });
+  });
+  return {lines:info.filter(function(x){return !x.drop;}).map(function(x){return x.l;}),removed:removed};
+}
 function guessLot(desig){
   var d=(desig||'').toLowerCase();
+  if(isDeposeDesig(cleanDesig(desig)))return LOT_DEPOSE;
   if(/margelle|terrasse bois|terrasse compos|lambourde|plot r.glable|galet|gravillon|dallage ext|pav.|cl.ture|portail|enrob.|gazon|engazonnement|plantation|all.e|brise-vue|abri de jardin|carport|piscine|pourtour/.test(d))return 'Aménagement extérieur';
   if(/charpente|fermette|panne|chevron|ossature bois|solive|bastaing/.test(d))return 'Charpente';
   if(/couverture|tuile|liteau|fa.tage|ar.tier|zinguerie|goutti.re|.cran sous|noue|ch.neau|\brive\b|closoir|bac acier|ardoise/.test(d))return 'Couverture';
