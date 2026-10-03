@@ -2209,7 +2209,7 @@ function renderDossiers(){
   if(!p.length){
     var q=fxKey(_fx.q);
     var folders=tree.folders.filter(function(f){return f.count>0&&(!q||f.key.indexOf(q)>=0);});
-    html+=fxRow({icon:'📐',name:'Édition de plans',meta:tree.edition.length+' plan'+(tree.edition.length>1?'s':'')+' non rattaché'+(tree.edition.length>1?'s':'')+' · '+fxFmtSize(fxBytes(tree.edition)),act:'open-ed',folder:true});
+    html+=fxRow({icon:'📐',name:'Édition de plans',meta:tree.edition.length+' plan'+(tree.edition.length>1?'s':'')+' non rattaché'+(tree.edition.length>1?'s':'')+' · '+fxFmtSize(fxBytes(tree.edition)),act:'open-ed',folder:true,menu:tree.edition.length?'edition':''});
     folders.forEach(function(f){var n=f.chantiers.length,nd=f.devisHors.length,nf=f.factHors.length,np=0;
       f.chantiers.forEach(function(c){nd+=c.devis.length;nf+=c.factures.length;np+=(c.visite.photos||[]).length;});
       var pl=function(k,s,p){return k?k+' '+(k>1?p:s):'';};
@@ -2281,19 +2281,51 @@ function fxOpenSVGPage(title,svg,bg){
 function fxPlanSVG(pl){
   if(pl.svg&&pl.svg.indexOf('<svg')>=0)return pl.svg;return '<div style="padding:40px;color:#8b7355;">Plan sans dessin</div>';
 }
+function fxPl(k,s,p){return k+' '+(k>1?p:s);}
+function fxDeleteFolder(f){ // supprime tout le contenu d'un dossier client (avec double confirmation)
+  var nv=f.chantiers.length,nd=f.devisHors.length,nf=f.factHors.length,np=f.plans.length,nph=0;
+  f.chantiers.forEach(function(c){nd+=c.devis.length;nf+=c.factures.length;nph+=(c.visite.photos||[]).length;});
+  var parts=[nv?fxPl(nv,'chantier','chantiers')+(nph?' ('+fxPl(nph,'photo','photos')+')':''):'',nd?fxPl(nd,'devis','devis'):'',nf?fxPl(nf,'facture','factures'):'',np?fxPl(np,'plan','plans'):'',f.client?'la fiche client':''].filter(Boolean);
+  if(!confirm('Supprimer le dossier « '+f.name+' » ?\n\nSeront supprimés : '+parts.join(', ')+'.\n\nCette action est définitive.'))return false;
+  if(nf>0&&!confirm('Ce dossier contient '+fxPl(nf,'facture','factures')+'. Une facture émise doit normalement être conservée (obligation comptable). Supprimer quand même ?'))return false;
+  var ids={visites:{},devis:{},factures:{},plans:{},clients:{}};
+  f.chantiers.forEach(function(c){ids.visites[c.visite.id]=1;c.devis.forEach(function(d){ids.devis[d.id]=1;});c.factures.forEach(function(x){ids.factures[x.id]=1;});});
+  f.devisHors.forEach(function(d){ids.devis[d.id]=1;});f.factHors.forEach(function(x){ids.factures[x.id]=1;});f.plans.forEach(function(p){ids.plans[p.id]=1;});
+  (db.clients||[]).forEach(function(c){if(fxKey(c.nom)===f.key)ids.clients[c.id]=1;});
+  Object.keys(ids).forEach(function(col){if(!db[col])return;Object.keys(ids[col]).forEach(function(id){recordTombstone(col,id);});db[col]=db[col].filter(function(x){return !ids[col][x.id];});});
+  saveDB();try{renderDevisList();renderVisitesList();renderDocs();renderFactures();renderClientsList();renderGreeting();}catch(e){}
+  showToast('Dossier « '+f.name+' » supprimé','success');return true;
+}
+function fxDeleteChantier(v){ // visite + ses devis + leurs factures
+  var nums={},dv=(db.devis||[]).filter(function(d){if(d.visiteId===v.id){nums[d.numero]=1;return true;}return false;});
+  var fc=(db.factures||[]).filter(function(f){return f.devisRef&&nums[f.devisRef];});
+  if(!confirm('Supprimer le chantier « '+fxChantierLabel(v)+' » ?\n\nSeront supprimés : la visite'+((v.photos||[]).length?' et ses '+fxPl(v.photos.length,'photo','photos'):'')+(dv.length?', '+fxPl(dv.length,'devis','devis'):'')+(fc.length?', '+fxPl(fc.length,'facture','factures'):'')+'.\n\nCette action est définitive.'))return false;
+  if(fc.length&&!confirm('Ce chantier contient '+fxPl(fc.length,'facture','factures')+'. Une facture émise doit normalement être conservée. Supprimer quand même ?'))return false;
+  recordTombstone('visites',v.id);db.visites=db.visites.filter(function(x){return x.id!==v.id;});
+  dv.forEach(function(d){recordTombstone('devis',d.id);});db.devis=db.devis.filter(function(d){return dv.indexOf(d)<0;});
+  fc.forEach(function(f){recordTombstone('factures',f.id);});db.factures=db.factures.filter(function(f){return fc.indexOf(f)<0;});
+  saveDB();try{renderDevisList();renderVisitesList();renderDocs();renderFactures();renderGreeting();}catch(e){}
+  showToast('Chantier supprimé','success');return true;
+}
 function fxItemMenu(kind,id){
   var tree=fxTree();
   if(kind==='folder'){var f=tree.byKey[id];if(!f)return;
     fxSheet('Dossier « '+f.name+' »',[
       {l:'✏️ Renommer / fusionner avec un autre client',f:function(){fxClientChoice('Nouveau nom (un nom existant fusionne les dossiers)',f.name,false,function(nm){
         if(!confirm('Appliquer « '+nm+' » aux '+f.count+' élément(s) de ce dossier ?'))return;var n=fxSetClientEverywhere(f.key,nm);saveDB();fxCloseSheet();_fx.path=[];renderDossiers();showToast(n+' élément(s) mis à jour','success');});return false;}},
-      {l:'📦 Exporter le dossier (.zip)',f:function(){fxExportZip(f);}}
+      {l:'📦 Exporter le dossier (.zip)',f:function(){fxExportZip(f);}},
+      {l:'🗑 Supprimer le dossier',danger:true,f:function(){if(fxDeleteFolder(f)){_fx.path=[];renderDossiers();}}}
     ]);return;}
+  if(kind==='edition'){var ed=tree.edition;
+    fxSheet('Dossier « Édition de plans »',[{l:'🗑 Supprimer les '+fxPl(ed.length,'plan','plans')+' non rattachés',danger:true,f:function(){
+      if(!confirm('Supprimer définitivement '+fxPl(ed.length,'plan','plans')+' du dossier Édition de plans ?'))return;
+      ed.forEach(function(p){recordTombstone('plans',p.id);});db.plans=db.plans.filter(function(p){return ed.indexOf(p)<0;});saveDB();renderDossiers();showToast('Dossier vidé','success');}}]);return;}
   if(kind==='visite'){var v=db.visites.find(function(x){return x.id===id;});if(!v)return;
     fxSheet(fxChantierLabel(v),[
       {l:'📂 Ouvrir la visite',f:function(){showView('accueil');reopenParcoursFromVisite(v.id);}},
       {l:'↪ Déplacer vers un autre client',f:function(){fxClientChoice('Déplacer le chantier (avec ses devis et factures) vers :',v.client,false,function(nm){fxMoveVisite(v,nm);saveDB();fxCloseSheet();_fx.path=['c',fxKey(nm)];renderDossiers();showToast('Chantier déplacé vers '+nm,'success');});return false;}},
-      {l:'🗑 Supprimer la visite',danger:true,f:function(){if(deleteVisite(v.id)){_fx.path=_fx.path.slice(0,2);renderDossiers();}}}
+      {l:'🗑 Supprimer le chantier complet (visite, devis, factures)',danger:true,f:function(){if(fxDeleteChantier(v)){_fx.path=_fx.path.slice(0,2);renderDossiers();}}},
+      {l:'🗑 Supprimer seulement la visite',danger:true,f:function(){if(deleteVisite(v.id)){_fx.path=_fx.path.slice(0,2);renderDossiers();}}}
     ]);return;}
   if(kind==='devis'){var d=db.devis.find(function(x){return x.id===id;});if(!d)return;
     fxSheet('Devis '+(d.numero||''),[
@@ -3824,12 +3856,110 @@ function skelRelink(segs){
   return loops;
 }
 
+// ===== SQUELETTE DE TOIT GÉNÉRAL (angles quelconques, toutes pentes égales) =====
+// Les égouts montent vers l'intérieur à la même vitesse ; chaque sommet suit la bissectrice.
+// Événements : un côté se réduit à zéro (« edge event »), ou un sommet rentrant percute
+// un côté opposé et coupe la forme en deux (« split event »).
+// Sorties : ridges (faîtages), hips (arêtiers), valleys (noues), pans (quads balayés), front (contour à tMax).
+function skelGen(polyIn,tMax){
+  var EPS=1e-9,LEPS=1e-7;
+  var lim=(tMax===undefined)?Infinity:tMax;
+  var P=polyIn.map(function(p){return {x:+p.x,y:+p.y};});
+  var ar=0;for(var i=0;i<P.length;i++){var j=(i+1)%P.length;ar+=P[i].x*P[j].y-P[j].x*P[i].y;}
+  if(ar<0)P.reverse();
+  var out={ridges:[],hips:[],valleys:[],pans:[],front:null,tEnd:0};
+  function unit(dx,dy){var l=Math.hypot(dx,dy);return l>0?{x:dx/l,y:dy/l}:{x:0,y:0};}
+  function mk(L){ // positions → sommets avec direction sortante
+    var n=L.length;return L.map(function(p,k){var q=L[(k+1)%n];return {x:p.x,y:p.y,d:unit(q.x-p.x,q.y-p.y)};});
+  }
+  var t=0;
+  function addRidge(a,b){if(Math.hypot(a.x-b.x,a.y-b.y)>LEPS)out.ridges.push({a:{x:a.x,y:a.y},b:{x:b.x,y:b.y},za:t,zb:t});}
+  function cleanup(L){ // retire côtés nuls, sommets alignés et pointes ; peut vider la boucle
+    var guard=0,changed=true;
+    while(changed&&L.length>=2&&guard++<10000){changed=false;
+      var n=L.length;
+      for(var k=0;k<n;k++){var v=L[k],w=L[(k+1)%n];
+        if(Math.hypot(w.x-v.x,w.y-v.y)<LEPS){v.d=w.d;L.splice((k+1)%n,1);changed=true;break;}}
+      if(changed)continue;n=L.length;if(n<3)break;
+      for(var k2=0;k2<n;k2++){var a=L[(k2-1+n)%n],v2=L[k2];var dot=a.d.x*v2.d.x+a.d.y*v2.d.y,cr=a.d.x*v2.d.y-a.d.y*v2.d.x;
+        if(Math.abs(cr)<1e-9&&dot>0){a.d=v2.d;L.splice(k2,1);changed=true;break;} // aligné
+        if(Math.abs(cr)<1e-9&&dot<0){ // pointe : deux côtés superposés en sens inverse
+          var b=L[(k2+1)%n],la=Math.hypot(v2.x-a.x,v2.y-a.y),lb=Math.hypot(b.x-v2.x,b.y-v2.y);
+          if(la<=lb){addRidge(v2,a);a.d=v2.d;L.splice(k2,1);}else{addRidge(v2,b);var ia=(k2-1+n)%n;L[ia].d=unit(b.x-a.x,b.y-a.y);L.splice(k2,1);}
+          changed=true;break;}
+      }
+    }
+    if(L.length===2){addRidge(L[0],L[1]);L.length=0;}
+    if(L.length<2)L.length=0;
+    return L;
+  }
+  var loops=[cleanup(mk(P))].filter(function(L){return L.length>=3;});
+  var guard=0;
+  while(loops.length&&guard++<20000){
+    // vitesses
+    loops.forEach(function(L){var n=L.length;L.forEach(function(v,k){var a=L[(k-1+n)%n].d,b=v.d;
+      var na={x:-a.y,y:a.x},nb={x:-b.y,y:b.x},den=1+na.x*nb.x+na.y*nb.y;
+      v.vx=(na.x+nb.x)/Math.max(den,1e-12);v.vy=(na.y+nb.y)/Math.max(den,1e-12);
+      v.din=a;v.reflex=(a.x*b.y-a.y*b.x)<-1e-12;});});
+    // prochain événement
+    var best=null;
+    loops.forEach(function(L,li){var n=L.length;
+      for(var k=0;k<n;k++){var p=L[k],q=L[(k+1)%n],e=p.d;
+        var L0=(q.x-p.x)*e.x+(q.y-p.y)*e.y,dL=(q.vx-p.vx)*e.x+(q.vy-p.vy)*e.y;
+        if(dL<-1e-12){var te=-L0/dL;if(te<0)te=0;if(!best||te<best.t-EPS)best={t:te,kind:'edge',li:li,k:k};}
+      }
+      for(var r=0;r<n;r++){var R=L[r];if(!R.reflex)continue;
+        for(var k3=0;k3<n;k3++){if(k3===r||(k3+1)%n===r)continue;var p3=L[k3],q3=L[(k3+1)%n],e3=p3.d,nrm={x:-e3.y,y:e3.x};
+          var dist0=nrm.x*(R.x-p3.x)+nrm.y*(R.y-p3.y),rel=1-(nrm.x*R.vx+nrm.y*R.vy);
+          if(dist0<-LEPS||rel<1e-12)continue;var ts=Math.max(0,dist0/rel);
+          if(best&&ts>=best.t-EPS)continue;
+          var rx=R.x+R.vx*ts,ry=R.y+R.vy*ts,px=p3.x+p3.vx*ts,py=p3.y+p3.vy*ts,qx=q3.x+q3.vx*ts,qy=q3.y+q3.vy*ts;
+          var len=(qx-px)*e3.x+(qy-py)*e3.y,s=(rx-px)*e3.x+(ry-py)*e3.y;
+          if(len<-LEPS||s<-1e-6||s>len+1e-6)continue;
+          best={t:ts,kind:'split',li:li,r:r,k:k3};
+        }
+      }
+    });
+    if(!best)break;
+    var tau=best.t,stop=false;if(t+tau>=lim){tau=lim-t;stop=true;}
+    var T1=t+tau;
+    // balayage : pans et trajectoires des sommets
+    loops.forEach(function(L){var n=L.length;
+      L.forEach(function(v,k){var q=L[(k+1)%n];
+        var a1={x:v.x+v.vx*tau,y:v.y+v.vy*tau},b1={x:q.x+q.vx*tau,y:q.y+q.vy*tau};
+        if(tau>EPS)out.pans.push({pts:[{x:v.x,y:v.y,z:t},{x:q.x,y:q.y,z:t},{x:b1.x,y:b1.y,z:T1},{x:a1.x,y:a1.y,z:T1}],nx:-v.d.y,ny:v.d.x});
+      });
+      L.forEach(function(v){var nx={x:v.x+v.vx*tau,y:v.y+v.vy*tau};
+        if(tau>EPS&&Math.hypot(nx.x-v.x,nx.y-v.y)>LEPS){var seg={a:{x:v.x,y:v.y},b:nx,za:t,zb:T1};
+          var dot=v.din.x*v.d.x+v.din.y*v.d.y;
+          if(dot<-0.95)out.ridges.push(seg);else (v.reflex?out.valleys:out.hips).push(seg);}
+        v.x=nx.x;v.y=nx.y;});
+    });
+    t=T1;
+    if(stop){out.front=loops.map(function(L){return L.map(function(v){return {x:v.x,y:v.y};});});break;}
+    var L=loops[best.li],n=L.length;
+    if(best.kind==='edge'){var k=best.k,p=L[k],q=L[(k+1)%n];p.x=(p.x+q.x)/2;p.y=(p.y+q.y)/2;p.d=q.d;L.splice((k+1)%n,1);loops[best.li]=cleanup(L);}
+    else{
+      var R=L[best.r],k4=best.k,X={x:R.x,y:R.y},A=[],B=[];
+      // boucle A : R(→ côté sortant de R) … jusqu'à p (dont la direction reste celle du côté percuté)
+      A.push({x:X.x,y:X.y,d:R.d});for(var i1=(best.r+1)%n;i1!==(k4+1)%n;i1=(i1+1)%n){A.push(L[i1]);}
+      // boucle B : R(→ côté percuté) puis q … jusqu'au prédécesseur de R
+      B.push({x:X.x,y:X.y,d:L[k4].d});for(var i2=(k4+1)%n;i2!==best.r;i2=(i2+1)%n){B.push(L[i2]);}
+      loops.splice(best.li,1,cleanup(A),cleanup(B));
+    }
+    loops=loops.filter(function(L){return L.length>=3;});
+  }
+  out.tEnd=t;return out;
+}
+
+function dtIsOrtho(poly){for(var q=0;q<poly.length;q++){var a=poly[q],b=poly[(q+1)%poly.length];if(Math.abs(a.x-b.x)>0.15&&Math.abs(a.y-b.y)>0.15)return false;}return true;}
+function dtSnapOrtho(poly){var P=poly.map(function(p){return {x:p.x,y:p.y};});for(var q=1;q<=P.length;q++){var pa=P[q-1],pb=P[q%P.length];if(Math.abs(pa.x-pb.x)<Math.abs(pa.y-pb.y))pb.x=pa.x;else pb.y=pa.y;}return P;}
+function dtSkeleton(polyM,tMax){return dtIsOrtho(polyM)?skelOrtho(dtSnapOrtho(polyM),tMax):skelGen(polyM,tMax);}
 function dtDebord(){var el=document.getElementById('dt-debord');var v=el?parseFloat(el.value):0;return v>0?v:0;}
 function dtComputeWalls(){ // murs = contour érodé du débord (même moteur que le toit)
   _dt.wallPx=null;var deb=dtDebord();if(!(deb>0)||!_dt.closed||_dt.contour.length<4)return;
   var mpp=_dt.mpp||dtScale();var poly=_dt.contour.map(function(p){return {x:p.x*mpp,y:p.y*mpp};});
-  for(var q=1;q<=poly.length;q++){var pa=poly[q-1],pb=poly[q%poly.length];if(Math.abs(pa.x-pb.x)<Math.abs(pa.y-pb.y))pb.x=pa.x;else pb.y=pa.y;}
-  var r=skelOrtho(poly,deb);
+  var r=dtSkeleton(poly,deb);
   if(r.front&&r.front.length)_dt.wallPx=r.front.map(function(L){return L.map(function(p){return {x:p.x/mpp,y:p.y/mpp};});});
 }
 function dtGenerate(silent){
@@ -3837,24 +3967,16 @@ function dtGenerate(silent){
   var mpp=dtScale();
   // Contour en mètres
   var polyM=_dt.contour.map(function(p){return {x:p.x*mpp,y:p.y*mpp};});
-  // Vérifier angles droits (tolérance)
-  var rectiligne=true;
-  for(var i=0;i<polyM.length;i++){
-    var a=polyM[i],b=polyM[(i+1)%polyM.length];
-    if(Math.abs(a.x-b.x)>0.15&&Math.abs(a.y-b.y)>0.15){rectiligne=false;break;}
-  }
-  if(!rectiligne){if(silent)return false;showToast('Contour non rectiligne (au moins une arête oblique). Appuie sur ⟂ Redresser pour aligner les arêtes, ou garde seulement la surface avec « Utiliser ces mesures ».','error');return;}
   var tanP=Math.tan((parseFloat(document.getElementById('dt-pente').value)||35)*Math.PI/180);
-  // Redresser les micro-écarts (< 15 cm) pour avoir des côtés strictement horizontaux/verticaux
-  var polyQ=polyM.map(function(p){return {x:p.x,y:p.y};});
-  for(var q=1;q<=polyQ.length;q++){var pa=polyQ[q-1],pb=polyQ[q%polyQ.length];if(Math.abs(pa.x-pb.x)<Math.abs(pa.y-pb.y))pb.x=pa.x;else pb.y=pa.y;}
-  var sk;try{sk=skelOrtho(polyQ);}catch(err){console.error('Calcul du toit',err);if(!silent)showToast('Le calcul du toit a échoué sur ce contour — vérifie les points ou utilise ⟂ Redresser','error');return false;}
+  var polyQ=dtIsOrtho(polyM)?dtSnapOrtho(polyM):polyM.map(function(p){return {x:p.x,y:p.y};});
+  var sk;try{sk=dtSkeleton(polyM);}catch(err){console.error('Calcul du toit',err);if(!silent)showToast('Le calcul du toit a échoué sur ce contour — vérifie les points ou utilise ⟂ Redresser','error');return false;}
   if(!sk.pans.length){if(!silent)showToast('Le calcul du toit n\'a produit aucun pan — vérifie le contour','error');return false;}
   var toPx=function(seg){return {a:{x:seg.a.x/mpp,y:seg.a.y/mpp},b:{x:seg.b.x/mpp,y:seg.b.y/mpp},za:(seg.za||0)*tanP,zb:(seg.zb||0)*tanP};};
   _dt.mpp=mpp;_dt.tanP=tanP;
   _dt.faitages=sk.ridges.filter(function(s){return Math.hypot(s.a.x-s.b.x,s.a.y-s.b.y)>1e-4;}).map(toPx);
   _dt.aretiers=sk.hips.map(toPx);
   _dt.noues=sk.valleys.map(toPx);
+  _dt.tEndM=sk.tEnd||0;
   _dt.pans=sk.pans.map(function(p){return {pts:p.pts.map(function(v){return {x:v.x/mpp,y:v.y/mpp,z:v.z*tanP};}),nx:p.nx,ny:p.ny};});
   var nRefl=0;for(var r=0;r<polyQ.length;r++){var r0=polyQ[(r-1+polyQ.length)%polyQ.length],r1=polyQ[r],r2=polyQ[(r+1)%polyQ.length];var cr=(r1.x-r0.x)*(r2.y-r1.y)-(r1.y-r0.y)*(r2.x-r1.x);if(cr<-1e-9)nRefl++;}
   var areaQ=0;for(var w=0;w<polyQ.length;w++){var w2=(w+1)%polyQ.length;areaQ+=polyQ[w].x*polyQ[w2].y-polyQ[w2].x*polyQ[w].y;}
@@ -3886,8 +4008,9 @@ function dtCompute(){
   }
   var toit=sol*slope;
   // Faîtage = horizontal → longueur plan. Arêtiers et noues montent à 45° en plan le long de la pente → facteur √(1+0,5·tan²θ)
-  var f45=dtSlopeFactor();
-  var fait=dtLineLen(_dt.faitages),noue=dtLineLen(_dt.noues)*f45,aret=dtLineLen(_dt.aretiers)*f45;
+  // Longueur réelle de chaque arête : plan + montée (za/zb en mètres de hauteur)
+  var len3=function(arr){return (arr||[]).reduce(function(s,l){var pl=dtDist(l.a,l.b)*mpp;return s+Math.sqrt(pl*pl+Math.pow((l.zb||0)-(l.za||0),2));},0);};
+  var fait=len3(_dt.faitages),noue=len3(_dt.noues),aret=len3(_dt.aretiers);
   document.getElementById('dt-r-sol').textContent=sol>0?sol.toFixed(2)+' m²':'—';
   document.getElementById('dt-r-toit').textContent=toit>0?toit.toFixed(2)+' m²':'—';
   document.getElementById('dt-r-fait').textContent=fait>0?fait.toFixed(2)+' ml':'—';
@@ -4219,8 +4342,8 @@ function p3dCoupeView(W,H){
   var t=window._toiture,src=null,tcx=window._toitureComplexe;
   if(tcx&&tcx.dessine&&_dt&&_dt.closed&&_dt.contour.length>=3){ // toit dessiné : coupe du corps principal (plus grand rectangle)
     var mppC=_dt.mpp||dtScale();var polyC=_dt.contour.map(function(p){return {x:p.x*mppC,y:p.y*mppC};});
-    var rectsC=dtDecompose(polyC);if(rectsC.length){var big=rectsC.reduce(function(a,b){return a.w*a.h>=b.w*b.h?a:b;});
-      src={type:'2pentes',l:Math.min(big.w,big.h),pente:parseFloat(document.getElementById('dt-pente').value)||35,deb:dtDebord()};}
+    if(!(_dt.tEndM>0)&&_dt.closed)dtGenerate(true);
+    if(_dt.tEndM>0)src={type:'2pentes',l:2*_dt.tEndM,pente:parseFloat(document.getElementById('dt-pente').value)||35,deb:dtDebord(),label:'coupe au point haut'};
   }else if(_ctCorps&&_ctCorps.length&&(_ctCorps[0].l||0)>0)src={type:_ctCorps[0].type,l:_ctCorps[0].l+2*(_ctCorps[0].debord||0),pente:_ctCorps[0].pente||35,deb:_ctCorps[0].debord||0};
   else if(t&&t.l>0&&t.lar>0)src={type:t.type,l:(t.sens==='larg'?t.l:t.lar)+2*(t.debord||0),pente:t.pente||35,deb:t.debord||0};
   if(!src)return null;
@@ -4245,7 +4368,7 @@ function p3dCoupeView(W,H){
   var yd=yG+22;c.beginPath();c.moveTo(X(0),yd);c.lineTo(X(l),yd);c.stroke();c.fillText('Largeur hors-tout '+l.toFixed(2)+' m',X(l/2),yd+24);
   var xd=X(l)+30;c.beginPath();c.moveTo(xd,Y(0));c.lineTo(xd,Y(WALLH));c.stroke();c.save();c.translate(xd+22,Y(WALLH/2));c.rotate(-Math.PI/2);c.fillText('Murs '+WALLH.toFixed(2)+' m',0,0);c.restore();
   var xd2=X(l)+90;c.beginPath();c.moveTo(xd2,Y(0));c.lineTo(xd2,Y(WALLH+hF));c.stroke();c.save();c.translate(xd2+22,Y((WALLH+hF)/2));c.rotate(-Math.PI/2);c.fillText('Faîte '+(WALLH+hF).toFixed(2)+' m',0,0);c.restore();
-  c.textAlign='left';c.font='bold 20px monospace';c.fillText('Pente '+src.pente+'°  ·  hauteur de toit '+hF.toFixed(2)+' m  ·  '+(typeof ctTypeLabel==='function'?ctTypeLabel(src.type):src.type),12,20);
+  c.textAlign='left';c.font='bold 20px monospace';c.fillText('Pente '+src.pente+'°  ·  hauteur de toit '+hF.toFixed(2)+' m  ·  '+(src.label||(typeof ctTypeLabel==='function'?ctTypeLabel(src.type):src.type)),12,20);
   return cv.toDataURL('image/png');
 }
 function printPageBar(title){
@@ -4569,7 +4692,7 @@ function buildAndShowPlan(){
           var px=x+(mx+nx*0.0)*sc+nx*9,py=y+my*sc+ny*9;
           sv.push('<text x="'+px.toFixed(1)+'" y="'+(py+2.5).toFixed(1)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="7" fill="#1a4a7a" font-weight="600">'+lm.toFixed(2)+'</text>');}
       })();
-      if(!r.fait.length)sv.push('<text x="'+cxd+'" y="'+(cyd+19)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="7" fill="#b45309">arêtes non générées (contour non rectiligne)</text>');
+      if(!r.fait.length&&!r.aret.length&&!r.noue.length)sv.push('<text x="'+cxd+'" y="'+(cyd+19)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="7" fill="#b45309">arêtes non générées — appuie sur Générer le toit</text>');
       sv.push('<line x1="'+x+'" y1="'+(y+h+10)+'" x2="'+(x+w)+'" y2="'+(y+h+10)+'" stroke="#1a4a7a" stroke-width="0.7"/>');
       sv.push('<text x="'+(x+w/2)+'" y="'+(y+h+22)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="#1a4a7a">'+r.l.toFixed(2)+' m</text>');
       sv.push('<line x1="'+(x-10)+'" y1="'+y+'" x2="'+(x-10)+'" y2="'+(y+h)+'" stroke="#1a4a7a" stroke-width="0.7"/>');
@@ -7342,7 +7465,7 @@ function validerSignature(){
         <span style="flex:1;"></span>
         <span>Murs</span><input type="number" id="dt-wallh" value="2.6" step="0.1" min="0" class="form-input" style="width:52px;padding:3px 5px;font-size:11px;"/><span>m</span>
       </div>
-      <div id="dt-hint" style="position:absolute;top:8px;left:8px;right:8px;font-size:11px;color:var(--c-muted);background:rgba(10,20,40,.85);padding:6px 8px;border-radius:6px;pointer-events:none;">Touche pour placer les points du contour (angles droits). Ferme en retouchant le 1er point, puis « Générer le toit ».</div>
+      <div id="dt-hint" style="position:absolute;top:8px;left:8px;right:8px;font-size:11px;color:var(--c-muted);background:rgba(10,20,40,.85);padding:6px 8px;border-radius:6px;pointer-events:none;">Touche pour placer les points du contour (tous angles possibles). Ferme en retouchant le 1er point, puis « Générer le toit ».</div>
     </div>
     <div style="padding:10px 12px;flex-shrink:0;background:var(--c-surface);border-top:1px solid var(--c-border);">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;margin-bottom:8px;">
