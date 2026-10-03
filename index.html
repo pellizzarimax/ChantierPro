@@ -77,6 +77,23 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 .badge-signé{background:rgba(34,197,94,.15);color:var(--c-success);}
 .badge-refusé{background:rgba(239,68,68,.15);color:var(--c-danger);}
 .list-item{background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;padding:14px;margin-bottom:8px;transition:border-color .2s;position:relative;z-index:1;}
+.fx-row{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;margin-bottom:6px;cursor:pointer;}
+.fx-row:active{border-color:var(--c-accent);}
+.fx-ic{font-size:22px;width:30px;text-align:center;flex-shrink:0;}
+.fx-tx{flex:1;min-width:0;}.fx-nm{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fx-mt{font-size:11px;color:var(--c-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fx-chev{color:var(--c-muted);font-size:20px;flex-shrink:0;}
+.fx-more{background:none;border:1px solid var(--c-border);color:var(--c-text);border-radius:8px;padding:4px 10px;font-size:16px;line-height:1;flex-shrink:0;}
+.fx-crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-bottom:10px;font-size:13px;}
+.fx-crumb{background:none;border:none;color:var(--c-accent);font-size:13px;padding:2px 0;font-weight:600;}.fx-crumb.cur{color:var(--c-text);}
+.fx-sep{color:var(--c-muted);}
+.fx-empty{text-align:center;color:var(--c-muted);font-size:13px;padding:24px 10px;}
+.fx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.fx-ph{position:relative;min-width:0;}.fx-ph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block;}
+.fx-phsz{position:absolute;left:4px;bottom:4px;font-size:9px;background:rgba(0,0,0,.6);color:#fff;padding:1px 4px;border-radius:4px;}
+.fx-phdel{position:absolute;right:4px;top:4px;background:rgba(239,68,68,.9);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:12px;}
+.fx-sh-t{font-weight:700;font-size:15px;margin-bottom:12px;}
+.fx-danger{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.4);}
 .swipe-bg{position:absolute;right:0;width:110px;background:#ef4444;color:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;z-index:0;pointer-events:none;}
 .list-item:active{border-color:var(--c-accent);}
 .list-item-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
@@ -377,6 +394,14 @@ window._loadPdfJs=function(){
       </div>
       <div id="docs-list"></div>
     </div>
+    <div class="view" id="view-dossiers">
+      <div class="section-title">Dossiers</div>
+      <div class="section-sub" id="fx-total">Stockage</div>
+      <div id="fx-search-wrap"><input class="form-input" id="fx-search" placeholder="🔍 Rechercher un client" style="margin-bottom:10px;"/></div>
+      <div class="fx-crumbs" id="fx-crumbs"></div>
+      <div id="fx-list"></div>
+    </div>
+
     <div class="view" id="view-planning">
       <div class="section-title">Planning</div><div class="section-sub">Organisation des chantiers</div>
       <button class="btn btn-primary btn-full" id="btn-add-planning">+ Nouvel evenement</button>
@@ -405,6 +430,7 @@ window._loadPdfJs=function(){
         <div class="card-title" style="font-size:13px;">Plan coté</div>
         <button class="btn btn-primary btn-full" id="btn-plans-build" style="margin-bottom:10px;">🗺 Générer / actualiser le plan</button>
         <div id="plans-plan-slot"></div>
+        <button class="btn btn-secondary btn-full" id="btn-plans-save" style="margin-top:4px;">💾 Enregistrer le plan (client ou dossier)</button>
       </div>
       <div id="plans-poly-block">
 
@@ -443,6 +469,7 @@ window._loadPdfJs=function(){
         <button class="btn btn-secondary" id="pl-reset">🗑 Réinitialiser</button>
         <button class="btn btn-primary" id="pl-export">📄 Exporter PDF</button>
       </div>
+      <button class="btn btn-secondary" id="pl-save-plan" style="width:100%;margin-top:8px;">💾 Enregistrer le plan (client ou dossier)</button>
       <button class="btn btn-primary" id="pl-use-parcours" style="width:100%;margin-top:8px;display:none;">✓ Utiliser cette surface dans le devis</button>
       </div><!-- /plans-poly-block -->
     </div>
@@ -703,6 +730,7 @@ window._loadPdfJs=function(){
       <button class="sm-item" data-menu="accueil"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
       <button class="sm-item" data-menu="visites"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>Visites chantier</button>
       <button class="sm-item" data-menu="devis"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Devis &amp; Factures</button>
+      <button class="sm-item" data-menu="dossiers"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="3" y1="11" x2="21" y2="11"/></svg>Dossiers <span class="sm-badge">NOUVEAU</span></button>
       <button class="sm-item" data-menu="docs"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Documents</button>
       <div class="sm-divider"></div>
       <div class="sm-cat">OUTILS</div>
@@ -1060,9 +1088,9 @@ window._loadPdfJs=function(){
 'use strict';
 var SK='chantierspro_max_v1';
 var yr=new Date().getFullYear();
-var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],depenses:[],bibliotheque:[],tarifsFournisseurs:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
+var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],depenses:[],bibliotheque:[],tarifsFournisseurs:[],plans:[],settings:{entreprise:'',siret:'',tel:'',email:'',adresse:'',prefix:'DEV-'+yr+'-',nextNum:1,logo:'',tarifs:{carreleur_mo:42,peintre_mo:38,plombier_mo:62,electricien_mo:60,menuisier_mo:50,macon_mo:45,marge:0,tva_defaut:10,notes:''},ai:{provider:'claude',claudeKey:'',openaiKey:'',claudeModel:'claude-sonnet-4-20250514',openaiModel:'gpt-4o-mini',proxyUrl:''}}};
 var db=JSON.parse(JSON.stringify(DFLT));
-function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;if(!db.depenses)db.depenses=[];if(!db.bibliotheque)db.bibliotheque=[];if(!db.tarifsFournisseurs)db.tarifsFournisseurs=[];if(!db.bibliotheque.length)db.bibliotheque=defaultBibliotheque();
+function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;if(!db.depenses)db.depenses=[];if(!db.bibliotheque)db.bibliotheque=[];if(!db.tarifsFournisseurs)db.tarifsFournisseurs=[];if(!db.plans)db.plans=[];if(!db.bibliotheque.length)db.bibliotheque=defaultBibliotheque();
     // Migration catalogue v6 : compléter avec les nouveaux ouvrages (préserve ajouts perso et prix modifiés)
     if(db.bibliotheque.length>0&&!db.settings._bibV6){
       var existingDesigs={};db.bibliotheque.forEach(function(b){existingDesigs[(b.designation||'').toLowerCase()]=1;});
@@ -1750,7 +1778,7 @@ function pushToCloud(){
     try{
       var col=fbDb.collection('users').doc(currentUser.uid).collection('data');
       var ts=firebase.firestore.FieldValue.serverTimestamp();
-      ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs'].forEach(function(c){
+      ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs','plans'].forEach(function(c){
         col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(e){console.warn('Sync '+c,e);});
       });
       col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(e){console.warn('Sync settings',e);});
@@ -1820,7 +1848,7 @@ function flushToCloudNow(){
   try{
     var col=fbDb.collection('users').doc(currentUser.uid).collection('data');
     var ts=firebase.firestore.FieldValue.serverTimestamp();
-    ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs'].forEach(function(c){
+    ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs','plans'].forEach(function(c){
       col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(){});
     });
     col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(){});
@@ -1962,7 +1990,7 @@ function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;v
       }
     }
   }).catch(function(){});
-  ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){
+  ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs','plans'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){
     // Fusion sûre : union par id, sans perdre les données locales non encore synchronisées
     var remote=x.items||[];var local=db[c]||[];
     var byId={};
@@ -1981,7 +2009,7 @@ function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;v
     if(c==='depenses'&&typeof renderDepenses==='function')renderDepenses();
     if(typeof renderGreeting==='function')renderGreeting();
   }}}).catch(function(){});});}
-function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');var ts=firebase.firestore.FieldValue.serverTimestamp();var jobs=['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs'].map(function(c){return col.doc(c).set({items:db[c]||[],updatedAt:ts});});jobs.push(col.doc('_settings').set({data:db.settings,updatedAt:ts}));jobs.push(col.doc('_tombstones').set({data:db._tombstones||{},updatedAt:ts}));Promise.all(jobs).then(function(){showToast('Synchronisé !','success');}).catch(function(){showToast('Erreur sync','error');});}
+function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');var ts=firebase.firestore.FieldValue.serverTimestamp();var jobs=['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs','plans'].map(function(c){return col.doc(c).set({items:db[c]||[],updatedAt:ts});});jobs.push(col.doc('_settings').set({data:db.settings,updatedAt:ts}));jobs.push(col.doc('_tombstones').set({data:db._tombstones||{},updatedAt:ts}));Promise.all(jobs).then(function(){showToast('Synchronisé !','success');}).catch(function(){showToast('Erreur sync','error');});}
 
 // NAV/TOAST/UTILS
 function showView(n){document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});var el=document.getElementById('view-'+n);if(el)el.classList.add('active');document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===n);});}
@@ -2131,12 +2159,216 @@ function enableSwipeDelete(containerId){
   }
   cont.addEventListener('touchend',end);cont.addEventListener('touchcancel',end);
 }
+// ===== EXPLORATEUR DE DOSSIERS =====
+// Regroupe les données existantes par client → chantier, SANS les modifier.
+// Seules les actions explicites (déplacer, renommer, supprimer) écrivent dans la base.
+var _fx={path:[],q:''};
+function fxKey(n){return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+function fxBytes(o){try{return JSON.stringify(o).length*2;}catch(e){return 0;}}
+function fxFmtSize(b){if(b<1024)return b+' o';if(b<1048576)return (b/1024).toFixed(b<10240?1:0)+' ko';return (b/1048576).toFixed(2)+' Mo';}
+function fxTree(){
+  var F={},get=function(name){var k=fxKey(name);if(!F[k])F[k]={key:k,name:String(name||'').trim()||'Sans client',chantiers:[],devisHors:[],factHors:[],plans:[],client:null};return F[k];};
+  (db.clients||[]).forEach(function(c){var f=get(c.nom);f.client=c;f.name=c.nom||f.name;});
+  var byVisite={};
+  (db.visites||[]).forEach(function(v){var ch={visite:v,devis:[],factures:[]};byVisite[v.id]=ch;get(v.client).chantiers.push(ch);});
+  var devisByNum={};
+  (db.devis||[]).forEach(function(d){devisByNum[d.numero]=d;var ch=d.visiteId&&byVisite[d.visiteId];if(ch)ch.devis.push(d);else get(d.client).devisHors.push(d);});
+  (db.factures||[]).forEach(function(f){var d=f.devisRef&&devisByNum[f.devisRef];var ch=d&&d.visiteId&&byVisite[d.visiteId];
+    if(ch)ch.factures.push(f);else get(f.client||(d&&d.client)).factHors.push(f);});
+  var edition=[];
+  (db.plans||[]).forEach(function(p){if(p.client)get(p.client).plans.push(p);else edition.push(p);});
+  var list=Object.keys(F).map(function(k){var f=F[k];
+    f.size=fxBytes(f.chantiers)+fxBytes(f.devisHors)+fxBytes(f.factHors)+fxBytes(f.plans);
+    f.count=f.chantiers.length+f.devisHors.length+f.factHors.length+f.plans.length;
+    f.last=[].concat(f.chantiers.map(function(c){return c.visite.date||c.visite.createdAt||'';}),f.devisHors.map(function(d){return d.date||'';}),f.factHors.map(function(x){return x.date||'';}),f.plans.map(function(p){return p.createdAt||'';})).sort().pop()||'';
+    return f;});
+  list.sort(function(a,b){return (b.last||'').localeCompare(a.last||'')||a.name.localeCompare(b.name);});
+  return {folders:list,byKey:F,edition:edition};
+}
+function fxRow(o){ // o:{icon,name,meta,act,data,folder,menu}
+  return '<div class="fx-row" data-fxact="'+o.act+'" data-fxid="'+esc(o.data||'')+'">'
+    +'<div class="fx-ic">'+o.icon+'</div>'
+    +'<div class="fx-tx"><div class="fx-nm">'+esc(o.name)+'</div>'+(o.meta?'<div class="fx-mt">'+o.meta+'</div>':'')+'</div>'
+    +(o.menu?'<button class="fx-more" data-fxmenu="'+o.menu+'" data-fxid="'+esc(o.data||'')+'" aria-label="Actions">⋯</button>':'')
+    +(o.folder?'<div class="fx-chev">›</div>':'')+'</div>';
+}
+function fxCrumbs(tree){
+  var p=_fx.path,parts=[{l:'Dossiers',n:0}];
+  if(p[0]==='c'){var f=tree.byKey[p[1]];parts.push({l:f?f.name:'?',n:2});
+    if(p[2]==='v'){var ch=f&&f.chantiers.find(function(c){return c.visite.id===p[3];});parts.push({l:ch?(ch.visite.nature||'Chantier'):'?',n:4});if(p[4]==='photos')parts.push({l:'Photos',n:5});}}
+  if(p[0]==='ed')parts.push({l:'Édition de plans',n:1});
+  return parts.map(function(x,i){return i<parts.length-1?'<button class="fx-crumb" data-fxup="'+x.n+'">'+esc(x.l)+'</button><span class="fx-sep">›</span>':'<span class="fx-crumb cur">'+esc(x.l)+'</span>';}).join('');
+}
+function fxChantierLabel(v){return (v.nature||'Chantier')+(v.date?' · '+fmtDate(v.date):'');}
+function renderDossiers(){
+  var cont=document.getElementById('fx-list'),cr=document.getElementById('fx-crumbs'),tot=document.getElementById('fx-total');if(!cont)return;
+  var tree=fxTree(),p=_fx.path,html='';
+  if(tot)tot.textContent='Stockage total : '+fxFmtSize(JSON.stringify(db).length*2)+' / ~5 Mo';
+  cr.innerHTML=fxCrumbs(tree);
+  document.getElementById('fx-search-wrap').style.display=p.length?'none':'block';
+  if(!p.length){
+    var q=fxKey(_fx.q);
+    var folders=tree.folders.filter(function(f){return f.count>0&&(!q||f.key.indexOf(q)>=0);});
+    html+=fxRow({icon:'📐',name:'Édition de plans',meta:tree.edition.length+' plan'+(tree.edition.length>1?'s':'')+' non rattaché'+(tree.edition.length>1?'s':'')+' · '+fxFmtSize(fxBytes(tree.edition)),act:'open-ed',folder:true});
+    folders.forEach(function(f){var n=f.chantiers.length,nd=f.devisHors.length,nf=f.factHors.length,np=0;
+      f.chantiers.forEach(function(c){nd+=c.devis.length;nf+=c.factures.length;np+=(c.visite.photos||[]).length;});
+      var pl=function(k,s,p){return k?k+' '+(k>1?p:s):'';};
+      var meta=[pl(n,'chantier','chantiers'),pl(nd,'devis','devis'),pl(nf,'facture','factures'),pl(f.plans.length,'plan','plans'),pl(np,'photo','photos'),fxFmtSize(f.size)].filter(Boolean).join(' · ');
+      html+=fxRow({icon:f.key?'📁':'❔',name:f.name,meta:meta,act:'open-c',data:f.key,folder:true,menu:'folder'});});
+    if(!folders.length&&q)html+='<div class="fx-empty">Aucun dossier ne correspond à « '+esc(_fx.q)+' »</div>';
+  }else if(p[0]==='ed'){
+    if(!tree.edition.length)html+='<div class="fx-empty">Aucun plan ici. Dans Édition de plans, appuie sur « 💾 Enregistrer » et choisis « Dossier Édition de plans ».</div>';
+    tree.edition.forEach(function(pl){html+=fxRow({icon:'🗺',name:pl.nom||'Plan',meta:(pl.resume?esc(pl.resume)+' · ':'')+fmtDate((pl.createdAt||'').slice(0,10))+' · '+fxFmtSize(fxBytes(pl)),act:'open-plan',data:pl.id,menu:'plan'});});
+  }else if(p[0]==='c'){
+    var f=tree.byKey[p[1]];if(!f){_fx.path=[];return renderDossiers();}
+    if(p.length===2){
+      f.chantiers.slice().sort(function(a,b){return (b.visite.date||'').localeCompare(a.visite.date||'');}).forEach(function(ch){
+        var v=ch.visite,np=(v.photos||[]).length;
+        html+=fxRow({icon:'🏗',name:fxChantierLabel(v),meta:[np?np+' photo'+(np>1?'s':''):'',ch.devis.length?ch.devis.length+' devis':'',ch.factures.length?ch.factures.length+' facture'+(ch.factures.length>1?'s':''):'',fxFmtSize(fxBytes(ch))].filter(Boolean).join(' · '),act:'open-v',data:v.id,folder:true,menu:'visite'});});
+      f.plans.forEach(function(pl){html+=fxRow({icon:'🗺',name:pl.nom||'Plan',meta:'Plan enregistré · '+fmtDate((pl.createdAt||'').slice(0,10))+' · '+fxFmtSize(fxBytes(pl)),act:'open-plan',data:pl.id,menu:'plan'});});
+      f.devisHors.forEach(function(d){html+=fxRow({icon:'📄',name:'Devis '+(d.numero||''),meta:(d.objet?esc(d.objet)+' · ':'')+fmtMoney(calcTTC(d))+' TTC · '+(d.statut||''),act:'open-devis',data:d.id,menu:'devis'});});
+      f.factHors.forEach(function(x){html+=fxRow({icon:'🧾',name:'Facture '+(x.numero||''),meta:(x.type&&x.type!=='complete'?x.type+' · ':'')+fmtDate(x.date)+' · '+fxFmtSize(fxBytes(x)),act:'open-facture',data:x.id,menu:'facture'});});
+      if(!f.count)html+='<div class="fx-empty">Dossier vide.</div>';
+    }else if(p[2]==='v'){
+      var ch=f.chantiers.find(function(c){return c.visite.id===p[3];});if(!ch){_fx.path=['c',p[1]];return renderDossiers();}
+      var v=ch.visite,ph=v.photos||[];
+      if(p[4]==='photos'){
+        html+='<div class="fx-grid">'+ph.map(function(src,i){return '<div class="fx-ph"><img src="'+src+'" data-fxphoto="'+i+'" alt="Photo '+(i+1)+'"/><span class="fx-phsz">'+fxFmtSize(src.length*2)+'</span><button class="fx-phdel" data-fxphdel="'+i+'" aria-label="Supprimer">✕</button></div>';}).join('')+'</div>';
+        if(!ph.length)html+='<div class="fx-empty">Aucune photo.</div>';
+      }else{
+        html+=fxRow({icon:'📋',name:'Fiche visite',meta:esc((v.adresse||'')+(v.description?' · '+v.description.slice(0,40):'')),act:'open-visite',data:v.id,menu:'visite'});
+        if(ph.length)html+=fxRow({icon:'🖼',name:'Photos',meta:ph.length+' photo'+(ph.length>1?'s':'')+' · '+fxFmtSize(fxBytes(ph)),act:'open-photos',data:v.id,folder:true});
+        ch.devis.forEach(function(d){if(d.planSVG)html+=fxRow({icon:'🗺',name:'Plan coté — devis '+(d.numero||''),meta:fxFmtSize(d.planSVG.length*2),act:'open-devisplan',data:d.id});});
+        ch.devis.forEach(function(d){html+=fxRow({icon:'📄',name:'Devis '+(d.numero||''),meta:fmtMoney(calcTTC(d))+' TTC · '+(d.statut||'')+' · '+fmtDate(d.date),act:'open-devis',data:d.id,menu:'devis'});});
+        ch.factures.forEach(function(x){html+=fxRow({icon:'🧾',name:'Facture '+(x.numero||''),meta:(x.type&&x.type!=='complete'?x.type+' · ':'')+fmtDate(x.date),act:'open-facture',data:x.id,menu:'facture'});});
+      }
+    }
+  }
+  cont.innerHTML=html;
+}
+// ---- Feuille d'actions / dialogues ----
+function fxSheet(title,buttons){
+  var m=document.getElementById('modal-fx'),b=document.getElementById('fx-sheet');
+  b.innerHTML='<div class="fx-sh-t">'+esc(title)+'</div>'+buttons.map(function(x,i){return '<button class="btn '+(x.danger?'fx-danger':'btn-secondary')+' btn-full" data-fxbtn="'+i+'" style="margin-bottom:6px;">'+x.l+'</button>';}).join('')+'<button class="btn btn-secondary btn-full" data-fxbtn="x">Annuler</button>';
+  b._btns=buttons;m.classList.add('open');
+}
+function fxCloseSheet(){document.getElementById('modal-fx').classList.remove('open');}
+function fxClientChoice(title,current,allowEdition,cb){
+  var tree=fxTree(),names=tree.folders.filter(function(f){return f.key;}).map(function(f){return f.name;});
+  var m=document.getElementById('modal-fx'),b=document.getElementById('fx-sheet');
+  b.innerHTML='<div class="fx-sh-t">'+esc(title)+'</div>'
+    +'<input class="form-input" id="fx-cli-in" list="fx-cli-dl" placeholder="Nom du client" value="'+esc(current||'')+'" style="margin-bottom:8px;"/>'
+    +'<datalist id="fx-cli-dl">'+names.map(function(n){return '<option value="'+esc(n)+'"></option>';}).join('')+'</datalist>'
+    +'<button class="btn btn-primary btn-full" data-fxbtn="ok" style="margin-bottom:6px;">Valider</button>'
+    +(allowEdition?'<button class="btn btn-secondary btn-full" data-fxbtn="ed" style="margin-bottom:6px;">📐 Dossier Édition de plans (sans client)</button>':'')
+    +'<button class="btn btn-secondary btn-full" data-fxbtn="x">Annuler</button>';
+  b._btns={ok:function(){var v=document.getElementById('fx-cli-in').value.trim();if(!v){showToast('Saisis un nom de client','error');return false;}cb(v);},ed:function(){cb('');}};
+  m.classList.add('open');setTimeout(function(){var i=document.getElementById('fx-cli-in');if(i)i.focus();},150);
+}
+function fxSetClientEverywhere(oldKey,newName){ // renommer / fusionner un dossier client
+  var n=0;['visites','devis','factures','plans'].forEach(function(c){(db[c]||[]).forEach(function(x){if(fxKey(x.client)===oldKey){x.client=newName;n++;}});});
+  (db.clients||[]).forEach(function(c){if(fxKey(c.nom)===oldKey)c.nom=newName;});
+  return n;
+}
+function fxMoveVisite(v,name){ // déplace le chantier + ses devis et factures liés
+  v.client=name;var nums={};(db.devis||[]).forEach(function(d){if(d.visiteId===v.id){d.client=name;nums[d.numero]=1;}});
+  (db.factures||[]).forEach(function(f){if(f.devisRef&&nums[f.devisRef])f.client=name;});
+}
+function fxOpenSVGPage(title,svg,bg){
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>'+esc(title)+'</title><style>body{margin:0;background:'+(bg||'#f5f0e8')+';font-family:Arial,sans-serif;}svg{width:100%;height:auto;display:block;}.pg{padding:10px;}@media print{body{margin:0;}}</style></head><body>'+printPageBar(esc(title))+'<div class="pg">'+svg+'</div></body></html>';
+  var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();}else showToast('Autorisez les popups','error');
+}
+function fxPlanSVG(pl){
+  if(pl.svg&&pl.svg.indexOf('<svg')>=0)return pl.svg;return '<div style="padding:40px;color:#8b7355;">Plan sans dessin</div>';
+}
+function fxItemMenu(kind,id){
+  var tree=fxTree();
+  if(kind==='folder'){var f=tree.byKey[id];if(!f)return;
+    fxSheet('Dossier « '+f.name+' »',[
+      {l:'✏️ Renommer / fusionner avec un autre client',f:function(){fxClientChoice('Nouveau nom (un nom existant fusionne les dossiers)',f.name,false,function(nm){
+        if(!confirm('Appliquer « '+nm+' » aux '+f.count+' élément(s) de ce dossier ?'))return;var n=fxSetClientEverywhere(f.key,nm);saveDB();fxCloseSheet();_fx.path=[];renderDossiers();showToast(n+' élément(s) mis à jour','success');});return false;}},
+      {l:'📦 Exporter le dossier (.zip)',f:function(){fxExportZip(f);}}
+    ]);return;}
+  if(kind==='visite'){var v=db.visites.find(function(x){return x.id===id;});if(!v)return;
+    fxSheet(fxChantierLabel(v),[
+      {l:'📂 Ouvrir la visite',f:function(){showView('accueil');reopenParcoursFromVisite(v.id);}},
+      {l:'↪ Déplacer vers un autre client',f:function(){fxClientChoice('Déplacer le chantier (avec ses devis et factures) vers :',v.client,false,function(nm){fxMoveVisite(v,nm);saveDB();fxCloseSheet();_fx.path=['c',fxKey(nm)];renderDossiers();showToast('Chantier déplacé vers '+nm,'success');});return false;}},
+      {l:'🗑 Supprimer la visite',danger:true,f:function(){if(deleteVisite(v.id)){_fx.path=_fx.path.slice(0,2);renderDossiers();}}}
+    ]);return;}
+  if(kind==='devis'){var d=db.devis.find(function(x){return x.id===id;});if(!d)return;
+    fxSheet('Devis '+(d.numero||''),[
+      {l:'✏️ Ouvrir',f:function(){openEditDevis(d.id);}},
+      {l:'📄 PDF',f:function(){exportDevisPDF(d.id);}},
+      {l:'↪ Déplacer vers un autre client',f:function(){fxClientChoice('Déplacer le devis vers :',d.client,false,function(nm){d.client=nm;saveDB();fxCloseSheet();renderDossiers();renderDevisList();showToast('Devis déplacé','success');});return false;}},
+      {l:'🗑 Supprimer',danger:true,f:function(){if(deleteDevis(d.id))renderDossiers();}}
+    ]);return;}
+  if(kind==='facture'){var x=db.factures.find(function(y){return y.id===id;});if(!x)return;
+    fxSheet('Facture '+(x.numero||''),[
+      {l:'✏️ Ouvrir',f:function(){openEditFacture(x.id);}},
+      {l:'📄 PDF',f:function(){exportFacturePDF(x.id);}},
+      {l:'↪ Déplacer vers un autre client',f:function(){fxClientChoice('Déplacer la facture vers :',x.client,false,function(nm){x.client=nm;saveDB();fxCloseSheet();renderDossiers();showToast('Facture déplacée','success');});return false;}},
+      {l:'🗑 Supprimer',danger:true,f:function(){if(deleteFacture(x.id))renderDossiers();}}
+    ]);return;}
+  if(kind==='plan'){var pl=(db.plans||[]).find(function(y){return y.id===id;});if(!pl)return;
+    fxSheet(pl.nom||'Plan',[
+      {l:'👁 Voir / imprimer / partager',f:function(){fxOpenSVGPage(pl.nom||'Plan',fxPlanSVG(pl));}},
+      {l:'✏️ Renommer',f:function(){var n=prompt('Nom du plan',pl.nom||'');if(n&&n.trim()){pl.nom=n.trim();saveDB();renderDossiers();}}},
+      {l:pl.client?'↪ Déplacer':'🔗 Rattacher à un client',f:function(){fxClientChoice('Rattacher le plan à :',pl.client||'',true,function(nm){pl.client=nm;saveDB();fxCloseSheet();renderDossiers();showToast(nm?'Plan rattaché à '+nm:'Plan rangé dans Édition de plans','success');});return false;}},
+      {l:'🗑 Supprimer',danger:true,f:function(){if(!confirm('Supprimer le plan « '+(pl.nom||'Plan')+' » ?'))return;recordTombstone('plans',pl.id);db.plans=db.plans.filter(function(y){return y.id!==pl.id;});saveDB();renderDossiers();showToast('Plan supprimé','success');}}
+    ]);return;}
+}
+// ---- Export .zip d'un dossier client (photos, plans, devis/factures en JSON) ----
+function fxLoadZip(){return new Promise(function(res,rej){if(window.JSZip){res(window.JSZip);return;}var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';s.onload=function(){window.JSZip?res(window.JSZip):rej(new Error('JSZip indisponible'));};s.onerror=function(){rej(new Error('Chargement JSZip impossible (hors ligne ?)'));};document.head.appendChild(s);});}
+function fxSafe(n){return String(n||'sans-nom').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9 _.-]+/g,'-').trim().slice(0,60)||'sans-nom';}
+async function fxExportZip(f){
+  try{
+    showToast('Préparation de l\'archive…','success');
+    var JSZip=await fxLoadZip(),zip=new JSZip(),root=zip.folder(fxSafe(f.name));
+    var b64=function(src){var i=src.indexOf(',');return src.slice(i+1);};
+    f.chantiers.forEach(function(ch,ci){var v=ch.visite,dir=root.folder(fxSafe((v.date||'')+' '+(v.nature||'chantier')+' '+(ci+1)));
+      dir.file('visite.json',JSON.stringify(v,function(k,val){return k==='photos'?undefined:val;},2));
+      (v.photos||[]).forEach(function(src,i){if(/^data:image/.test(src))dir.folder('photos').file('photo-'+(i+1)+'.jpg',b64(src),{base64:true});});
+      ch.devis.forEach(function(d){dir.file('devis-'+fxSafe(d.numero)+'.json',JSON.stringify(d,null,2));if(d.planSVG)dir.file('plan-'+fxSafe(d.numero)+'.svg',d.planSVG);});
+      ch.factures.forEach(function(x){dir.file('facture-'+fxSafe(x.numero)+'.json',JSON.stringify(x,null,2));});
+    });
+    f.plans.forEach(function(pl){root.folder('plans').file(fxSafe(pl.nom)+'.svg',fxPlanSVG(pl));});
+    f.devisHors.forEach(function(d){root.folder('devis').file(fxSafe(d.numero)+'.json',JSON.stringify(d,null,2));});
+    f.factHors.forEach(function(x){root.folder('factures').file(fxSafe(x.numero)+'.json',JSON.stringify(x,null,2));});
+    var blob=await zip.generateAsync({type:'blob'}),name=fxSafe(f.name)+'.zip';
+    var file=new File([blob],name,{type:'application/zip'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});}
+    else{var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},2000);}
+    fxCloseSheet();
+  }catch(e){if(e&&e.name==='AbortError')return;console.error(e);showToast('Export impossible : '+e.message,'error');}
+}
+// ---- Enregistrer un plan (Édition de plans) ----
+function fxSavePlan(source){
+  var svg='',resume='',data=null;
+  if(source==='poly'){
+    plCollect();var pts=plBuildPoints();if(pts.length<3){showToast('Ajoute au moins 3 côtés','error');return;}
+    plCompute();svg=document.getElementById('pl-svg-container').innerHTML;
+    resume=document.getElementById('pl-surface').textContent+' m² · périmètre '+document.getElementById('pl-perimetre').textContent+' m';
+    data={type:'polygone',segments:JSON.parse(JSON.stringify(plSegments))};
+  }else{
+    buildAndShowPlan();svg=planSVG;if(!svg||svg.indexOf('<svg')<0){showToast('Génère d\'abord le plan','error');return;}
+    resume='Plan coté (métrés)';
+    data={type:'metres',cSurfaces:cSurfaces,cDeductions:cDeductions,cVolumes:cVolumes,cLineaires:cLineaires,cMurs:cMurs,toiture:window._toiture||null,toitureComplexe:window._toitureComplexe||null,corps:_ctCorps};
+  }
+  var nom=prompt('Nom du plan',source==='poly'?'Plan '+new Date().toLocaleDateString('fr-FR'):'Plan coté '+new Date().toLocaleDateString('fr-FR'));if(nom===null)return;
+  fxClientChoice('Ranger le plan dans :','',true,function(client){
+    if(!db.plans)db.plans=[];
+    db.plans.push({id:genId(),nom:(nom||'Plan').trim(),client:client,svg:svg,resume:resume,data:JSON.parse(JSON.stringify(data)),createdAt:new Date().toISOString()});
+    saveDB();fxCloseSheet();showToast(client?'Plan enregistré dans le dossier '+client:'Plan enregistré dans Édition de plans','success');
+  });
+}
+
 function handleMenuNav(action){
   closeSideMenu();
   switch(action){
     case 'accueil': showView('accueil'); if(typeof renderRecentActivity==='function')renderRecentActivity(); break;
     case 'visites': showView('visites'); if(typeof renderVisitesList==='function')renderVisitesList(); break;
     case 'devis': showView('devis'); if(typeof renderDevisList==='function')renderDevisList(); if(typeof renderFactures==='function')renderFactures(); break;
+    case 'dossiers': showView('dossiers'); _fx.path=[]; renderDossiers(); break;
     case 'docs': showView('docs'); if(typeof renderDocs==='function')renderDocs(); break;
     case 'banque': showView('banque'); break;
     case 'depenses': showView('depenses'); renderDepenses(); break;
@@ -5245,7 +5477,7 @@ function backupImport(file){
       var imported=JSON.parse(e.target.result);
       if(!imported||typeof imported!=='object'){showToast('Fichier invalide','error');return;}
       // Fusionner : garder ce qui existe, ajouter l'importé
-      ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs'].forEach(function(c){
+      ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs','plans'].forEach(function(c){
         if(Array.isArray(imported[c])){
           var byId={};
           (db[c]||[]).forEach(function(it){if(it&&it.id)byId[it.id]=it;});
@@ -5980,6 +6212,37 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('cotes-tabs').addEventListener('click',function(e){var b=e.target.closest('.mtab');if(b)switchCotesTab(b.dataset.ctab);});
   var _bpb=document.getElementById('btn-plans-build');
   if(_bpb)_bpb.addEventListener('click',function(){buildAndShowPlan();var pv=document.getElementById('plan-preview');if(pv)pv.scrollIntoView({behavior:'smooth',block:'start'});});
+  var _fxl=document.getElementById('fx-list');
+  if(_fxl)_fxl.addEventListener('click',function(e){
+    var m=e.target.closest('[data-fxmenu]');if(m){e.stopPropagation();fxItemMenu(m.dataset.fxmenu,m.dataset.fxid);return;}
+    var pd=e.target.closest('[data-fxphdel]');if(pd){var v=db.visites.find(function(x){return x.id===_fx.path[3];});var i=parseInt(pd.dataset.fxphdel);
+      if(v&&confirm('Supprimer cette photo ? Elle sera retirée de la visite.')){v.photos.splice(i,1);saveDB();renderDossiers();showToast('Photo supprimée','success');}return;}
+    var pv=e.target.closest('[data-fxphoto]');if(pv){fxOpenSVGPage('Photo','<img src="'+pv.src+'" style="width:100%;display:block;"/>','#000');return;}
+    var r=e.target.closest('[data-fxact]');if(!r)return;var a=r.dataset.fxact,id=r.dataset.fxid;
+    if(a==='open-ed'){_fx.path=['ed'];renderDossiers();}
+    else if(a==='open-c'){_fx.path=['c',id];renderDossiers();}
+    else if(a==='open-v'){_fx.path=['c',_fx.path[1],'v',id];renderDossiers();}
+    else if(a==='open-photos'){_fx.path=_fx.path.slice(0,4).concat(['photos']);renderDossiers();}
+    else if(a==='open-visite'){fxItemMenu('visite',id);}
+    else if(a==='open-devis'){openEditDevis(id);}
+    else if(a==='open-facture'){openEditFacture(id);}
+    else if(a==='open-plan'){var pl=(db.plans||[]).find(function(x){return x.id===id;});if(pl)fxOpenSVGPage(pl.nom||'Plan',fxPlanSVG(pl));}
+    else if(a==='open-devisplan'){var d=db.devis.find(function(x){return x.id===id;});if(d&&d.planSVG)fxOpenSVGPage('Plan coté — '+(d.numero||''),d.planSVG);}
+    window.scrollTo(0,0);
+  });
+  var _fxc=document.getElementById('fx-crumbs');
+  if(_fxc)_fxc.addEventListener('click',function(e){var b=e.target.closest('[data-fxup]');if(!b)return;_fx.path=_fx.path.slice(0,parseInt(b.dataset.fxup));renderDossiers();});
+  var _fxs=document.getElementById('fx-search');if(_fxs)_fxs.addEventListener('input',function(){_fx.q=_fxs.value;renderDossiers();});
+  var _fxm=document.getElementById('modal-fx');
+  if(_fxm)_fxm.addEventListener('click',function(e){
+    if(e.target===_fxm){fxCloseSheet();return;}
+    var b=e.target.closest('[data-fxbtn]');if(!b)return;var k=b.dataset.fxbtn,sh=document.getElementById('fx-sheet');
+    if(k==='x'){fxCloseSheet();return;}
+    var btns=sh._btns,fn=Array.isArray(btns)?(btns[parseInt(k)]&&btns[parseInt(k)].f):btns[k];
+    if(!fn)return;var keep=fn();if(keep!==false&&sh._btns===btns)fxCloseSheet();
+  });
+  var _plsv=document.getElementById('pl-save-plan');if(_plsv)_plsv.addEventListener('click',function(){fxSavePlan('poly');});
+  var _plsm=document.getElementById('btn-plans-save');if(_plsm)_plsm.addEventListener('click',function(){fxSavePlan('metres');});
   var _pmt=document.getElementById('plans-mode-tabs');
   if(_pmt)_pmt.addEventListener('click',function(e){var b=e.target.closest('.mtab');if(b)switchPlansMode(b.dataset.plmode);});
 
@@ -7009,6 +7272,9 @@ function validerSignature(){
       <button class="btn btn-primary btn-full" style="margin-top:10px;" id="fact-pct-go">Créer</button>
     </div>
   </div>
+</div>
+<div class="modal-overlay" id="modal-fx">
+  <div class="modal"><div class="modal-handle"></div><div id="fx-sheet"></div></div>
 </div>
 <div class="modal-overlay" id="modal-plan3d">
   <div class="modal modal-full" style="display:flex;flex-direction:column;height:92vh;padding:0;">
