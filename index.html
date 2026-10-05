@@ -1736,6 +1736,7 @@ function defaultBibliotheque(){
 var _storageWarned=false,_storageFull=false;
 function storageSizeMB(str){return (str.length*2)/1048576;} // UTF-16 ≈ 2 octets/car
 function saveDB(){
+  try{stampModified();}catch(e){}
   var json=JSON.stringify(db);
   try{
     localStorage.setItem(SK,json);
@@ -1769,24 +1770,195 @@ function purgeTombstones(){
     db._tombstones[c]=(db._tombstones[c]||[]).filter(function(t){return (t.at||0)>cutoff;});
   });
 }
+// ===================== SYNCHRONISATION CLOUD (v2) =====================
+// Règles : 1) on n'écrit JAMAIS une collection dans le cloud avant d'avoir lu sa version cloud (sinon un appareil
+// vide écrase tout) ; 2) les collections sont découpées en plusieurs documents (limite Firestore 1 Mo par document) ;
+// 3) les photos des visites sont stockées une par document ; 4) chaque élément porte sa date de modification (_m)
+// et c'est la version la plus récente qui gagne d'un appareil à l'autre.
+var SYNC_COLS=['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs','plans'];
+var SYNC_CHUNK=600000;           // caractères JSON max par document
+var _pulled={},_pullBusy=null,_lastPullTry=0,_lastPushed={},_itemSig={};
+function _sigOf(it){try{return JSON.stringify(it,function(k,v){return (k==='_m'||k==='_ph')?undefined:v;});}catch(e){return '';}}
+function initSigs(){_itemSig={};SYNC_COLS.forEach(function(c){(db[c]||[]).forEach(function(it){if(it&&it.id)_itemSig[c+':'+it.id]=_sigOf(it);});});}
+function stampModified(){ // date de modification par élément (sans rien changer d'autre)
+  var now=Date.now();
+  SYNC_COLS.forEach(function(c){(db[c]||[]).forEach(function(it){if(!it||!it.id)return;var k=c+':'+it.id,s=_sigOf(it);
+    if(_itemSig[k]===undefined){if(!it._m)it._m=now;}      // élément créé pendant cette session
+    else if(_itemSig[k]!==s)it._m=now;                       // élément modifié
+    _itemSig[k]=s;});});
+}
+function _syncCol(){return fbDb.collection('users').doc(currentUser.uid).collection('data');}
+function _uidKey(n){return n+'_'+(currentUser?currentUser.uid:'x');}
+function _isPhoto(p){return typeof p==='string'&&p.indexOf('data:')===0;}
+function _cloudItems(c){ // copie allégée pour le cloud (photos des visites à part)
+  var arr=db[c]||[];
+  if(c!=='visites')return arr;
+  return arr.map(function(v){if(!v||!v.photos||!v.photos.length)return v;var o={};Object.keys(v).forEach(function(k){if(k!=='photos')o[k]=v[k];});
+    o._ph=Math.max(v.photos.length,v._ph||0);o.photos=[];return o;});
+}
+function _chunks(items){
+  var out=[],cur=[],size=0;
+  items.forEach(function(it){var js=JSON.stringify(it),s=js.length+((js.match(/[^\x00-\x7f]/g)||[]).length);if(cur.length&&size+s>SYNC_CHUNK){out.push(cur);cur=[];size=0;}cur.push(it);size+=s;});
+  out.push(cur);return out;
+}
+function _pushCol(col,c,ts,force){
+  var js0=JSON.stringify(_cloudItems(c));
+  if(!force&&_lastPushed[c]===js0)return Promise.resolve();
+  // relire le cloud juste avant d'écrire : on fusionne ce qu'un autre appareil a pu ajouter entre-temps
+  return _readCol(col,c).then(function(remote){
+    var before=JSON.stringify(db[c]||[]);
+    if(remote){var np=_mergeCol(c,remote,false);if(np.length)_fetchPhotos(col,np);}
+    var items=_cloudItems(c),js=JSON.stringify(items);
+    if(JSON.stringify(db[c]||[])!==before){_saveLocalOnly();_rerender();}
+    if(remote&&JSON.stringify(remote)===js){_lastPushed[c]=js;return;}
+    var parts=_chunks(items),jobs=[];
+    parts.forEach(function(p,i){
+      if(JSON.stringify(p).length>900000)console.warn('Élément trop gros pour le cloud dans '+c);
+      jobs.push(col.doc(i===0?c:c+'__'+i).set(i===0?{items:p,chunks:parts.length,v:2,updatedAt:ts}:{items:p,updatedAt:ts}));
+    });
+    return Promise.all(jobs).then(function(){_lastPushed[c]=js;});
+  });
+}
+function _saveLocalOnly(){try{localStorage.setItem(SK,JSON.stringify(db));}catch(e){}}
+function _rerender(){try{renderGreeting();renderRecentActivity();renderDevisList();renderVisitesList();renderClientsList();renderPlanningList();renderDocs();renderFactures();if(typeof renderDepenses==='function')renderDepenses();}catch(e){}}
+function _pushTombstones(col,ts){
+  var mine=JSON.stringify(db._tombstones||{});
+  if(_lastPushed._tombstones===mine)return Promise.resolve();
+  return col.doc('_tombstones').get({source:'server'}).then(function(doc){
+    var remoteT=(doc.exists&&doc.data()&&doc.data().data)||{};
+    if(!db._tombstones)db._tombstones={};
+    Object.keys(remoteT).forEach(function(c){if(!db._tombstones[c])db._tombstones[c]=[];var have={};db._tombstones[c].forEach(function(t){have[t.id]=1;});
+      (remoteT[c]||[]).forEach(function(t){if(t&&t.id&&!have[t.id])db._tombstones[c].push(t);});});
+    var merged=JSON.stringify(db._tombstones);
+    if(merged!==mine){applyTombstones();_saveLocalOnly();_rerender();}
+    if(JSON.stringify(remoteT)===merged){_lastPushed._tombstones=merged;return;}
+    return col.doc('_tombstones').set({data:db._tombstones,updatedAt:ts}).then(function(){_lastPushed._tombstones=merged;});
+  });
+}
+function _pushPhotos(col,ts){
+  var sent={};try{sent=JSON.parse(localStorage.getItem(_uidKey('cp_phsent'))||'{}');}catch(e){}
+  var jobs=[],changed=false;
+  (db.visites||[]).forEach(function(v){(v.photos||[]).forEach(function(p,i){if(!_isPhoto(p))return;
+    var k=v.id+'_'+i,sig=p.length+':'+p.slice(-40);if(sent[k]===sig)return;
+    if(p.length>950000){console.warn('Photo trop lourde pour le cloud',k);return;}
+    jobs.push(col.doc('ph_'+k).set({d:p,updatedAt:ts}).then(function(){sent[k]=sig;changed=true;}).catch(function(e){console.warn('Photo',k,e);}));});});
+  return Promise.all(jobs).then(function(){if(changed)try{localStorage.setItem(_uidKey('cp_phsent'),JSON.stringify(sent));}catch(e){}});
+}
+function _pushAll(force){
+  if(!fbReady||!currentUser)return Promise.resolve(false);
+  var col=_syncCol(),ts=firebase.firestore.FieldValue.serverTimestamp(),jobs=[];
+  SYNC_COLS.forEach(function(c){if(_pulled[c])jobs.push(_pushCol(col,c,ts,force).catch(function(e){console.warn('Sync '+c,e);throw e;}));});
+  if(_pulled.visites)jobs.push(_pushPhotos(col,ts));
+  if(_pulled._settings){var sj=JSON.stringify(db.settings);if(force||_lastPushed._settings!==sj)jobs.push(col.doc('_settings').set({data:db.settings,updatedAt:ts}).then(function(){_lastPushed._settings=sj;}));}
+  if(_pulled._tombstones)jobs.push(_pushTombstones(col,ts));
+  var missing=SYNC_COLS.filter(function(c){return !_pulled[c];});
+  if(missing.length&&Date.now()-_lastPullTry>20000)setTimeout(function(){syncFromFS();},50); // relire ce qui manque avant d'écrire
+  return Promise.all(jobs).then(function(){return !missing.length;});
+}
 var _cloudTimer=null;
 function pushToCloud(){
   if(typeof fbReady==='undefined'||!fbReady||typeof currentUser==='undefined'||!currentUser)return;
-  // Débounce : éviter d'écrire à chaque frappe, regrouper les écritures
   if(_cloudTimer)clearTimeout(_cloudTimer);
-  _cloudTimer=setTimeout(function(){
-    try{
-      var col=fbDb.collection('users').doc(currentUser.uid).collection('data');
-      var ts=firebase.firestore.FieldValue.serverTimestamp();
-      ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs','plans'].forEach(function(c){
-        col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(e){console.warn('Sync '+c,e);});
-      });
-      col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(e){console.warn('Sync settings',e);});
-      col.doc('_tombstones').set({data:db._tombstones||{},updatedAt:ts}).catch(function(){});
-    }catch(e){console.warn('pushToCloud',e);}
-  },1200);
+  _cloudTimer=setTimeout(function(){_cloudTimer=null;_pushAll(false).catch(function(e){console.warn('pushToCloud',e);});},1500);
 }
-loadDB();
+function flushToCloudNow(){
+  if(typeof fbReady==='undefined'||!fbReady||typeof currentUser==='undefined'||!currentUser)return;
+  if(_cloudTimer){clearTimeout(_cloudTimer);_cloudTimer=null;}
+  try{_pushAll(false).catch(function(){});}catch(e){}
+}
+function _readCol(col,c){ // → tableau, ou null si le cloud n'a pas encore cette collection ; rejette si illisible
+  return col.doc(c).get({source:'server'}).then(function(d){
+    if(!d.exists)return null;var x=d.data()||{},n=x.chunks||1,first=x.items||[];
+    if(n<=1)return first;
+    var rest=[];for(var i=1;i<n;i++)rest.push(col.doc(c+'__'+i).get({source:'server'}));
+    return Promise.all(rest).then(function(ds){var all=first.slice();ds.forEach(function(dd){if(!dd.exists)throw new Error('morceau manquant '+c);all=all.concat((dd.data()||{}).items||[]);});return all;});
+  });
+}
+function _isFreshDevice(){ // appareil qui n'a encore rien saisi : le cloud fait foi en cas d'égalité
+  return !(db.devis||[]).length&&!(db.visites||[]).length&&!(db.factures||[]).length&&!(db.clients||[]).length&&!((db.settings&&db.settings.entreprise)||'').trim();
+}
+function _mergeCol(c,remote,fresh){
+  var dead={};((db._tombstones||{})[c]||[]).forEach(function(t){dead[t.id]=1;});
+  var local=db[c]||[],byId={},order=[],noId=[];
+  var dflt={};if(c==='bibliotheque'){try{(defaultBibliotheque()||[]).forEach(function(b){dflt[b.id]=_sigOf(b);});}catch(e){}}
+  local.forEach(function(it){if(!it)return;if(!it.id){noId.push(it);return;}if(!byId[it.id])order.push(it.id);byId[it.id]=it;});
+  var needPhotos=[];
+  remote.forEach(function(r){if(!r||!r.id)return;var l=byId[r.id];
+    if(!l){byId[r.id]=r;order.push(r.id);if(c==='visites'&&r._ph>0)needPhotos.push(r);return;}
+    var lm=l._m||0,rm=r._m||0;
+    var remoteWins=rm>lm||(rm===lm&&(fresh||(dflt[l.id]&&dflt[l.id]===_sigOf(l)&&_sigOf(r)!==_sigOf(l))));
+    if(!remoteWins)return;
+    if(c==='visites'){var lp=l.photos||[];if(r._ph>0){if(lp.length===r._ph){r.photos=lp;}else{r.photos=lp;needPhotos.push(r);}}}
+    byId[r.id]=r;});
+  db[c]=order.filter(function(id){return !dead[id];}).map(function(id){return byId[id];}).concat(noId);
+  (db[c]||[]).forEach(function(it){if(it&&it.id)_itemSig[c+':'+it.id]=_sigOf(it);});
+  return needPhotos;
+}
+function _fetchPhotos(col,visites){
+  var jobs=visites.map(function(v){var n=v._ph||0,gets=[];for(var i=0;i<n;i++)gets.push(col.doc('ph_'+v.id+'_'+i).get({source:'server'}));
+    return Promise.all(gets).then(function(ds){var ph=[];ds.forEach(function(d){if(d.exists&&d.data()&&d.data().d)ph.push(d.data().d);});
+      var cur=(db.visites||[]).find(function(x){return x.id===v.id;});if(!cur)return;
+      if(ph.length>=(cur.photos||[]).length){cur.photos=ph;}if(ph.length===n)delete cur._ph;
+      _itemSig['visites:'+cur.id]=_sigOf(cur);}).catch(function(e){console.warn('Photos '+v.id,e);});});
+  return Promise.all(jobs).then(function(){if(visites.length){saveDB();try{renderVisitesList();renderDossiers();}catch(e){}}});
+}
+function _mergeSettings(remote){
+  var flagK=_uidKey('cp_setpulled'),first=!localStorage.getItem(flagK);
+  var s=db.settings||{};
+  if(first&&!((s.entreprise||'').trim())){db.settings=Object.assign({},s,remote);} // nouvel appareil : reprendre tout
+  else{
+    Object.keys(remote).forEach(function(k){var lv=s[k],rv=remote[k];
+      if(lv===undefined||lv===null||lv===''){s[k]=rv;}
+      else if(k==='ai'&&rv&&typeof rv==='object'){s.ai=Object.assign({},lv,rv);}
+      else if(k==='ouvrageConcept'&&rv&&typeof rv==='object'){s.ouvrageConcept=Object.assign({},rv,lv);}
+      else if(k==='nextNum'||k==='nextFactNum'||/^next/.test(k)){if(typeof rv==='number'&&rv>lv)s[k]=rv;}
+    });
+  }
+  try{localStorage.setItem(flagK,'1');}catch(e){}
+}
+function syncFromFS(){
+  if(!fbReady||!currentUser)return Promise.resolve(false);
+  if(_pullBusy)return _pullBusy;
+  _lastPullTry=Date.now();
+  var col=_syncCol(),fresh=_isFreshDevice(),needPhotos=[];
+  var pTomb=col.doc('_tombstones').get({source:'server'}).then(function(doc){
+    var remoteT=(doc.exists&&doc.data()&&doc.data().data)||{};
+    if(!db._tombstones)db._tombstones={};
+    Object.keys(remoteT).forEach(function(c){if(!db._tombstones[c])db._tombstones[c]=[];var have={};db._tombstones[c].forEach(function(t){have[t.id]=1;});
+      (remoteT[c]||[]).forEach(function(t){if(t&&t.id&&!have[t.id])db._tombstones[c].push(t);});});
+    purgeTombstones();applyTombstones();_lastPushed._tombstones=JSON.stringify(remoteT);_pulled._tombstones=true;
+  });
+  var pSet=col.doc('_settings').get({source:'server'}).then(function(doc){
+    if(doc.exists&&doc.data()&&doc.data().data)_mergeSettings(doc.data().data);
+    _pulled._settings=true;
+  });
+  var pCols=pTomb.catch(function(){}).then(function(){return Promise.all(SYNC_COLS.map(function(c){
+    return _readCol(col,c).then(function(remote){
+      if(remote){_lastPushed[c]=JSON.stringify(remote);needPhotos=needPhotos.concat(_mergeCol(c,remote,fresh));}
+      _pulled[c]=true;
+    }).catch(function(e){console.warn('Lecture cloud '+c,e);});
+  }));});
+  _pullBusy=Promise.all([pTomb.catch(function(e){console.warn('Tombstones',e);}),pSet.catch(function(e){console.warn('Settings',e);}),pCols]).then(function(){
+    saveDB();
+    try{populateSettings();renderGreeting();renderRecentActivity();renderDevisList();renderVisitesList();renderClientsList();renderPlanningList();renderDocs();renderFactures();if(typeof renderDepenses==='function')renderDepenses();}catch(e){}
+    _fetchPhotos(col,needPhotos);
+    var ok=SYNC_COLS.every(function(c){return _pulled[c];})&&_pulled._settings;
+    return _pushAll(false).then(function(){return ok;},function(){return false;});
+  }).then(function(ok){_pullBusy=null;return ok;},function(){_pullBusy=null;return false;});
+  return _pullBusy;
+}
+function syncToFS(){
+  if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}
+  showToast('Synchronisation…','success');
+  syncFromFS().then(function(ok){
+    if(!ok){showToast('Synchro incomplète (réseau ?) — réessaie dans un instant','error');return;}
+    return _pushAll(true).then(function(){showToast('Synchronisé ✓','success');},function(){showToast('Erreur d\'envoi vers le cloud','error');});
+  });
+}
+window.addEventListener('online',function(){if(fbReady&&currentUser)syncFromFS();});
+// ===================== FIN SYNCHRONISATION =====================
+
+loadDB();try{initSigs();}catch(e){}
 
 // Firebase
 var fbCfg={apiKey:"AIzaSyB2rdib1rJRusZVoY25VmzO5WP4IAzjfkU",authDomain:"chantierpro-eabab.firebaseapp.com",projectId:"chantierpro-eabab",storageBucket:"chantierpro-eabab.firebasestorage.app",messagingSenderId:"453340640805",appId:"1:453340640805:web:aebf71cb00e7bb02de31cc"};
@@ -1841,20 +2013,6 @@ function initFB(){
 function showApp(){document.getElementById('auth-screen').classList.add('hidden');document.getElementById('app').style.display='flex';}
 function hideApp(){document.getElementById('auth-screen').classList.remove('hidden');document.getElementById('app').style.display='none';}
 function afterLogin(){try{purgeTombstones();applyTombstones();}catch(e){}renderGreeting();renderRecentActivity();renderDevisList();renderVisitesList();renderClientsList();renderPlanningList();renderDocs();renderFactures();populateSettings();if(fbReady&&currentUser){syncFromFS();setTimeout(function(){try{flushToCloudNow();}catch(e){}},8000);}}
-// Sauvegarde immédiate quand l'app passe en arrière-plan (évite de perdre une écriture débouncée)
-function flushToCloudNow(){
-  if(typeof fbReady==='undefined'||!fbReady||typeof currentUser==='undefined'||!currentUser)return;
-  if(_cloudTimer){clearTimeout(_cloudTimer);_cloudTimer=null;}
-  try{
-    var col=fbDb.collection('users').doc(currentUser.uid).collection('data');
-    var ts=firebase.firestore.FieldValue.serverTimestamp();
-    ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs','plans'].forEach(function(c){
-      col.doc(c).set({items:db[c]||[],updatedAt:ts}).catch(function(){});
-    });
-    col.doc('_settings').set({data:db.settings,updatedAt:ts}).catch(function(){});
-    col.doc('_tombstones').set({data:db._tombstones||{},updatedAt:ts}).catch(function(){});
-  }catch(e){}
-}
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')flushToCloudNow();});
 window.addEventListener('pagehide',flushToCloudNow);
 
@@ -1961,56 +2119,6 @@ function doAuth(){
 }
 function doForgot(){var email=document.getElementById('auth-email').value.trim();if(!email){document.getElementById('auth-error').textContent='Entrez votre email.';return;}if(fbReady)fbAuth.sendPasswordResetEmail(email).then(function(){showToast('Email envoyé !','success');}).catch(function(e){document.getElementById('auth-error').textContent=fbErr(e.code);});}
 function fbErr(c){var m={'auth/user-not-found':'Utilisateur introuvable.','auth/wrong-password':'Mot de passe incorrect.','auth/invalid-credential':'Identifiants invalides.','auth/email-already-in-use':'Email déjà utilisé.','auth/invalid-email':'Email invalide.','auth/weak-password':'Mot de passe trop court.'};return m[c]||'Erreur: '+c;}
-function syncFromFS(){if(!fbReady||!currentUser)return;var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');
-  // Fusion des registres de suppression (tombstones) : une suppression sur un appareil vaut partout
-  col.doc('_tombstones').get().then(function(doc){
-    if(doc.exists&&doc.data()&&doc.data().data){
-      var remoteT=doc.data().data||{};
-      if(!db._tombstones)db._tombstones={};
-      Object.keys(remoteT).forEach(function(c){
-        if(!db._tombstones[c])db._tombstones[c]=[];
-        var have={};db._tombstones[c].forEach(function(t){have[t.id]=1;});
-        (remoteT[c]||[]).forEach(function(t){if(t&&t.id&&!have[t.id])db._tombstones[c].push(t);});
-      });
-      purgeTombstones();applyTombstones();saveDB();
-      if(typeof renderDevisList==='function')renderDevisList();
-      if(typeof renderVisitesList==='function')renderVisitesList();
-      if(typeof renderGreeting==='function')renderGreeting();
-    }
-  }).catch(function(){});
-  // Charger settings (clé API etc.) depuis Firebase
-  col.doc('_settings').get().then(function(doc){
-    if(doc.exists&&doc.data()&&doc.data().data){
-      var remoteSettings=doc.data().data;
-      // Fusionner : priorité aux données distantes pour la clé API
-      if(remoteSettings.ai){
-        db.settings.ai=Object.assign({},db.settings.ai,remoteSettings.ai);
-        populateSettings();
-        saveDB();
-      }
-    }
-  }).catch(function(){});
-  ['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs','plans'].forEach(function(c){col.doc(c).get().then(function(d){if(d.exists){var x=d.data();if(x&&x.items){
-    // Fusion sûre : union par id, sans perdre les données locales non encore synchronisées
-    var remote=x.items||[];var local=db[c]||[];
-    var byId={};
-    local.forEach(function(it){if(it&&it.id)byId[it.id]=it;});
-    remote.forEach(function(it){if(it&&it.id&&!byId[it.id])byId[it.id]=it;});
-    var dead={};if(db._tombstones&&db._tombstones[c])db._tombstones[c].forEach(function(t){dead[t.id]=1;});
-    var merged=Object.keys(byId).filter(function(k){return !dead[k];}).map(function(k){return byId[k];});
-    // Si pas d'id (anciennes données), prendre le plus grand ensemble
-    var localAlive=local.filter(function(it){return !it||!it.id||!dead[it.id];});
-    db[c]=merged.length>=localAlive.length?merged:localAlive;
-    saveDB();
-    if(c==='devis'&&typeof renderDevisList==='function')renderDevisList();
-    if(c==='visites'&&typeof renderVisitesList==='function')renderVisitesList();
-    if(c==='clients'&&typeof renderClients==='function')renderClients();
-    if(c==='factures'&&typeof renderDocs==='function')renderDocs();
-    if(c==='depenses'&&typeof renderDepenses==='function')renderDepenses();
-    if(typeof renderGreeting==='function')renderGreeting();
-  }}}).catch(function(){});});}
-function syncToFS(){if(!fbReady||!currentUser){showToast('Hors ligne','error');return;}var uid=currentUser.uid;var col=fbDb.collection('users').doc(uid).collection('data');var ts=firebase.firestore.FieldValue.serverTimestamp();var jobs=['clients','devis','visites','planning','factures','depenses','bibliotheque','tarifsFournisseurs','plans'].map(function(c){return col.doc(c).set({items:db[c]||[],updatedAt:ts});});jobs.push(col.doc('_settings').set({data:db.settings,updatedAt:ts}));jobs.push(col.doc('_tombstones').set({data:db._tombstones||{},updatedAt:ts}));Promise.all(jobs).then(function(){showToast('Synchronisé !','success');}).catch(function(){showToast('Erreur sync','error');});}
-
 // NAV/TOAST/UTILS
 function showView(n){document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});var el=document.getElementById('view-'+n);if(el)el.classList.add('active');document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===n);});}
 function openSideMenu(){var sm=document.getElementById('side-menu');if(!sm)return;
