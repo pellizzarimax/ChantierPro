@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chantierspro-v2';
+const CACHE_NAME = 'chantierspro-v3';
 const ASSETS = [
   'https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@600;700;800&display=swap'
 ];

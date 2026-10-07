@@ -664,7 +664,7 @@ window._loadPdfJs=function(){
           </div>
         </div>
         <div class="form-group"><label class="form-label">Catégorie</label>
-          <select class="form-input" id="bib-cat"><option>Préparation / Démolition</option><option>Terrassement / VRD</option><option>Fondations / Gros œuvre</option><option>Plancher / Structure</option><option>Charpente / Ossature bois</option><option>Couverture</option><option>Zinguerie / Évacuation EP</option><option>Isolation</option><option>Menuiserie extérieure</option><option>Menuiserie intérieure</option><option>Plâtrerie / Cloisons</option><option>Carrelage / Faïence</option><option>Sols souples / Parquet</option><option>Peinture / Revêtements</option><option>Plomberie / Sanitaire</option><option>Chauffage / Ventilation</option><option>Électricité</option><option>Étanchéité / Toiture-terrasse</option><option>Extérieur / Aménagement</option><option>Divers / Chantier</option></select>
+          <select class="form-input" id="bib-cat"><option>Préparation / Démolition</option><option>Fenêtres de toit (Velux)</option><option>Terrassement / VRD</option><option>Fondations / Gros œuvre</option><option>Plancher / Structure</option><option>Charpente / Ossature bois</option><option>Couverture</option><option>Zinguerie / Évacuation EP</option><option>Isolation</option><option>Menuiserie extérieure</option><option>Menuiserie intérieure</option><option>Plâtrerie / Cloisons</option><option>Carrelage / Faïence</option><option>Sols souples / Parquet</option><option>Peinture / Revêtements</option><option>Plomberie / Sanitaire</option><option>Chauffage / Ventilation</option><option>Électricité</option><option>Étanchéité / Toiture-terrasse</option><option>Extérieur / Aménagement</option><option>Divers / Chantier</option></select>
         </div>
 
         <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--c-border);">
@@ -1095,10 +1095,10 @@ var DFLT={clients:[],devis:[],visites:[],planning:[],factures:[],depenses:[],bib
 var db=JSON.parse(JSON.stringify(DFLT));
 function loadDB(){try{var s=localStorage.getItem(SK);if(s){var p=JSON.parse(s);db=Object.assign(JSON.parse(JSON.stringify(DFLT)),p);if(!db.settings.tarifs)db.settings.tarifs=DFLT.settings.tarifs;if(!db.settings.ai)db.settings.ai=DFLT.settings.ai;if(!db.depenses)db.depenses=[];if(!db.bibliotheque)db.bibliotheque=[];if(!db.tarifsFournisseurs)db.tarifsFournisseurs=[];if(!db.plans)db.plans=[];if(!db.bibliotheque.length)db.bibliotheque=defaultBibliotheque();
     // Migration catalogue v6 : compléter avec les nouveaux ouvrages (préserve ajouts perso et prix modifiés)
-    if(db.bibliotheque.length>0&&!db.settings._bibV6){
+    if(db.bibliotheque.length>0&&!db.settings._bibV7){
       var existingDesigs={};db.bibliotheque.forEach(function(b){existingDesigs[(b.designation||'').toLowerCase()]=1;});
       defaultBibliotheque().forEach(function(b){if(!existingDesigs[(b.designation||'').toLowerCase()])db.bibliotheque.push(b);});
-      if(!db.settings)db.settings={};db.settings._bibV2=true;db.settings._bibV3=true;db.settings._bibV4=true;db.settings._bibV5=true;db.settings._bibV6=true;
+      if(!db.settings)db.settings={};db.settings._bibV2=true;db.settings._bibV3=true;db.settings._bibV4=true;db.settings._bibV5=true;db.settings._bibV6=true;db.settings._bibV7=true;
     }}}catch(e){db=JSON.parse(JSON.stringify(DFLT));}}
 function defaultBibliotheque(){
   return [
@@ -1733,7 +1733,34 @@ function defaultBibliotheque(){
     {id:'b630',categorie:'Préparation / Démolition',designation:'Dépose de radiateur (conservation)',unite:'u',prix:55,fournitures:[],moTemps:0.8,moTaux:55,marge:25,prixForce:false},
     {id:'b631',categorie:'Préparation / Démolition',designation:'Dépose de faux plafond',unite:'m²',prix:20.31,fournitures:[{nom:'Évacuation',qte:1,pu:2.5}],moTemps:0.25,moTaux:55,marge:25,prixForce:false},
     {id:'b632',categorie:'Préparation / Démolition',designation:'Dépose de parquet collé',unite:'m²',prix:34.69,fournitures:[{nom:'Évacuation',qte:1,pu:3}],moTemps:0.45,moTaux:55,marge:25,prixForce:false},
-    {id:'b633',categorie:'Préparation / Démolition',designation:'Ouverture de trémie plancher bois',unite:'u',prix:481.25,fournitures:[{nom:'Renforts bois',qte:1,pu:90},{nom:'Évacuation',qte:1,pu:20}],moTemps:5,moTaux:55,marge:25,prixForce:false}
+    {id:'b633',categorie:'Préparation / Démolition',designation:'Ouverture de trémie plancher bois',unite:'u',prix:481.25,fournitures:[{nom:'Renforts bois',qte:1,pu:90},{nom:'Évacuation',qte:1,pu:20}],moTemps:5,moTaux:55,marge:25,prixForce:false},
+    {id:'b634',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose fenêtre de toit Velux GGL à rotation bois CK02 (55×78)',unite:'u',prix:568.75,fournitures:[{nom:'Fenêtre GGL CK02',qte:1,pu:290}],moTemps:3,moTaux:55,marge:25,prixForce:false},
+    {id:'b635',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose fenêtre de toit Velux GGL à rotation bois CK04 (55×98)',unite:'u',prix:606.25,fournitures:[{nom:'Fenêtre GGL CK04',qte:1,pu:320}],moTemps:3,moTaux:55,marge:25,prixForce:false},
+    {id:'b636',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose fenêtre de toit Velux GGL à rotation bois MK04 (78×98)',unite:'u',prix:690.62,fournitures:[{nom:'Fenêtre GGL MK04',qte:1,pu:360}],moTemps:3.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b637',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose fenêtre de toit Velux GGL à rotation bois MK06 (78×118)',unite:'u',prix:753.12,fournitures:[{nom:'Fenêtre GGL MK06',qte:1,pu:410}],moTemps:3.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b638',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose fenêtre de toit Velux GGL à rotation bois MK08 (78×140)',unite:'u',prix:862.5,fournitures:[{nom:'Fenêtre GGL MK08',qte:1,pu:470}],moTemps:4,moTaux:55,marge:25,prixForce:false},
+    {id:'b639',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose fenêtre de toit Velux GGL à rotation bois SK06 (114×118)',unite:'u',prix:1009.38,fournitures:[{nom:'Fenêtre GGL SK06',qte:1,pu:560}],moTemps:4.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b640',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose fenêtre de toit Velux GGL à rotation bois UK04 (134×98)',unite:'u',prix:1084.38,fournitures:[{nom:'Fenêtre GGL UK04',qte:1,pu:620}],moTemps:4.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b641',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose fenêtre de toit Velux GGU à rotation PVC blanc MK06 (78×118) – pièces humides',unite:'u',prix:840.62,fournitures:[{nom:'Fenêtre GGU MK06',qte:1,pu:480}],moTemps:3.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b642',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose fenêtre de toit Velux GPL à projection bois MK06 (78×118)',unite:'u',prix:940.62,fournitures:[{nom:'Fenêtre GPL MK06',qte:1,pu:560}],moTemps:3.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b643',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose fenêtre de toit Velux INTEGRA électrique GGL MK06 (78×118)',unite:'u',prix:1568.75,fournitures:[{nom:'Fenêtre INTEGRA électrique MK06',qte:1,pu:980}],moTemps:5,moTaux:55,marge:25,prixForce:false},
+    {id:'b644',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose fenêtre de toit Velux INTEGRA solaire GGL MK06 (78×118)',unite:'u',prix:1659.38,fournitures:[{nom:'Fenêtre INTEGRA solaire MK06',qte:1,pu:1080}],moTemps:4.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b645',categorie:'Fenêtres de toit (Velux)',designation:'Raccord d\'étanchéité Velux EDW (tuiles canal, mécaniques, ondulées)',unite:'u',prix:184.38,fournitures:[{nom:'Raccord EDW',qte:1,pu:120}],moTemps:0.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b646',categorie:'Fenêtres de toit (Velux)',designation:'Raccord d\'étanchéité Velux EDL (ardoises, tuiles plates)',unite:'u',prix:165.62,fournitures:[{nom:'Raccord EDL',qte:1,pu:105}],moTemps:0.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b647',categorie:'Fenêtres de toit (Velux)',designation:'Raccord d\'étanchéité Velux EDJ pose encastrée (tuiles)',unite:'u',prix:256.25,fournitures:[{nom:'Raccord EDJ',qte:1,pu:150}],moTemps:1,moTaux:55,marge:25,prixForce:false},
+    {id:'b648',categorie:'Fenêtres de toit (Velux)',designation:'Raccord de jumelage Velux EKW (2 fenêtres côte à côte)',unite:'u',prix:428.12,fournitures:[{nom:'Raccord EKW',qte:1,pu:260}],moTemps:1.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b649',categorie:'Fenêtres de toit (Velux)',designation:'Kit isolation Velux BDX (cadre isolant + collerette)',unite:'u',prix:128.12,fournitures:[{nom:'Kit BDX',qte:1,pu:75}],moTemps:0.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b650',categorie:'Fenêtres de toit (Velux)',designation:'Collerette pare-vapeur Velux BBX',unite:'u',prix:70.62,fournitures:[{nom:'Collerette BBX',qte:1,pu:40}],moTemps:0.3,moTaux:55,marge:25,prixForce:false},
+    {id:'b651',categorie:'Fenêtres de toit (Velux)',designation:'Création de chevêtre en charpente pour fenêtre de toit (chevrons + renforts)',unite:'u',prix:350.0,fournitures:[{nom:'Bois / fixations',qte:1,pu:60}],moTemps:4,moTaux:55,marge:25,prixForce:false},
+    {id:'b652',categorie:'Fenêtres de toit (Velux)',designation:'Ouverture de toiture et reprise de couverture autour de la fenêtre de toit',unite:'u',prix:175.0,fournitures:[{nom:'Petites fournitures',qte:1,pu:30}],moTemps:2,moTaux:55,marge:25,prixForce:false},
+    {id:'b653',categorie:'Fenêtres de toit (Velux)',designation:'Dépose ancienne fenêtre de toit + évacuation',unite:'u',prix:121.88,fournitures:[{nom:'Évacuation',qte:1,pu:15}],moTemps:1.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b654',categorie:'Fenêtres de toit (Velux)',designation:'Habillage intérieur Velux LSB (finition blanche) MK06',unite:'u',prix:290.62,fournitures:[{nom:'Habillage LSB',qte:1,pu:150}],moTemps:1.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b655',categorie:'Fenêtres de toit (Velux)',designation:'Finition intérieure plaques de plâtre autour de la fenêtre de toit (ébrasement, bandes, angles)',unite:'u',prix:262.5,fournitures:[{nom:'Plaques / bandes / enduit',qte:1,pu:45}],moTemps:3,moTaux:55,marge:25,prixForce:false},
+    {id:'b656',categorie:'Fenêtres de toit (Velux)',designation:'Volet roulant solaire Velux SSL MK06',unite:'u',prix:753.12,fournitures:[{nom:'Volet SSL',qte:1,pu:520}],moTemps:1.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b657',categorie:'Fenêtres de toit (Velux)',designation:'Store occultant Velux DKL MK06',unite:'u',prix:139.38,fournitures:[{nom:'Store DKL',qte:1,pu:95}],moTemps:0.3,moTaux:55,marge:25,prixForce:false},
+    {id:'b658',categorie:'Fenêtres de toit (Velux)',designation:'Store occultant solaire Velux DSL MK06',unite:'u',prix:359.38,fournitures:[{nom:'Store DSL',qte:1,pu:260}],moTemps:0.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b659',categorie:'Fenêtres de toit (Velux)',designation:'Store pare-soleil extérieur Velux MHL MK06',unite:'u',prix:171.88,fournitures:[{nom:'Store MHL',qte:1,pu:110}],moTemps:0.5,moTaux:55,marge:25,prixForce:false},
+    {id:'b660',categorie:'Fenêtres de toit (Velux)',designation:'Fourniture et pose conduit de lumière Velux TWR (tube rigide)',unite:'u',prix:618.75,fournitures:[{nom:'Conduit TWR',qte:1,pu:330}],moTemps:3,moTaux:55,marge:25,prixForce:false},
   ];
 }
 var _storageWarned=false,_storageFull=false;
@@ -2861,7 +2888,7 @@ var editBibId=null;
 var METIERS={
   'Maçon / Gros œuvre':['Préparation / Démolition','Terrassement / VRD','Fondations / Gros œuvre','Plancher / Structure'],
   'Charpentier':['Charpente / Ossature bois'],
-  'Couvreur':['Couverture','Zinguerie / Évacuation EP','Étanchéité / Toiture-terrasse'],
+  'Couvreur':['Couverture','Fenêtres de toit (Velux)','Zinguerie / Évacuation EP','Étanchéité / Toiture-terrasse'],
   'Isolation / Énergie':['Isolation'],
   'Menuisier':['Menuiserie extérieure','Menuiserie intérieure'],
   'Plaquiste':['Plâtrerie / Cloisons'],
@@ -5058,7 +5085,18 @@ async function doGenerateDevisFromParcours(){
     +'\n12. VOCABULAIRE MÉTIER / AUCUN DOUBLON : une même prestation ne doit apparaître qu\'UNE fois. Synonymes à considérer comme identiques : chanlattes = contre-liteaux ; écran sous-toiture = film sous-toiture = pare-pluie (HPV) ; un ouvrage qui regroupe plusieurs éléments (ex. « Contre-liteaux et liteaux », gouttière avec ses crochets) couvre déjà chacun de ces éléments : ne les rajoute pas en lignes séparées.'
     +'\n13. DÉPOSE / DÉMOLITION : toute dépose, démolition, démontage ou évacuation va dans un lot à part nommé exactement "'+LOT_DEPOSE+'", placé EN PREMIER. Sa désignation commence directement par « Dépose… » ou « Démolition… » (jamais « Fourniture et pose de dépose »).'
     +'\n14. QUANTITÉS DE ZINGUERIE : gouttières et crochets de gouttière = longueur d\'ÉGOUT indiquée dans les métrés ; descentes en unités ou en ml de hauteur ; ne JAMAIS reprendre la longueur des arêtiers ou du faîtage pour les gouttières.'
-    +conceptPromptList();
+    +conceptPromptList()
+    +(function(){var txt=((parcoursVisite?(parcoursVisite.nature||'')+' '+(parcoursVisite.description||''):'')+' '+dictee+' '+notes).toLowerCase();
+      if(!VELUX_RE.test(txt)&&!/fen[êe]tre.{0,12}toit|lucarne|tabatière|tabatiere/.test(txt))return '';
+      return '\n16. FENÊTRES DE TOIT (VELUX) — devis à chiffrer UNIQUEMENT avec le lot "Fenêtres de toit" (+ "'+LOT_DEPOSE+'" en cas de remplacement). INTERDIT : couverture complète au m², carrelage, peinture ou tout autre poste que la description ne demande PAS explicitement (n\'utilise les métrés de toiture que si une réfection de couverture est aussi demandée).'
+        +'\n   Quantité = NOMBRE de fenêtres cité dans la description (« deux velux » = 2). Par fenêtre :'
+        +'\n   a) la fenêtre à la bonne taille (code Velux : CK02 55×78, CK04 55×98, MK04 78×98, MK06 78×118, MK08 78×140, SK06 114×118, UK04 134×98 ; si la taille n\'est pas précisée → MK06) et au bon modèle (GGL bois rotation par défaut ; GGU PVC pour salle de bain/pièce humide ; GPL projection ; INTEGRA électrique ou solaire si demandé) ;'
+        +'\n   b) le raccord d\'étanchéité adapté à la couverture : EDW pour tuiles canal, mécaniques ou ondulées (cas courant), EDL pour ardoises ou tuiles plates, EDJ si pose encastrée ; raccord de jumelage EKW si 2 fenêtres côte à côte ;'
+        +'\n   c) le kit isolation BDX et la collerette pare-vapeur BBX ;'
+        +'\n   d) CRÉATION d\'une nouvelle ouverture → ajouter « Création de chevêtre en charpente » + « Ouverture de toiture et reprise de couverture » ; REMPLACEMENT → ajouter « Dépose ancienne fenêtre de toit » (lot '+LOT_DEPOSE+'), sans chevêtre si même taille ;'
+        +'\n   e) finition intérieure (habillage LSB ou plaques de plâtre) seulement si mentionnée ou si création d\'ouverture dans une pièce habitable ;'
+        +'\n   f) options seulement si demandées : volet roulant solaire SSL, store occultant DKL/DSL, store extérieur MHL.'
+        +'\n   Reprends les désignations et prix EXACTS de la bibliothèque (catégorie "Fenêtres de toit (Velux)").';})();
 
   // Ajouter instruction système stricte en tête du prompt
   var bibPrompt='';
@@ -5078,7 +5116,9 @@ async function doGenerateDevisFromParcours(){
     if(result&&!result.startsWith('LOCAL:')){
       console.log('Réponse IA:',result.slice(0,300));
     } else if(result&&result.startsWith('LOCAL:')){
-      showToast('⚠️ Devis généré en mode LOCAL (IA non appelée). Vérifiez clé API / proxy dans Paramètres.','error');
+      // L'IA n'a pas répondu : devis simplifié construit UNIQUEMENT à partir de la visite (jamais du texte du prompt)
+      result=localAI((parcoursVisite?(parcoursVisite.nature||'')+' '+(parcoursVisite.description||''):'')+' '+dictee+' '+notes, metrages);
+      alert('⚠️ L\'IA n\'a pas répondu'+(window._lastAIError?' ('+window._lastAIError+')':'')+'.\n\nUn devis SIMPLIFIÉ a été préparé à partir de ta description : vérifie-le, ou régénère-le quand la connexion IA fonctionne (Paramètres → IA).');
     } else if(!result){
       showToast('Réponse IA vide — vérifiez la clé/le proxy','error');
     }
@@ -5388,6 +5428,7 @@ var CONCEPTS=[
 ];
 function conceptOf(desig){
   var d=cleanDesig(String(desig||'')).toLowerCase().trim();if(!d)return null;
+  if(VELUX_RE.test(d))return null; // fenêtres de toit : chaque taille / accessoire reste distinct
   var dep=isDeposeDesig(d);
   for(var i=0;i<CONCEPTS.length;i++){var k=CONCEPTS[i][0];
     if(dep!==(k.indexOf('dep:')===0))continue;
@@ -5497,6 +5538,7 @@ function addNewOuvragesToBib(){
 }
 function mapLotToCategorie(lot){
   var l=(lot||'').toLowerCase();
+  if(/velux|fen.tre(s)? de toit/.test(l))return 'Fenêtres de toit (Velux)';
   if(/extérieur|ext.rieur|terrasse|piscine|clôture|cl.ture|allée|all.e/.test(l))return 'Extérieur / Aménagement';
   if(/couverture/.test(l))return 'Couverture';
   if(/charpente|ossature/.test(l))return 'Charpente / Ossature bois';
@@ -5913,6 +5955,16 @@ function renderPlanningList(){var cont=document.getElementById('planning-list');
 // ============================================================
 // AI
 // ============================================================
+// Modèles Claude : les anciens identifiants sont retirés par Anthropic → bascule automatique vers un modèle actif
+var CLAUDE_DEFAULT_MODEL='claude-sonnet-5-5';
+function claudeModel(){
+  var m=((db.settings.ai||{}).claudeModel||'').trim();
+  var map={'claude-sonnet-4-20250514':CLAUDE_DEFAULT_MODEL,'claude-opus-4-5':'claude-opus-5-5','claude-haiku-4-5':'claude-haiku-4-5-20251001'};
+  if(!m||map[m])return map[m]||CLAUDE_DEFAULT_MODEL;
+  if(/^claude-(3|2|instant)|claude-sonnet-4-2025|claude-opus-4-2025/.test(m))return CLAUDE_DEFAULT_MODEL;
+  return m;
+}
+window._lastAIError='';
 async function callAI(prompt){
   var ai=db.settings.ai||{};
   var prov=ai.provider||'claude';
@@ -5933,14 +5985,19 @@ async function callAI(prompt){
         method:'POST',
         headers:headers,
         body:JSON.stringify({
-          model:ai.claudeModel||'claude-sonnet-4-20250514',
-          max_tokens:2000,
+          model:claudeModel(),
+          max_tokens:8000,
           temperature:0,
           messages:[{role:'user',content:prompt}]
         })
       });
+      if(!r.ok&&(r.status===404||r.status===400)&&claudeModel()!==CLAUDE_DEFAULT_MODEL){
+        // modèle choisi indisponible → nouvel essai avec le modèle par défaut
+        r=await fetch(url,{method:'POST',headers:headers,body:JSON.stringify({model:CLAUDE_DEFAULT_MODEL,max_tokens:8000,temperature:0,messages:[{role:'user',content:prompt}]})});
+      }
       if(!r.ok){
         var errBody=await r.text().catch(function(){return '';});
+        try{var ej=JSON.parse(errBody);window._lastAIError='Erreur '+r.status+' : '+((ej.error&&ej.error.message)||ej.message||errBody.slice(0,120));}catch(e2){window._lastAIError='Erreur '+r.status+' : '+errBody.slice(0,120);}
         console.error('Claude API erreur',r.status,errBody.slice(0,200));
         showToast('Erreur API Claude: '+r.status,'error');
         return localAI(prompt);
@@ -5971,7 +6028,7 @@ async function callAI(prompt){
       return d2.choices&&d2.choices[0]?d2.choices[0].message.content:'';
     }
   } catch(e){
-    console.error('callAI exception:',e);
+    console.error('callAI exception:',e);window._lastAIError='Réseau : '+e.message;
     showToast('Erreur réseau API: '+e.message,'error');
     return localAI(prompt);
   }
@@ -5994,7 +6051,7 @@ async function callAIVision(base64Data, mediaType, prompt){
     var r=await fetch(url,{
       method:'POST',headers:headers,
       body:JSON.stringify({
-        model:ai.claudeModel||'claude-sonnet-4-20250514',
+        model:claudeModel(),
         max_tokens:1000,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:mediaType||'image/jpeg',data:base64Data}},
@@ -6031,6 +6088,7 @@ function roofEgoutML(t){ // longueur d'égout (gouttières) d'une toiture simple
   return 2*(L+2*d)+2*(l+2*d); // 4 pentes, mansarde… : tout le pourtour
 }
 var LOT_DEPOSE='Dépose / Démolition';
+var VELUX_RE=/velux|fen[êe]tres? de toit|chev[êe]tre|\b(ggl|ggu|gpl|gpu|edw|edl|edj|ekw|bdx|bbx|lsb|dkl|dsl|ssl|sml|mhl|twr)\b|conduit de lumi/i;
 var DEP_RE=/^\s*(d[ée]pose|d[ée]molition|d[ée]montage|[ée]vacuation|arrachage|purge|curage|d[ée]garnissage|d[ée]cro[uû]tage|bûchage|buchage)/i;
 function isDeposeDesig(d){return DEP_RE.test(String(d||''));}
 function cleanDesig(d){ // « Fourniture et pose de dépose… » → « Dépose… »
@@ -6040,6 +6098,7 @@ function cleanDesig(d){ // « Fourniture et pose de dépose… » → « Dépose
 function lotOfLine(l){return isDeposeDesig(cleanDesig(l.designation))?LOT_DEPOSE:(l.lot||guessLot(l.designation||''));}
 // Doublons de vocabulaire : chanlatte = contre-liteau, écran HPV = pare-pluie, crochets de gouttière compris dans la gouttière…
 function lineConcepts(desig){
+  if(VELUX_RE.test(String(desig||'')))return [];
   var d=String(desig||'').toLowerCase(),c=[];
   var noCL=d.replace(/contre[- ]?litea(u|ux)/g,' ');
   if(/chanlatte|contre[- ]?litea/.test(d))c.push('contreliteau');
@@ -6076,6 +6135,7 @@ function dedupeDevisLines(lines){
 function guessLot(desig){
   var d=(desig||'').toLowerCase();
   if(isDeposeDesig(cleanDesig(desig)))return LOT_DEPOSE;
+  if(VELUX_RE.test(d))return 'Fenêtres de toit';
   if(/margelle|terrasse bois|terrasse compos|lambourde|plot r.glable|galet|gravillon|dallage ext|pav.|cl.ture|portail|enrob.|gazon|engazonnement|plantation|all.e|brise-vue|abri de jardin|carport|piscine|pourtour/.test(d))return 'Aménagement extérieur';
   if(/charpente|fermette|panne|chevron|ossature bois|solive|bastaing/.test(d))return 'Charpente';
   if(/couverture|tuile|liteau|fa.tage|ar.tier|zinguerie|goutti.re|.cran sous|noue|ch.neau|\brive\b|closoir|bac acier|ardoise/.test(d))return 'Couverture';
@@ -6101,6 +6161,31 @@ function guessLot(desig){
 function localAI(prompt,metrages){
   var lo=(prompt||'').toLowerCase();
   var lines=[];
+  // ---- Fenêtres de toit (Velux) : devis dédié, sans couverture ni autres corps d'état ----
+  if(VELUX_RE.test(lo)||/fen[êe]tre.{0,12}toit/.test(lo)){
+    var nums={un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8};
+    var mN=lo.match(/(\d+|un|une|deux|trois|quatre|cinq|six|sept|huit)\s+(fen[êe]tres?|velux|ouvrants?)/);
+    var n=mN?(+mN[1]||nums[mN[1]]||1):1;
+    var size=(lo.match(/\b(ck02|ck04|mk04|mk06|mk08|sk06|uk04)\b/)||[])[1];size=size?size.toUpperCase():'MK06';
+    var bib=function(re){return (db.bibliotheque||[]).find(function(b){return re.test(b.designation||'');});};
+    var add=function(b,q,fallback){if(b)lines.push({designation:b.designation,unite:b.unite,qte:String(q),pu:String(b.prix),fromBib:true});else if(fallback)lines.push(fallback);};
+    var win=null;
+    if(/solaire/.test(lo))win=bib(/INTEGRA solaire/i);
+    else if(/[ée]lectri|motoris/.test(lo))win=bib(/INTEGRA [ée]lectrique/i);
+    else if(/projection|gpl/.test(lo))win=bib(/GPL .*MK06/i);
+    else if(/pvc|salle de bain|sdb|humide|ggu/.test(lo))win=bib(/GGU .*MK06/i);
+    else win=bib(new RegExp('GGL .*'+size,'i'))||bib(/GGL .*MK06/i);
+    var remplace=/remplac|changer|change |renouvel/.test(lo),cree=/cr[ée]a|cr[ée]er|nouvel|ouvrir|ouverture|ajout/.test(lo);
+    if(remplace)add(bib(/^D[ée]pose ancienne fen[êe]tre de toit/i),n);
+    add(win,n,{designation:'Fourniture et pose fenêtre de toit Velux '+size,unite:'u',qte:String(n),pu:'750'});
+    add(/ardoise|tuiles? plates?/.test(lo)?bib(/Raccord .*EDL/i):bib(/Raccord .*EDW/i),n);
+    add(bib(/Kit isolation Velux BDX/i),n);add(bib(/Collerette pare-vapeur Velux BBX/i),n);
+    if(cree&&!remplace){add(bib(/Cr[ée]ation de chev[êe]tre/i),n);add(bib(/Ouverture de toiture et reprise/i),n);}
+    if(/habillage|finition|placo|pl[âa]tre/.test(lo))add(bib(/Habillage int[ée]rieur Velux LSB/i),n);
+    if(/volet/.test(lo))add(bib(/Volet roulant solaire Velux SSL/i),n);
+    if(/store/.test(lo))add(bib(/Store occultant Velux DKL/i),n);
+    return 'LOCAL:'+JSON.stringify(lines);
+  }
   var t=db.settings.tarifs||{};
   // Quantités réelles depuis les métrés
   var qSurf=metrages&&metrages.sNette>0?metrages.sNette:null;
@@ -6218,7 +6303,7 @@ function populateSettings(){var s=db.settings;document.getElementById('s-entrepr
     +(pct>70?'<div style="margin-top:6px;color:#f59e0b;">Pense à synchroniser ☁️ et à supprimer les photos des anciens chantiers.</div>':'');
 })();
 function _sv(id,val){var el=document.getElementById(id);if(el)el.value=val||'';}
-_sv('s-factRCS',s.factRCS);_sv('s-factAPE',s.factAPE);_sv('s-regimeTVA',s.regimeTVA||'normal');_sv('s-factTVANum',s.factTVANum);_sv('s-factAssurance',s.factAssurance);_sv('s-factIBAN',s.factIBAN);_sv('s-factMediateur',s.factMediateur);_sv('s-factPenalites',s.factPenalites);document.getElementById('s-prefix').value=s.prefix||'DEV-'+yr+'-';document.getElementById('s-nextnum').value=s.nextNum||1;var t=s.tarifs||{};document.getElementById('t-carreleur').value=t.carreleur_mo||42;document.getElementById('t-peintre').value=t.peintre_mo||38;document.getElementById('t-plombier').value=t.plombier_mo||62;document.getElementById('t-electricien').value=t.electricien_mo||60;document.getElementById('t-menuisier').value=t.menuisier_mo||50;document.getElementById('t-macon').value=t.macon_mo||45;document.getElementById('t-marge').value=t.marge||0;document.getElementById('t-tva').value=t.tva_defaut||10;document.getElementById('t-notes').value=t.notes||'';var ai=s.ai||{};document.getElementById('s-ia-provider').value=ai.provider||'claude';document.getElementById('s-claude-key').value=ai.claudeKey||'';document.getElementById('s-openai-key').value=ai.openaiKey||'';document.getElementById('s-claude-model').value=ai.claudeModel||'claude-sonnet-4-20250514';document.getElementById('s-openai-model').value=ai.openaiModel||'gpt-4o-mini';document.getElementById('s-proxy-url').value=ai.proxyUrl||'';if(s.logo){document.getElementById('logo-preview').innerHTML='<img src="'+s.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>';}updateProviderUI();updateNumPrev();}
+_sv('s-factRCS',s.factRCS);_sv('s-factAPE',s.factAPE);_sv('s-regimeTVA',s.regimeTVA||'normal');_sv('s-factTVANum',s.factTVANum);_sv('s-factAssurance',s.factAssurance);_sv('s-factIBAN',s.factIBAN);_sv('s-factMediateur',s.factMediateur);_sv('s-factPenalites',s.factPenalites);document.getElementById('s-prefix').value=s.prefix||'DEV-'+yr+'-';document.getElementById('s-nextnum').value=s.nextNum||1;var t=s.tarifs||{};document.getElementById('t-carreleur').value=t.carreleur_mo||42;document.getElementById('t-peintre').value=t.peintre_mo||38;document.getElementById('t-plombier').value=t.plombier_mo||62;document.getElementById('t-electricien').value=t.electricien_mo||60;document.getElementById('t-menuisier').value=t.menuisier_mo||50;document.getElementById('t-macon').value=t.macon_mo||45;document.getElementById('t-marge').value=t.marge||0;document.getElementById('t-tva').value=t.tva_defaut||10;document.getElementById('t-notes').value=t.notes||'';var ai=s.ai||{};document.getElementById('s-ia-provider').value=ai.provider||'claude';document.getElementById('s-claude-key').value=ai.claudeKey||'';document.getElementById('s-openai-key').value=ai.openaiKey||'';document.getElementById('s-claude-model').value=claudeModel();document.getElementById('s-openai-model').value=ai.openaiModel||'gpt-4o-mini';document.getElementById('s-proxy-url').value=ai.proxyUrl||'';if(s.logo){document.getElementById('logo-preview').innerHTML='<img src="'+s.logo+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>';}updateProviderUI();updateNumPrev();}
 function updateProviderUI(){var p=document.getElementById('s-ia-provider').value;document.getElementById('claude-cfg').style.display=p==='claude'?'block':'none';document.getElementById('openai-cfg').style.display=p==='openai'?'block':'none';}
 function updateNumPrev(){var px=document.getElementById('s-prefix').value||'DEV-'+yr+'-';document.getElementById('next-num-preview').textContent=px+String(parseInt(document.getElementById('s-nextnum').value)||1).padStart(3,'0');}
 function saveSettings(){var s=db.settings;s.entreprise=document.getElementById('s-entreprise').value;s.siret=document.getElementById('s-siret').value;s.tel=document.getElementById('s-tel').value;s.email=document.getElementById('s-email').value;s.adresse=document.getElementById('s-adresse').value;
@@ -7604,7 +7689,7 @@ function validerSignature(){
       <div class="form-group"><label class="form-label">Fournisseur IA</label>
         <select class="form-input" id="s-ia-provider"><option value="claude">Claude (Anthropic)</option><option value="openai">ChatGPT (OpenAI)</option><option value="local">Mode local</option></select>
       </div>
-      <div id="claude-cfg"><div class="form-group"><label class="form-label">Clé API Claude</label><div style="position:relative;"><input type="password" class="form-input" id="s-claude-key" placeholder="sk-ant-..." style="padding-right:44px;"/><button type="button" onclick="toggleKeyVis('s-claude-key',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;padding:4px;">👁</button></div></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-claude-model"><option value="claude-sonnet-4-20250514">Claude Sonnet 4</option><option value="claude-opus-4-5">Claude Opus 4.5</option><option value="claude-haiku-4-5">Claude Haiku 4.5</option></select></div></div>
+      <div id="claude-cfg"><div class="form-group"><label class="form-label">Clé API Claude</label><div style="position:relative;"><input type="password" class="form-input" id="s-claude-key" placeholder="sk-ant-..." style="padding-right:44px;"/><button type="button" onclick="toggleKeyVis('s-claude-key',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;padding:4px;">👁</button></div></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-claude-model"><option value="claude-sonnet-5-5">Claude Sonnet 5.5 (recommandé)</option><option value="claude-opus-5-5">Claude Opus 5.5 (plus puissant, plus cher)</option><option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (rapide, économique)</option></select></div></div>
       <div id="openai-cfg" style="display:none;"><div class="form-group"><label class="form-label">Clé API OpenAI</label><div style="position:relative;"><input type="password" class="form-input" id="s-openai-key" placeholder="sk-..." style="padding-right:44px;"/><button type="button" onclick="toggleKeyVis('s-openai-key',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer;padding:4px;">👁</button></div></div><div class="form-group"><label class="form-label">Modèle</label><select class="form-input" id="s-openai-model"><option value="gpt-4o-mini">GPT-4o mini</option><option value="gpt-4o">GPT-4o</option></select></div></div>
       <div class="form-group"><label class="form-label">URL proxy (recommandé — clé sécurisée côté serveur)</label><input type="url" class="form-input" id="s-proxy-url" placeholder="https://chantierspro-ai.maximecoulon.workers.dev"/><div style="font-size:11px;color:var(--c-muted);margin-top:4px;">Si renseigné, la clé API ci-dessus devient inutile : elle est stockée dans le Worker Cloudflare.</div></div>
     </div>
