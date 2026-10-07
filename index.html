@@ -5055,7 +5055,7 @@ async function doGenerateDevisFromParcours(){
 
   var prompt='Tu es un expert artisan BTP français.\n\n'
     +cotesDesc+'\n'
-    +bibCompactForPrompt()
+    +bibCompactForPrompt(bibCatsForJob(((parcoursVisite?(parcoursVisite.nature||'')+' '+(parcoursVisite.description||''):'')+' '+dictee+' '+notes),tsurfVal>0||!!(window._toitureComplexe&&window._toitureComplexe.corps>0)))
     +'=== TRAVAUX DEMANDÉS ===\n'
     +'Nature: '+(parcoursVisite?parcoursVisite.nature:'')+'\n'
     +'Description: '+(parcoursVisite?parcoursVisite.description:'')+'\n'
@@ -5100,12 +5100,7 @@ async function doGenerateDevisFromParcours(){
 
   // Ajouter instruction système stricte en tête du prompt
   var bibPrompt='';
-  if(db.bibliotheque&&db.bibliotheque.length){
-    bibPrompt='\n\n=== BIBLIOTHÈQUE DE PRIX (OBLIGATOIRE) ===\n'
-      +'Utilise EN PRIORITÉ ces prix unitaires (ce sont les tarifs de l\'artisan). Si un ouvrage du devis correspond à un élément ci-dessous, reprends EXACTEMENT son prix unitaire et son unité. N\'invente un prix QUE pour un ouvrage absent de cette liste :\n'
-      +db.bibliotheque.map(function(b){return '- '+b.designation+' = '+b.prix+' €/'+b.unite+' ['+b.categorie+']';}).join('\n')
-      +'\n=== FIN BIBLIOTHÈQUE ===\n';
-  }
+  // (bibliothèque déjà incluse une seule fois, filtrée sur les corps d'état utiles — économie de crédits IA)
   var fullPrompt='INSTRUCTION CRITIQUE: Tu dois répondre UNIQUEMENT avec un tableau JSON valide.\n'
     +'Pas de texte avant, pas de texte après, pas de markdown, pas de ```json.\n'
     +'Commence directement par [ et termine par ].\n\n'
@@ -5458,7 +5453,8 @@ function initConceptMap(){ // 1re fois : apprendre depuis les devis existants (l
 }
 function conceptPromptList(){
   initConceptMap();var map=(db.settings&&db.settings.ouvrageConcept)||{},out=[];
-  Object.keys(map).forEach(function(c){var b=conceptBib(c);if(b)out.push('- '+b.designation+' = '+b.prix+' €/'+b.unite);});
+  var jc=window._jobCats;
+  Object.keys(map).forEach(function(c){var b=conceptBib(c);if(b&&jc&&!jc[b.categorie]&&!/^dep:/.test(c))return;if(b)out.push('- '+b.designation+' = '+b.prix+' €/'+b.unite);});
   return out.length?'\n15. OUVRAGES HABITUELS DE L\'ARTISAN (prix fixes, à reprendre À L\'IDENTIQUE dès que le poste est concerné, au lieu de toute autre formulation) :\n'+out.join('\n'):'';
 }
 function matchOuvrageForDesig(desig){
@@ -6064,16 +6060,50 @@ async function callAIVision(base64Data, mediaType, prompt){
     return d.content&&d.content[0]?d.content[0].text:'';
   }catch(e){console.error('callAIVision',e);showToast('Erreur réseau scan','error');return null;}
 }
-function bibCompactForPrompt(){
+// Corps d'état utiles au chantier, déduits de la description → on n'envoie à l'IA que cette partie de la bibliothèque
+var BIB_CAT_RULES=[
+  ['Couverture',/toit|couvert|tuile|ardoise|litea|fa[îi]t|ar[êe]tier|noue|\brive|[ée]cran sous|closoir|bac acier/],
+  ['Zinguerie / Évacuation EP',/goutti|zinc|descente|ch[ée]neau|zinguerie|toiture|couverture|naissance|moignon/],
+  ['Charpente / Ossature bois',/charpente|chevron|panne|ossature|solive|fermette|chev[êe]tre|bois de/],
+  ['Fenêtres de toit (Velux)',/velux|fen[êe]tres?.{0,12}toit|tabati[eè]re|lucarne|conduit de lumi/],
+  ['Isolation',/isol|comble|laine|ouate|fibre de bois|sarking|pare.vapeur|frein.vapeur/],
+  ['Étanchéité / Toiture-terrasse',/[ée]tanch|toit.terrasse|toiture.terrasse|membrane|epdm|bitum/],
+  ['Carrelage / Faïence',/carrel|fa[ïi]ence|chape|ragr|salle de bain|sdb|douche/],
+  ['Sols souples / Parquet',/parquet|sol pvc|lino|moquette|stratifi|sol souple/],
+  ['Plâtrerie / Cloisons',/placo|pl[âa]tre|cloison|doublage|plafond|ba13|am[ée]nagement de comble/],
+  ['Peinture / Revêtements',/peint|enduit|ravalement|lasure|tapisserie|papier peint|façade|facade/],
+  ['Plomberie / Sanitaire',/plomb|sanitaire|\bwc|douche|baignoire|lavabo|vasque|chauffe.eau|salle de bain|sdb|robinet|[ée]vier/],
+  ['Chauffage / Ventilation',/chauff|radiateur|pompe . chaleur|\bpac\b|clim|vmc|ventil|po[êe]le|chaudi/],
+  ['Électricité',/[ée]lectri|prise|tableau|[ée]clairage|luminaire|interrupteur|c[âa]bl/],
+  ['Menuiserie extérieure',/fen[êe]tre(?!s?.{0,12}toit)|porte d.entr|porte.fen|volet|baie|v[ée]randa|porte de garage|menuiserie ext/],
+  ['Menuiserie intérieure',/porte int|bloc.porte|placard|escalier|menuiserie int|dressing|garde.corps/],
+  ['Fondations / Gros œuvre',/ma[çc]on|parpaing|b[ée]ton|fondation|dalle|\bmur|agglo|linteau|brique|semelle|longrine|gros [œo]euvre/],
+  ['Terrassement / VRD',/terrassement|vrd|tranch[ée]e|r[ée]seau|assainiss|fosse|drain|fouille|d[ée]blai/],
+  ['Extérieur / Aménagement',/terrasse|cl[ôo]ture|portail|portillon|all[ée]e|piscine|pav[ée]|gazon|jardin|muret|grillage|abri|carport/],
+  ['Plancher / Structure',/plancher|structure|poutre|tr[ée]mie|solivage|IPN/i]
+];
+var BIB_CAT_ALWAYS=['Préparation / Démolition','Divers / Chantier'];
+function bibCatsForJob(text,hasRoof){
+  var t=String(text||'').toLowerCase(),cats={},n=0;
+  BIB_CAT_RULES.forEach(function(r){if(r[1].test(t)){cats[r[0]]=1;n++;}});
+  if(hasRoof){['Couverture','Zinguerie / Évacuation EP','Charpente / Ossature bois'].forEach(function(c){if(!cats[c]){cats[c]=1;n++;}});}
+  if(!n)return null; // rien de reconnu → bibliothèque complète
+  BIB_CAT_ALWAYS.forEach(function(c){cats[c]=1;});
+  return cats;
+}
+function bibCompactForPrompt(cats){
+  window._jobCats=cats||null;
   var bib=db.bibliotheque||[];
   if(!bib.length)return '';
+  var known={};BIB_CAT_RULES.forEach(function(r){known[r[0]]=1;});BIB_CAT_ALWAYS.forEach(function(c){known[c]=1;});
   var byCat={}, order=[];
   bib.forEach(function(b){
     var c=b.categorie||'Divers';
+    if(cats&&!cats[c]&&known[c])return; // catégorie hors sujet (les catégories perso inconnues restent incluses)
     if(!byCat[c]){byCat[c]=[];order.push(c);}
     byCat[c].push((b.designation||'')+' | '+(b.unite||'u')+' | '+(b.prix||0)+'€');
   });
-  var txt='=== BIBLIOTHÈQUE DE PRIX (tes ouvrages — désignation | unité | prix HT) ===\n';
+  var txt='=== BIBLIOTHÈQUE DE PRIX DE L\'ARTISAN (désignation | unité | prix HT) — OBLIGATOIRE : si un ouvrage correspond, reprends EXACTEMENT sa désignation, son unité et son prix ===\n';
   order.forEach(function(c){
     txt+='## '+c+'\n'+byCat[c].join('\n')+'\n';
   });
